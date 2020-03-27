@@ -1,0 +1,9 @@
+{
+    "domain": "sonnenbatterie",
+    "name": "Sonnenbatterie",
+    "documentation": "https://www.weltmeyer.net",
+    "dependencies": [],
+    "codeowners": ["@weltmeyer"],
+    "requirements": ["requests","sonnenbatterie>=0.0.4"],
+    "config_flow": true
+}
