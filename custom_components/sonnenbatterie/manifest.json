@@ -4,6 +4,6 @@
     "documentation": "https://www.weltmeyer.net",
     "dependencies": [],
     "codeowners": ["@weltmeyer"],
-    "requirements": ["requests","sonnenbatterie>=0.0.4"],
+    "requirements": ["requests","sonnenbatterie>=0.1.0"],
     "config_flow": true
 }
