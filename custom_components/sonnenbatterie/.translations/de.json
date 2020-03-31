@@ -13,11 +13,22 @@
                 "data": {
                     "password": "Passwort",
                     "username": "Nutzername(user/installer)",
-                    "ip_address": "IP-Adresse"
+                    "ip_address": "IP-Adresse",
+                    "scan_interval": "Aktualisierungsinterval(Sekunden)"
                 },
                 "title": "Gib deine Sonnenbatterie-Anmeldeinformationen ein"
             }
+            
         },
         "title": "Sonnenbatterie"
+    },
+    "options":{
+        "step":{
+            "init":{
+                "data":{
+                    "scan_interval": "Aktualisierungsinterval(Sekunden)"
+                }
+            }
+        }
     }
 }

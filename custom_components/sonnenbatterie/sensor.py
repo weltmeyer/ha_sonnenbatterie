@@ -13,32 +13,38 @@ from homeassistant.const import (
     CONF_USERNAME,
     CONF_IP_ADDRESS,
     EVENT_HOMEASSISTANT_STOP,
+    CONF_SCAN_INTERVAL,
 )
 
 
 async def async_setup_entry(hass, config_entry,async_add_entities):
     """Set up the sensor platform."""
-    LOGGER.warning('SETUP_ENTRY')
+    LOGGER.info('SETUP_ENTRY')
     username=config_entry.data.get(CONF_USERNAME)
     password=config_entry.data.get(CONF_PASSWORD)
     ipaddress=config_entry.data.get(CONF_IP_ADDRESS)
+    updateIntervalSeconds=config_entry.options.get(CONF_SCAN_INTERVAL)
     sonnenInst=sonnenbatterie(username,password,ipaddress)
     systemdata=sonnenInst.get_systemdata()
     serial=systemdata["DE_Ticket_Number"]
+    LOGGER.info("{0} - INTERVAL: {1}".format(DOMAIN,updateIntervalSeconds))
 
-    sensor = SonnenBatterieSensor(id=DOMAIN+"."+serial)
+    sensor = SonnenBatterieSensor(id="sensor.{0}_{1}".format(DOMAIN,serial))
 
     async_add_entities([sensor])
 
-    monitor = SonnenBatterieMonitor(sonnenInst, sensor, async_add_entities)
+    monitor = SonnenBatterieMonitor(sonnenInst, sensor, async_add_entities,updateIntervalSeconds)
+    
+    hass.data[DOMAIN][config_entry.entry_id]={"monitor":monitor}
+    
+    
     monitor.start()
     def _stop_monitor(_event):
         monitor.stopped=True
     #hass.states.async_set
     #hass.bus.listen_once(EVENT_HOMEASSISTANT_STOP, _stop_monitor)
-    LOGGER.warning('Init done')
+    LOGGER.info('Init done')
     return True
-
 
 
 class SonnenBatterieSensor(Entity):
@@ -49,6 +55,7 @@ class SonnenBatterieSensor(Entity):
         if name is None:
             name=id
         self._name=name
+        LOGGER.info("Create Sensor {0}".format(id))
 
     def set_state(self, state):
         """Set the state."""
@@ -61,10 +68,17 @@ class SonnenBatterieSensor(Entity):
     def set_attributes(self, attributes):
         """Set the state attributes."""
         self._attributes = attributes
+
+    @property
+    def unique_id(self) -> str:
+        """Return the unique ID for this sensor."""
+        return self.entity_id
+
+
     @property
     def should_poll(self):
         """Only poll to update phonebook, if defined."""
-        return True
+        return False
     @property
     def device_state_attributes(self):
         """Return the state attributes."""
@@ -78,16 +92,18 @@ class SonnenBatterieSensor(Entity):
         """Return the name of the sensor."""
         return self._name
     def update(self):
+        LOGGER.info("update "+self.entity_id)
         """Update the phonebook if it is defined."""
         #self.powermeter=self._sbInst.getpowermeter()
         #self.state=self.powermeter[0]['v_l1_l2']
 
 class SonnenBatterieMonitor:
-    def __init__(self, sbInst, sensor,async_add_entities):
+    def __init__(self, sbInst, sensor,async_add_entities,updateIntervalSeconds):
         self.stopped = False
         self.sensor=sensor
         self.sbInst=sbInst
         self.meterSensors={}
+        self.updateIntervalSeconds=updateIntervalSeconds
         self.async_add_entities=async_add_entities
         self.setupEntities()
     def start(self):
@@ -101,7 +117,7 @@ class SonnenBatterieMonitor:
         self.AddOrUpdateEntities(pwmstate,battery_system,inverter,systemdata,status)
 
     def watcher(self):
-        LOGGER.warning('Start Watcher Thread:')
+        LOGGER.info('Start Watcher Thread:')
 
         while not self.stopped:
             try:
@@ -127,7 +143,10 @@ class SonnenBatterieMonitor:
             except:
                 e = traceback.format_exc()
                 LOGGER.error(e)
-            time.sleep(1)
+            if self.updateIntervalSeconds is None:
+                self.updateIntervalSeconds=10
+
+            time.sleep(max(1,self.updateIntervalSeconds))
 
     def parse(self,meters,battery_system,inverter,systemdata,status):
         attr={}
@@ -145,7 +164,7 @@ class SonnenBatterieMonitor:
     def _AddOrUpdateEntity(self,id,friendlyname,value,unit):
         if id in self.meterSensors:
             sensor=self.meterSensors[id]
-            sensor.set_attributes({"unit_of_measurement":unit,"device_class":"power","friendly_name":friendlyname})
+            #sensor.set_attributes({"unit_of_measurement":unit,"device_class":"power","friendly_name":friendlyname})
             sensor.set_state(value)
         else:
             sensor=SonnenBatterieSensor(id,friendlyname)
@@ -167,6 +186,32 @@ class SonnenBatterieMonitor:
         self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname)
 
         """whatever comes next"""
+
+
+        """grid input/output"""
+        val=status['GridFeedIn_W']
+        val_in=0
+        val_out=0
+        if val>=0:
+            val_out=val
+        else:
+            val_in=abs(val)
+        sensorname=allSensorsPrefix+"state_grid_input"
+        unitname="W"
+        friendlyname="Grid Input Power (buy)"
+        self._AddOrUpdateEntity(sensorname,friendlyname,val_in,unitname)
+
+        sensorname=allSensorsPrefix+"state_grid_output"
+        unitname="W"
+        friendlyname="Grid Output Power (sell)"
+        self._AddOrUpdateEntity(sensorname,friendlyname,val_out,unitname)
+
+        sensorname=allSensorsPrefix+"state_grid_inout"
+        unitname="W"
+        friendlyname="Grid In/Out Power"
+        self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname)
+
+
 
 
         """battery states"""
