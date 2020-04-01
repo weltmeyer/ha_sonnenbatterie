@@ -99,6 +99,11 @@ class SonnenBatterieSensor(Entity):
 
 class SonnenBatterieMonitor:
     def __init__(self, sbInst, sensor,async_add_entities,updateIntervalSeconds):
+        self.latestData={}
+        
+        self.MinimumKeepBatteryPowerPecentage=7.0#is this valid for all batteries? 7% Eigenbehalt?
+        self.NormalBatteryVoltage=50.0#real? dunno
+
         self.stopped = False
         self.sensor=sensor
         self.sbInst=sbInst
@@ -106,15 +111,21 @@ class SonnenBatterieMonitor:
         self.updateIntervalSeconds=updateIntervalSeconds
         self.async_add_entities=async_add_entities
         self.setupEntities()
+
+
     def start(self):
         threading.Thread(target=self.watcher).start()
+    def updateData(self):
+        self.latestData["powermeter"]=self.sbInst.get_powermeter()
+        self.latestData["battery_system"]=self.sbInst.get_batterysystem()
+        self.latestData["inverter"]=self.sbInst.get_inverter()
+        self.latestData["systemdata"]=self.sbInst.get_systemdata()
+        self.latestData["status"]=self.sbInst.get_status()
+        self.latestData["battery"]=self.sbInst.get_battery()
+
     def setupEntities(self):
-        pwmstate=self.sbInst.get_powermeter()
-        battery_system=self.sbInst.get_batterysystem()
-        inverter=self.sbInst.get_inverter()
-        systemdata=self.sbInst.get_systemdata()
-        status=self.sbInst.get_status()
-        self.AddOrUpdateEntities(pwmstate,battery_system,inverter,systemdata,status)
+        self.updateData()
+        self.AddOrUpdateEntities()
 
     def watcher(self):
         LOGGER.info('Start Watcher Thread:')
@@ -122,24 +133,18 @@ class SonnenBatterieMonitor:
         while not self.stopped:
             try:
                 #LOGGER.warning('Get PowerMeters: ')
-                pwmstate=self.sbInst.get_powermeter()
-                battery_system=self.sbInst.get_batterysystem()
-                inverter=self.sbInst.get_inverter()
-                systemdata=self.sbInst.get_systemdata()
-                status=self.sbInst.get_status()
-                #LOGGER.warning('Got PowerMeters')
-                #LOGGER.warning(pwmstate)
-                self.parse(pwmstate,battery_system,inverter,systemdata,status)
+                self.updateData()
+                self.parse()
 
                 statedisplay="standby"
-                if status["BatteryCharging"]:
+                if self.latestData["status"]["BatteryCharging"]:
                     statedisplay="charging"
-                elif status["BatteryDischarging"]:
+                elif self.latestData["status"]["BatteryDischarging"]:
                     statedisplay="discharging"
 
                 self.sensor.set_state(statedisplay)
-                self.AddOrUpdateEntities(pwmstate,battery_system,inverter,systemdata,status)
-                self.sensor.set_attributes(systemdata)
+                self.AddOrUpdateEntities()
+                self.sensor.set_attributes(self.latestData["systemdata"])
             except:
                 e = traceback.format_exc()
                 LOGGER.error(e)
@@ -148,7 +153,16 @@ class SonnenBatterieMonitor:
 
             time.sleep(max(1,self.updateIntervalSeconds))
 
-    def parse(self,meters,battery_system,inverter,systemdata,status):
+    def parse(self):
+        meters= self.latestData["powermeter"]
+        battery_system=self.latestData["battery_system"]
+        inverter=self.latestData["inverter"]
+        systemdata=self.latestData["systemdata"]
+        status=self.latestData["status"]
+        battery=self.latestData["battery"]
+
+
+
         attr={}
         for meter in meters:
             prefix="{0}_{1}_{2}-".format( meter['direction'],meter['deviceid'],meter['channel'])
@@ -159,7 +173,7 @@ class SonnenBatterieMonitor:
         attr.update(bat_sys_dict)
 
 
-        self.sensor.set_attributes(attr)
+        #self.sensor.set_attributes(attr)
 
     def _AddOrUpdateEntity(self,id,friendlyname,value,unit):
         if id in self.meterSensors:
@@ -171,7 +185,14 @@ class SonnenBatterieMonitor:
             sensor.set_attributes({"unit_of_measurement":unit,"device_class":"power","friendly_name":friendlyname})
             self.async_add_entities([sensor])
             self.meterSensors[id]=sensor
-    def AddOrUpdateEntities(self, meters,battery_system,inverter,systemdata,status):
+    def AddOrUpdateEntities(self):
+        meters= self.latestData["powermeter"]
+        battery_system=self.latestData["battery_system"]
+        inverter=self.latestData["inverter"]
+        systemdata=self.latestData["systemdata"]
+        status=self.latestData["status"]
+        battery=self.latestData["battery"]
+
 
         """systemdata defines the serialnumber of the battery"""
         serial=systemdata["DE_Ticket_Number"]
@@ -220,8 +241,9 @@ class SonnenBatterieMonitor:
         sensorname=allSensorsPrefix+"state_charge_user"
         unitname="%"
         friendlyname="Charge Percentage User"
-        
         self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname)
+
+
         val=status['RSOC']
         sensorname=allSensorsPrefix+"state_charge_real"
         unitname="%"
@@ -250,6 +272,44 @@ class SonnenBatterieMonitor:
         unitname="W"
         friendlyname="Battery In/Out Power"
         self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname)
+
+
+
+
+        """" Battery Raw Capacity Calc """
+        measurements_status=battery['measurements']['battery_status']
+        val_fullchargecapacity=float(measurements_status['fullchargecapacity']) #Ah
+        val_remainingcapacity=float(measurements_status['remainingcapacity']) #Ah
+        val_systemdcvoltage=float(measurements_status['systemdcvoltage']) #V, dont use this atm, use self.NormalBatteryVoltage=50.0
+        
+        calc_totalcapacity=self.NormalBatteryVoltage*val_fullchargecapacity#Wh
+        calc_resrtictedcapacity=calc_totalcapacity*(self.MinimumKeepBatteryPowerPecentage/100)
+
+        calc_remainingcapacity=self.NormalBatteryVoltage*val_remainingcapacity#Wh, real value => pecentage is RSOC
+        calc_remainingcapacity_usable=calc_remainingcapacity-calc_resrtictedcapacity#Wh, usable capacity
+
+
+        sensorname=allSensorsPrefix+"state_total_capacity_real"
+        unitname="Wh"
+        friendlyname="Total Capacity Real"
+        self._AddOrUpdateEntity(sensorname,friendlyname,int(calc_totalcapacity),unitname)
+        
+        sensorname=allSensorsPrefix+"state_total_capacity_usable"
+        unitname="Wh"
+        friendlyname="Total Capacity Usable"
+        self._AddOrUpdateEntity(sensorname,friendlyname,int(calc_totalcapacity-calc_resrtictedcapacity),unitname)
+
+
+        sensorname=allSensorsPrefix+"state_remaining_capacity_real"
+        unitname="Wh"
+        friendlyname="Remaining Capacity Real"
+        self._AddOrUpdateEntity(sensorname,friendlyname,int(calc_remainingcapacity),unitname)
+
+        sensorname=allSensorsPrefix+"state_remaining_capacity_usable"
+        unitname="Wh"
+        friendlyname="Remaining Capacity Usable"
+        self._AddOrUpdateEntity(sensorname,friendlyname,int(calc_remainingcapacity_usable),unitname)
+
 
         """end battery states"""
 
