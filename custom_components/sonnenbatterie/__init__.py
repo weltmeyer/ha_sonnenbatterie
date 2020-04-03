@@ -24,10 +24,9 @@ async def async_setup(hass, config):
     return True
 
 async def async_setup_entry(hass, config_entry):
-    """Set up Abode integration from a config entry."""
-    username = config_entry.data.get(CONF_USERNAME)
-    password = config_entry.data.get(CONF_PASSWORD)
-    ipaddress = config_entry.data.get(CONF_IP_ADDRESS)
+    #username = config_entry.data.get(CONF_USERNAME)
+    #password = config_entry.data.get(CONF_PASSWORD)
+    #ipaddress = config_entry.data.get(CONF_IP_ADDRESS)
     #hass.states.async_set('sonnenbatterie.test2', 'Works!'+username+' '+password+' '+ipaddress)
     LOGGER.info("setup_entry: "+json.dumps(dict(config_entry.data)))
     

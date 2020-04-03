@@ -1,10 +1,15 @@
-from sonnenbatterie import sonnenbatterie
+
+# pylint: disable=no-name-in-module
+from sonnenbatterie import sonnenbatterie 
+# pylint: enable=no-name-in-module
 import traceback
 import logging
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
-from .const import *
+# pylint: disable=unused-wildcard-import
+from .const import * # 
+# pylint: enable=unused-wildcard-import
 import voluptuous as vol
 from homeassistant.const import (
     CONF_PASSWORD,
@@ -31,7 +36,7 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow,domain=DOMAIN):
         ipaddress=user_input[CONF_IP_ADDRESS]
         
         try:
-            sonnenInst=sonnenbatterie(username,password,ipaddress)
+            sonnenbatterie(username,password,ipaddress)
             #await self.hass.async_add_executor_job(
             #    Abode, username, password, True, True, True, cache
             #)

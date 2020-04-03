@@ -1,18 +1,23 @@
 import traceback
 from datetime import datetime
 import sys
-from .const import *
-import voluptuous as vol
+# pylint: disable=unused-wildcard-import
+from .const import * 
+# pylint: enable=unused-wildcard-import
 import threading
 import time
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity import Entity
-from sonnenbatterie import sonnenbatterie
+
+# pylint: disable=no-name-in-module
+from sonnenbatterie import sonnenbatterie 
+# pylint: enable=no-name-in-module
+
 from homeassistant.const import (
     CONF_PASSWORD,
     CONF_USERNAME,
     CONF_IP_ADDRESS,
-    EVENT_HOMEASSISTANT_STOP,
+    EVENT_HOMEASSISTANT_STOP, 
     CONF_SCAN_INTERVAL,
 )
 
@@ -42,7 +47,7 @@ async def async_setup_entry(hass, config_entry,async_add_entities):
     def _stop_monitor(_event):
         monitor.stopped=True
     #hass.states.async_set
-    #hass.bus.listen_once(EVENT_HOMEASSISTANT_STOP, _stop_monitor)
+    hass.bus.async_listen(EVENT_HOMEASSISTANT_STOP, _stop_monitor)
     LOGGER.info('Init done')
     return True
 
@@ -98,6 +103,8 @@ class SonnenBatterieSensor(Entity):
         #self.state=self.powermeter[0]['v_l1_l2']
 
 class SonnenBatterieMonitor:
+    
+
     def __init__(self, sbInst, sensor,async_add_entities,updateIntervalSeconds):
         self.latestData={}
         
@@ -106,12 +113,11 @@ class SonnenBatterieMonitor:
 
         self.stopped = False
         self.sensor=sensor
-        self.sbInst=sbInst
+        self.sbInst: sonnenbatterie = sbInst
         self.meterSensors={}
         self.updateIntervalSeconds=updateIntervalSeconds
         self.async_add_entities=async_add_entities
         self.setupEntities()
-
 
     def start(self):
         threading.Thread(target=self.watcher).start()
@@ -156,10 +162,10 @@ class SonnenBatterieMonitor:
     def parse(self):
         meters= self.latestData["powermeter"]
         battery_system=self.latestData["battery_system"]
-        inverter=self.latestData["inverter"]
-        systemdata=self.latestData["systemdata"]
-        status=self.latestData["status"]
-        battery=self.latestData["battery"]
+        #inverter=self.latestData["inverter"]
+        #systemdata=self.latestData["systemdata"]
+        #status=self.latestData["status"]
+        #battery=self.latestData["battery"]
 
 
 
@@ -187,7 +193,7 @@ class SonnenBatterieMonitor:
             self.meterSensors[id]=sensor
     def AddOrUpdateEntities(self):
         meters= self.latestData["powermeter"]
-        battery_system=self.latestData["battery_system"]
+        #battery_system=self.latestData["battery_system"]
         inverter=self.latestData["inverter"]
         systemdata=self.latestData["systemdata"]
         status=self.latestData["status"]
@@ -280,7 +286,7 @@ class SonnenBatterieMonitor:
         measurements_status=battery['measurements']['battery_status']
         val_fullchargecapacity=float(measurements_status['fullchargecapacity']) #Ah
         val_remainingcapacity=float(measurements_status['remainingcapacity']) #Ah
-        val_systemdcvoltage=float(measurements_status['systemdcvoltage']) #V, dont use this atm, use self.NormalBatteryVoltage=50.0
+        #val_systemdcvoltage=float(measurements_status['systemdcvoltage']) #V, dont use this atm, use self.NormalBatteryVoltage=50.0
         
         calc_totalcapacity=self.NormalBatteryVoltage*val_fullchargecapacity#Wh
         calc_resrtictedcapacity=calc_totalcapacity*(self.MinimumKeepBatteryPowerPecentage/100)
