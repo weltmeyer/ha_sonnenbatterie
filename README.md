@@ -15,3 +15,7 @@ Set the update interval in the Integration Settings. Default is 1 second, which 
 
 ### Install ###
 Easiest way is to add this repository to hacs.
+
+
+### Screenshots :) ###
+![image](https://user-images.githubusercontent.com/1668465/78452159-ed2d7d80-7689-11ea-9e30-3a66ecc2372a.png)
