@@ -13,3 +13,5 @@ Should work with current versions of Sonnenbatterie.
 ### Important: ###
 Set the update interval in the Integration Settings. Default is 1 second, which may kill your recorder database
 
+### Install ###
+Easiest way is to add this repository to hacs.
