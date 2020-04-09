@@ -107,7 +107,7 @@ class SonnenBatterieMonitor:
 
     def __init__(self, sbInst, sensor,async_add_entities,updateIntervalSeconds):
         self.latestData={}
-        
+        self.disabledSensors=[""]
         self.MinimumKeepBatteryPowerPecentage=7.0#is this valid for all batteries? 7% Eigenbehalt?
         self.NormalBatteryVoltage=50.0#real? dunno
 
@@ -206,11 +206,18 @@ class SonnenBatterieMonitor:
 
 
         """this and that from the states"""
-        val=inverter['status']['fac']
-        sensorname=allSensorsPrefix+"state_netfrequency"
-        unitname="Hz"
-        friendlyname="Net Frequency"
-        self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname)
+        if not "state_netfrequency" in self.disabledSensors:
+            try:
+                val=inverter['status']['fac']
+                sensorname=allSensorsPrefix+"state_netfrequency"
+                unitname="Hz"
+                friendlyname="Net Frequency"
+                self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname)
+            except:
+                self.disabledSensors.append("state_netfrequency")
+                e = traceback.format_exc()
+                LOGGER.error(e)
+                LOGGER.error(inverter)
 
         """whatever comes next"""
 
