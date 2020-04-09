@@ -128,6 +128,12 @@ class SonnenBatterieMonitor:
         self.latestData["systemdata"]=self.sbInst.get_systemdata()
         self.latestData["status"]=self.sbInst.get_status()
         self.latestData["battery"]=self.sbInst.get_battery()
+        
+        """ some batteries seem to have status in status key instead directly in status... """
+        if not 'fac' in self.latestData["inverter"]['status']: 
+            self.latestData["inverter"]['status']=self.latestData["inverter"]['status']['status'] 
+
+
 
     def setupEntities(self):
         self.updateData()
