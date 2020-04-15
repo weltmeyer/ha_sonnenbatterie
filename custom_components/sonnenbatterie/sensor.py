@@ -67,7 +67,11 @@ class SonnenBatterieSensor(Entity):
         if self._state==state:
             return
         self._state = state
-        self.schedule_update_ha_state()
+        try:
+            self.schedule_update_ha_state()
+        except:
+            LOGGER.error("Failing sensor: "+self.name)
+            raise
 
 
     def set_attributes(self, attributes):
