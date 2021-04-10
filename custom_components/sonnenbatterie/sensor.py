@@ -29,8 +29,10 @@ async def async_setup_entry(hass, config_entry,async_add_entities):
     password=config_entry.data.get(CONF_PASSWORD)
     ipaddress=config_entry.data.get(CONF_IP_ADDRESS)
     updateIntervalSeconds=config_entry.options.get(CONF_SCAN_INTERVAL)
-    sonnenInst=sonnenbatterie(username,password,ipaddress)
-    systemdata=sonnenInst.get_systemdata()
+    def _internal_setup(_username,_password,_ipaddress):
+        return sonnenbatterie(_username,_password,_ipaddress)
+    sonnenInst=await hass.async_add_executor_job(_internal_setup,username,password,ipaddress);
+    systemdata=await hass.async_add_executor_job(sonnenInst.get_systemdata);
     serial=systemdata["DE_Ticket_Number"]
     LOGGER.info("{0} - INTERVAL: {1}".format(DOMAIN,updateIntervalSeconds))
 
@@ -38,7 +40,7 @@ async def async_setup_entry(hass, config_entry,async_add_entities):
 
     async_add_entities([sensor])
 
-    monitor = SonnenBatterieMonitor(sonnenInst, sensor, async_add_entities,updateIntervalSeconds)
+    monitor = SonnenBatterieMonitor(hass,sonnenInst, sensor, async_add_entities,updateIntervalSeconds)
     
     hass.data[DOMAIN][config_entry.entry_id]={"monitor":monitor}
     
@@ -50,6 +52,9 @@ async def async_setup_entry(hass, config_entry,async_add_entities):
     hass.bus.async_listen(EVENT_HOMEASSISTANT_STOP, _stop_monitor)
     LOGGER.info('Init done')
     return True
+    
+    
+
 
 
 class SonnenBatterieSensor(Entity):
@@ -71,7 +76,7 @@ class SonnenBatterieSensor(Entity):
             self.schedule_update_ha_state()
         except:
             LOGGER.error("Failing sensor: "+self.name)
-            raise
+            #raise
 
 
     def set_attributes(self, attributes):
@@ -109,7 +114,8 @@ class SonnenBatterieSensor(Entity):
 class SonnenBatterieMonitor:
     
 
-    def __init__(self, sbInst, sensor,async_add_entities,updateIntervalSeconds):
+    def __init__(self,hass, sbInst, sensor,async_add_entities,updateIntervalSeconds):
+        self.hass=hass;
         self.latestData={}
         self.disabledSensors=[""]
         self.MinimumKeepBatteryPowerPecentage=7.0#is this valid for all batteries? 7% Eigenbehalt?
@@ -121,7 +127,7 @@ class SonnenBatterieMonitor:
         self.meterSensors={}
         self.updateIntervalSeconds=updateIntervalSeconds
         self.async_add_entities=async_add_entities
-        self.setupEntities()
+        #self.setupEntities()
 
     def start(self):
         threading.Thread(target=self.watcher).start()
@@ -140,7 +146,7 @@ class SonnenBatterieMonitor:
 
 
     def setupEntities(self):
-        self.updateData()
+        self.updateData();
         self.AddOrUpdateEntities()
 
     def watcher(self):
@@ -149,7 +155,7 @@ class SonnenBatterieMonitor:
         while not self.stopped:
             try:
                 #LOGGER.warning('Get PowerMeters: ')
-                self.updateData()
+                self.updateData();
                 self.parse()
 
                 statedisplay="standby"
