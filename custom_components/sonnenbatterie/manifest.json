@@ -6,5 +6,5 @@
     "codeowners": ["@weltmeyer"],
     "requirements": ["requests","sonnenbatterie>=0.1.1"],
     "config_flow": true,
-	"version": "2014.04.00"
+	"version": "2020.06.07"
 }

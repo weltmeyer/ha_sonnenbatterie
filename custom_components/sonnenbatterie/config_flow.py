@@ -5,7 +5,7 @@ from sonnenbatterie import sonnenbatterie
 import traceback
 import logging
 import voluptuous as vol
-from homeassistant import config_entries
+from homeassistant import config_entries,core
 from homeassistant.core import callback
 # pylint: disable=unused-wildcard-import
 from .const import * # 
@@ -35,8 +35,12 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow,domain=DOMAIN):
         password = user_input[CONF_PASSWORD]
         ipaddress=user_input[CONF_IP_ADDRESS]
         
+        
         try:
-            sonnenbatterie(username,password,ipaddress)
+            def _internal_setup(_username,_password,_ipaddress):
+                return sonnenbatterie(_username,_password,_ipaddress)
+            sonnenInst=await self.hass.async_add_executor_job(_internal_setup,username,password,ipaddress);
+            #sonnenbatterie(username,password,ipaddress)
             #await self.hass.async_add_executor_job(
             #    Abode, username, password, True, True, True, cache
             #)
