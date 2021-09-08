@@ -118,6 +118,7 @@ class SonnenBatterieMonitor:
         self.hass=hass;
         self.latestData={}
         self.disabledSensors=[""]
+        #self.IsHybrid=False;
         self.MinimumKeepBatteryPowerPecentage=7.0#is this valid for all batteries? 7% Eigenbehalt?
         self.NormalBatteryVoltage=50.0#real? dunno
 
@@ -193,7 +194,20 @@ class SonnenBatterieMonitor:
                 attr[parmName]=meter[name]
         bat_sys_dict=flattenObj("battery_system","-",battery_system)
         attr.update(bat_sys_dict)
-
+        """
+        modelname="undefined??";
+        try:
+            modelname=battery_system["battery_system"]["system"]["model_name"]
+            if "ybrid" in modelname:
+                self.IsHybrid=True
+                LOGGER.warning("Found Hybrid Sonnenbatterie"+"("+modelname+")")
+            else:
+                self.IsHybrid=False
+                LOGGER.warning("Found Non-Hybrid Sonnenbatterie"+"("+modelname+")")
+                
+        except:
+            LOGGER.error("Failing detection for IsHybrid."("+modelname+")")
+        """
 
         #self.sensor.set_attributes(attr)
 
@@ -234,6 +248,24 @@ class SonnenBatterieMonitor:
                 e = traceback.format_exc()
                 LOGGER.error(e)
                 LOGGER.error(inverter)
+
+        if not "inverter_ppv" in self.disabledSensors:
+            try:
+                val=inverter['status']['ppv']
+                sensorname=allSensorsPrefix+"inverter_ppv"
+                unitname="W"
+                friendlyname="Inverter PPV1 - Hybrid Solar Power"
+                self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname)
+            except:
+                self.disabledSensors.append("inverter_ppv")
+                e = traceback.format_exc()
+                LOGGER.error(e)
+                LOGGER.error(inverter)
+
+
+
+         
+
 
         """whatever comes next"""
 
