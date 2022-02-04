@@ -1,0 +1,34 @@
+{
+    "config": {
+        "abort": {
+            "single_instance_allowed": "Only one Sonnenbatterie configuration allowed."
+        },
+        "error": {
+            "connection_error": "No connection to the Sonnenbatterie could be established",
+            "identifier_exists": "Account already exists",
+            "invalid_credentials": "Invalid login"
+        },
+        "step": {
+            "user": {
+                "data": {
+                    "password": "Password",
+                    "username": "Username(user/installer)",
+                    "ip_address": "IP-Address",
+                    "scan_interval": "Updateinterval(seconds)"
+                },
+                "title": "Enter your Sonnenbatterie-login information"
+            }
+            
+        },
+        "title": "Sonnenbatterie"
+    },
+    "options":{
+        "step":{
+            "init":{
+                "data":{
+                    "scan_interval": "Updateinterval(seconds)"
+                }
+            }
+        }
+    }
+}
