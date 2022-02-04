@@ -3,6 +3,8 @@ Homeassistant integration to show many stats of Sonnenbatterie
 
 Should work with current versions of Sonnenbatterie.
 
+[![Validate with hassfest](https://github.com/weltmeyer/ha_sonnenbatterie/actions/workflows/hassfest.yaml/badge.svg)](https://github.com/weltmeyer/ha_sonnenbatterie/actions/workflows/hassfest.yaml)
+
 ### Tested working with ###
 * eco 8.03 9010 ND
 * eco 8.0 DE 9010 ND
