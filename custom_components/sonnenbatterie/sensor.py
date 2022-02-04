@@ -141,12 +141,16 @@ class SonnenBatterieMonitor:
         self.latestData["battery"]=self.sbInst.get_battery()
         
         """ some batteries seem to have status in status key instead directly in status... """
-        try:
-            if not 'fac' in self.latestData["inverter"]['status']: 
-                self.latestData["inverter"]['status']=self.latestData["inverter"]['status']['status'] 
-        except:
-            e = traceback.format_exc()
-            LOGGER.error(e)
+        if not "state_netfrequency" in self.disabledSensors:
+            try:
+                if not 'fac' in self.latestData["inverter"]['status']: 
+                    self.latestData["inverter"]['status']=self.latestData["inverter"]['status']['status'] 
+            except:
+                self.disabledSensors.append("state_netfrequency")
+                e = traceback.format_exc()
+                LOGGER.error(e)
+                LOGGER.error("inverter JSON For Developer in next message")
+                LOGGER.error(self.latestData["inverter"])
 
 
 
