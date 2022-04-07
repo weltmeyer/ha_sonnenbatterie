@@ -7,7 +7,10 @@ from .const import *
 import threading
 import time
 from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers.entity import Entity
+try:  # support old Home Assistant version
+    from homeassistant.components.sensor import SensorEntity
+except:
+    from homeassistant.helpers.entity import Entity as SensorEntity
 
 # pylint: disable=no-name-in-module
 from sonnenbatterie import sonnenbatterie 
@@ -57,7 +60,7 @@ async def async_setup_entry(hass, config_entry,async_add_entities):
 
 
 
-class SonnenBatterieSensor(Entity):
+class SonnenBatterieSensor(SensorEntity):
     def __init__(self,id,name=None):
         self._attributes = {}
         self._state ="NOTRUN"
@@ -110,6 +113,19 @@ class SonnenBatterieSensor(Entity):
         """Update the phonebook if it is defined."""
         #self.powermeter=self._sbInst.getpowermeter()
         #self.state=self.powermeter[0]['v_l1_l2']
+    @property
+    def unit_of_measurement(self):
+        """Return the unit of measurement."""
+        return self._attributes["unit_of_measurement"]
+    @property
+    def device_class(self):
+        """Return the device_class."""
+        return self._attributes["device_class"]
+    @property
+    def state_class(self):
+        """Return the unit of measurement."""
+        return self._attributes["state_class"]
+
 
 class SonnenBatterieMonitor:
     
@@ -219,14 +235,14 @@ class SonnenBatterieMonitor:
 
         #self.sensor.set_attributes(attr)
 
-    def _AddOrUpdateEntity(self,id,friendlyname,value,unit):
+    def _AddOrUpdateEntity(self,id,friendlyname,value,unit,device_class):
         if id in self.meterSensors:
             sensor=self.meterSensors[id]
             #sensor.set_attributes({"unit_of_measurement":unit,"device_class":"power","friendly_name":friendlyname})
             sensor.set_state(value)
         else:
             sensor=SonnenBatterieSensor(id,friendlyname)
-            sensor.set_attributes({"unit_of_measurement":unit,"device_class":"power","friendly_name":friendlyname,"state_class":"measurement"})
+            sensor.set_attributes({"unit_of_measurement":unit,"device_class":device_class,"friendly_name":friendlyname,"state_class":"measurement"})
             self.async_add_entities([sensor])
             self.meterSensors[id]=sensor
     def AddOrUpdateEntities(self):
@@ -250,7 +266,8 @@ class SonnenBatterieMonitor:
                 sensorname=allSensorsPrefix+"state_netfrequency"
                 unitname="Hz"
                 friendlyname="Net Frequency"
-                self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname)
+                device_class="frequency"
+                self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,device_class)
             except:
                 self.disabledSensors.append("state_netfrequency")
                 e = traceback.format_exc()
@@ -263,7 +280,8 @@ class SonnenBatterieMonitor:
                 sensorname=allSensorsPrefix+"inverter_ppv"
                 unitname="W"
                 friendlyname="Inverter PPV1 - Hybrid Solar Power"
-                self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname)
+                device_class="power"
+                self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,device_class)
             except:
                 self.disabledSensors.append("inverter_ppv")
                 e = traceback.format_exc()
@@ -289,17 +307,18 @@ class SonnenBatterieMonitor:
         sensorname=allSensorsPrefix+"state_grid_input"
         unitname="W"
         friendlyname="Grid Input Power (buy)"
-        self._AddOrUpdateEntity(sensorname,friendlyname,val_in,unitname)
+        
+        self._AddOrUpdateEntity(sensorname,friendlyname,val_in,unitname,"power")
 
         sensorname=allSensorsPrefix+"state_grid_output"
         unitname="W"
         friendlyname="Grid Output Power (sell)"
-        self._AddOrUpdateEntity(sensorname,friendlyname,val_out,unitname)
+        self._AddOrUpdateEntity(sensorname,friendlyname,val_out,unitname,"power")
 
         sensorname=allSensorsPrefix+"state_grid_inout"
         unitname="W"
         friendlyname="Grid In/Out Power"
-        self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname)
+        self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,"power")
 
 
 
@@ -310,14 +329,14 @@ class SonnenBatterieMonitor:
         sensorname=allSensorsPrefix+"state_charge_user"
         unitname="%"
         friendlyname="Charge Percentage User"
-        self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname)
+        self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,"battery")
 
 
         val=status['RSOC']
         sensorname=allSensorsPrefix+"state_charge_real"
         unitname="%"
         friendlyname="Charge Percentage Real"
-        self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname)
+        self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,"battery")
 
         """battery input/output"""
         val=status['Pac_total_W']
@@ -330,17 +349,17 @@ class SonnenBatterieMonitor:
         sensorname=allSensorsPrefix+"state_battery_input"
         unitname="W"
         friendlyname="Battery Charging Power"
-        self._AddOrUpdateEntity(sensorname,friendlyname,val_in,unitname)
+        self._AddOrUpdateEntity(sensorname,friendlyname,val_in,unitname,"power")
 
         sensorname=allSensorsPrefix+"state_battery_output"
         unitname="W"
         friendlyname="Battery Discharging Power"
-        self._AddOrUpdateEntity(sensorname,friendlyname,val_out,unitname)
+        self._AddOrUpdateEntity(sensorname,friendlyname,val_out,unitname,"power")
 
         sensorname=allSensorsPrefix+"state_battery_inout"
         unitname="W"
         friendlyname="Battery In/Out Power"
-        self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname)
+        self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,"power")
 
 
 
@@ -361,23 +380,23 @@ class SonnenBatterieMonitor:
         sensorname=allSensorsPrefix+"state_total_capacity_real"
         unitname="Wh"
         friendlyname="Total Capacity Real"
-        self._AddOrUpdateEntity(sensorname,friendlyname,int(calc_totalcapacity),unitname)
+        self._AddOrUpdateEntity(sensorname,friendlyname,int(calc_totalcapacity),unitname,"energy")
         
         sensorname=allSensorsPrefix+"state_total_capacity_usable"
         unitname="Wh"
         friendlyname="Total Capacity Usable"
-        self._AddOrUpdateEntity(sensorname,friendlyname,int(calc_totalcapacity-calc_resrtictedcapacity),unitname)
+        self._AddOrUpdateEntity(sensorname,friendlyname,int(calc_totalcapacity-calc_resrtictedcapacity),unitname,"energy")
 
 
         sensorname=allSensorsPrefix+"state_remaining_capacity_real"
         unitname="Wh"
         friendlyname="Remaining Capacity Real"
-        self._AddOrUpdateEntity(sensorname,friendlyname,int(calc_remainingcapacity),unitname)
+        self._AddOrUpdateEntity(sensorname,friendlyname,int(calc_remainingcapacity),unitname,"energy")
 
         sensorname=allSensorsPrefix+"state_remaining_capacity_usable"
         unitname="Wh"
         friendlyname="Remaining Capacity Usable"
-        self._AddOrUpdateEntity(sensorname,friendlyname,int(calc_remainingcapacity_usable),unitname)
+        self._AddOrUpdateEntity(sensorname,friendlyname,int(calc_remainingcapacity_usable),unitname,"energy")
 
 
         """end battery states"""
@@ -394,5 +413,10 @@ class SonnenBatterieMonitor:
                 val=meter[sensormeter]
                 val=round(val,2)
                 unitname=(sensormeter[0]+"").upper()
+                device_class="power"
+                if(unitname=="V"):
+                    device_class="voltage"
+                elif unitname=="A":
+                    device_class="current"
                 friendlyname="{0} {1}".format(meter['direction'],sensormeter)
-                self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname)
+                self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,device_class)
