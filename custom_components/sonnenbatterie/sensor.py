@@ -116,15 +116,15 @@ class SonnenBatterieSensor(SensorEntity):
     @property
     def unit_of_measurement(self):
         """Return the unit of measurement."""
-        return self._attributes.get("unit_of_measurement","none")
+        return self._attributes.get("unit_of_measurement",None)
     @property
     def device_class(self):
         """Return the device_class."""
-        return self._attributes.get("device_class","none")
+        return self._attributes.get("device_class",None)
     @property
     def state_class(self):
         """Return the unit of measurement."""
-        return self._attributes.get("state_class","none")
+        return self._attributes.get("state_class",None)
 
 
 class SonnenBatterieMonitor:
