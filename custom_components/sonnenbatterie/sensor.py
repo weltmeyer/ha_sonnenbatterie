@@ -156,6 +156,8 @@ class SonnenBatterieMonitor:
         self.latestData["status"]=self.sbInst.get_status()
         self.latestData["battery"]=self.sbInst.get_battery()
         
+        
+        
         """ some batteries seem to have status in status key instead directly in status... """
         if not "state_netfrequency" in self.disabledSensors:
             try:
@@ -247,7 +249,7 @@ class SonnenBatterieMonitor:
             self.meterSensors[id]=sensor
     def AddOrUpdateEntities(self):
         meters= self.latestData["powermeter"]
-        #battery_system=self.latestData["battery_system"]
+        battery_system=self.latestData["battery_system"]
         inverter=self.latestData["inverter"]
         systemdata=self.latestData["systemdata"]
         status=self.latestData["status"]
@@ -294,6 +296,20 @@ class SonnenBatterieMonitor:
 
 
         """whatever comes next"""
+        
+        val_modulecount=int(battery_system['modules'])
+        sensorname=allSensorsPrefix+"module_count"
+        unitname=""
+        friendlyname="Battery module count"
+        self._AddOrUpdateEntity(sensorname,friendlyname,val_modulecount,unitname,"battery")
+        
+        val_module_capacity=int(battery_system['battery_system']['system']['storage_capacity_per_module'])
+        sensorname=allSensorsPrefix+"module_capacity"
+        unitname="Wh"
+        friendlyname="Battery storage_capacity_per_module"
+        self._AddOrUpdateEntity(sensorname,friendlyname,val_module_capacity,unitname,"energy")
+
+        total_installed_capacity=int(val_modulecount*val_module_capacity)
 
 
         """grid input/output"""
@@ -332,11 +348,11 @@ class SonnenBatterieMonitor:
         self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,"battery")
 
 
-        val=status['RSOC']
+        val_rsoc=float(status['RSOC'])
         sensorname=allSensorsPrefix+"state_charge_real"
         unitname="%"
         friendlyname="Charge Percentage Real"
-        self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,"battery")
+        self._AddOrUpdateEntity(sensorname,friendlyname,val_rsoc,unitname,"battery")
 
         """battery input/output"""
         val=status['Pac_total_W']
@@ -366,26 +382,28 @@ class SonnenBatterieMonitor:
 
         """" Battery Raw Capacity Calc """
         measurements_status=battery['measurements']['battery_status']
-        val_fullchargecapacity=float(measurements_status['fullchargecapacity']) #Ah
-        val_remainingcapacity=float(measurements_status['remainingcapacity']) #Ah
+        #val_fullchargecapacity=float(measurements_status['fullchargecapacity']) #Ah
+        #val_remainingcapacity=float(measurements_status['remainingcapacity']) #Ah
         #val_systemdcvoltage=float(measurements_status['systemdcvoltage']) #V, dont use this atm, use self.NormalBatteryVoltage=50.0
         
-        calc_totalcapacity=self.NormalBatteryVoltage*val_fullchargecapacity#Wh
-        calc_resrtictedcapacity=calc_totalcapacity*(self.MinimumKeepBatteryPowerPecentage/100)
+        #calc_totalcapacity=self.NormalBatteryVoltage*val_fullchargecapacity#Wh #total_installed_capacity
+        #calc_resrtictedcapacity=calc_totalcapacity*(self.MinimumKeepBatteryPowerPecentage/100)
+        calc_resrtictedcapacity=total_installed_capacity*(self.MinimumKeepBatteryPowerPecentage/100)
 
-        calc_remainingcapacity=self.NormalBatteryVoltage*val_remainingcapacity#Wh, real value => pecentage is RSOC
+        #calc_remainingcapacity=self.NormalBatteryVoltage*val_remainingcapacity#Wh, real value => pecentage is RSOC
+        #calc_remainingcapacity_usable=calc_remainingcapacity-calc_resrtictedcapacity#Wh, usable capacity
+        calc_remainingcapacity=total_installed_capacity*(val_rsoc/100.0)#Wh, real value => pecentage is RSOC
         calc_remainingcapacity_usable=calc_remainingcapacity-calc_resrtictedcapacity#Wh, usable capacity
-
 
         sensorname=allSensorsPrefix+"state_total_capacity_real"
         unitname="Wh"
         friendlyname="Total Capacity Real"
-        self._AddOrUpdateEntity(sensorname,friendlyname,int(calc_totalcapacity),unitname,"energy")
+        self._AddOrUpdateEntity(sensorname,friendlyname,int(total_installed_capacity),unitname,"energy")
         
         sensorname=allSensorsPrefix+"state_total_capacity_usable"
         unitname="Wh"
         friendlyname="Total Capacity Usable"
-        self._AddOrUpdateEntity(sensorname,friendlyname,int(calc_totalcapacity-calc_resrtictedcapacity),unitname,"energy")
+        self._AddOrUpdateEntity(sensorname,friendlyname,int(total_installed_capacity-calc_resrtictedcapacity),unitname,"energy")
 
 
         sensorname=allSensorsPrefix+"state_remaining_capacity_real"
