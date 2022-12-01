@@ -7,10 +7,14 @@ from .const import *
 import threading
 import time
 from homeassistant.helpers import config_validation as cv
-try:  # support old Home Assistant version
-    from homeassistant.components.sensor import SensorEntity
-except:
-    from homeassistant.helpers.entity import Entity as SensorEntity
+
+from homeassistant.components.sensor import (
+    SensorEntity,
+    SensorDeviceClass,
+    SensorStateClass,
+    SensorEntityDescription
+)
+
 
 # pylint: disable=no-name-in-module
 from sonnenbatterie import sonnenbatterie 
@@ -149,12 +153,17 @@ class SonnenBatterieMonitor:
     def start(self):
         threading.Thread(target=self.watcher).start()
     def updateData(self):
-        self.latestData["powermeter"]=self.sbInst.get_powermeter()
-        self.latestData["battery_system"]=self.sbInst.get_batterysystem()
-        self.latestData["inverter"]=self.sbInst.get_inverter()
-        self.latestData["systemdata"]=self.sbInst.get_systemdata()
-        self.latestData["status"]=self.sbInst.get_status()
-        self.latestData["battery"]=self.sbInst.get_battery()
+        try:##ignore errors here, may be transient
+            self.latestData["powermeter"]=self.sbInst.get_powermeter()
+            self.latestData["battery_system"]=self.sbInst.get_batterysystem()
+            self.latestData["inverter"]=self.sbInst.get_inverter()
+            self.latestData["systemdata"]=self.sbInst.get_systemdata()
+            self.latestData["status"]=self.sbInst.get_status()
+            self.latestData["battery"]=self.sbInst.get_battery()
+        except:
+            e = traceback.format_exc()
+            LOGGER.error(e)
+            return
         
         
         
@@ -247,6 +256,7 @@ class SonnenBatterieMonitor:
             sensor.set_attributes({"unit_of_measurement":unit,"device_class":device_class,"friendly_name":friendlyname,"state_class":"measurement"})
             self.async_add_entities([sensor])
             self.meterSensors[id]=sensor
+    
     def AddOrUpdateEntities(self):
         meters= self.latestData["powermeter"]
         battery_system=self.latestData["battery_system"]
@@ -268,7 +278,7 @@ class SonnenBatterieMonitor:
                 sensorname=allSensorsPrefix+"state_netfrequency"
                 unitname="Hz"
                 friendlyname="Net Frequency"
-                device_class="frequency"
+                device_class= SensorDeviceClass.FREQUENCY #"frequency"
                 self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,device_class)
             except:
                 self.disabledSensors.append("state_netfrequency")
@@ -282,7 +292,7 @@ class SonnenBatterieMonitor:
                 sensorname=allSensorsPrefix+"inverter_ppv"
                 unitname="W"
                 friendlyname="Inverter PPV1 - Hybrid Solar Power"
-                device_class="power"
+                device_class=SensorDeviceClass.POWER#"power"
                 self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,device_class)
             except:
                 self.disabledSensors.append("inverter_ppv")
@@ -301,13 +311,25 @@ class SonnenBatterieMonitor:
         sensorname=allSensorsPrefix+"module_count"
         unitname=""
         friendlyname="Battery module count"
-        self._AddOrUpdateEntity(sensorname,friendlyname,val_modulecount,unitname,"battery")
+        self._AddOrUpdateEntity(sensorname,friendlyname,val_modulecount,unitname,SensorDeviceClass.BATTERY)
+
+        try:
+            val_tmax=float(battery_system['grid_information']['tmax'])
+            sensorname=allSensorsPrefix+"tmax"
+            unitname="°C"
+            friendlyname="Max Temperature"
+            self._AddOrUpdateEntity(sensorname,friendlyname,val_tmax,unitname,SensorDeviceClass.TEMPERATURE)
+        except:
+            self.disabledSensors.append("state_netfrequency")
+            e = traceback.format_exc()
+            LOGGER.error(e)
+            LOGGER.error(inverter)
         
         val_module_capacity=int(battery_system['battery_system']['system']['storage_capacity_per_module'])
         sensorname=allSensorsPrefix+"module_capacity"
         unitname="Wh"
         friendlyname="Battery storage_capacity_per_module"
-        self._AddOrUpdateEntity(sensorname,friendlyname,val_module_capacity,unitname,"energy")
+        self._AddOrUpdateEntity(sensorname,friendlyname,val_module_capacity,unitname,SensorDeviceClass.ENERGY)
 
         total_installed_capacity=int(val_modulecount*val_module_capacity)
 
@@ -324,17 +346,17 @@ class SonnenBatterieMonitor:
         unitname="W"
         friendlyname="Grid Input Power (buy)"
         
-        self._AddOrUpdateEntity(sensorname,friendlyname,val_in,unitname,"power")
+        self._AddOrUpdateEntity(sensorname,friendlyname,val_in,unitname,SensorDeviceClass.POWER)
 
         sensorname=allSensorsPrefix+"state_grid_output"
         unitname="W"
         friendlyname="Grid Output Power (sell)"
-        self._AddOrUpdateEntity(sensorname,friendlyname,val_out,unitname,"power")
+        self._AddOrUpdateEntity(sensorname,friendlyname,val_out,unitname,SensorDeviceClass.POWER)
 
         sensorname=allSensorsPrefix+"state_grid_inout"
         unitname="W"
         friendlyname="Grid In/Out Power"
-        self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,"power")
+        self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,SensorDeviceClass.POWER)
 
 
 
@@ -345,14 +367,14 @@ class SonnenBatterieMonitor:
         sensorname=allSensorsPrefix+"state_charge_user"
         unitname="%"
         friendlyname="Charge Percentage User"
-        self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,"battery")
+        self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,SensorDeviceClass.BATTERY)
 
 
         val_rsoc=float(status['RSOC'])
         sensorname=allSensorsPrefix+"state_charge_real"
         unitname="%"
         friendlyname="Charge Percentage Real"
-        self._AddOrUpdateEntity(sensorname,friendlyname,val_rsoc,unitname,"battery")
+        self._AddOrUpdateEntity(sensorname,friendlyname,val_rsoc,unitname,SensorDeviceClass.BATTERY)
 
         """battery input/output"""
         val=status['Pac_total_W']
@@ -365,17 +387,17 @@ class SonnenBatterieMonitor:
         sensorname=allSensorsPrefix+"state_battery_input"
         unitname="W"
         friendlyname="Battery Charging Power"
-        self._AddOrUpdateEntity(sensorname,friendlyname,val_in,unitname,"power")
+        self._AddOrUpdateEntity(sensorname,friendlyname,val_in,unitname,SensorDeviceClass.POWER)
 
         sensorname=allSensorsPrefix+"state_battery_output"
         unitname="W"
         friendlyname="Battery Discharging Power"
-        self._AddOrUpdateEntity(sensorname,friendlyname,val_out,unitname,"power")
+        self._AddOrUpdateEntity(sensorname,friendlyname,val_out,unitname,SensorDeviceClass.POWER)
 
         sensorname=allSensorsPrefix+"state_battery_inout"
         unitname="W"
         friendlyname="Battery In/Out Power"
-        self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,"power")
+        self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,SensorDeviceClass.POWER)
 
 
 
@@ -398,23 +420,23 @@ class SonnenBatterieMonitor:
         sensorname=allSensorsPrefix+"state_total_capacity_real"
         unitname="Wh"
         friendlyname="Total Capacity Real"
-        self._AddOrUpdateEntity(sensorname,friendlyname,int(total_installed_capacity),unitname,"energy")
+        self._AddOrUpdateEntity(sensorname,friendlyname,int(total_installed_capacity),unitname,SensorDeviceClass.ENERGY)
         
         sensorname=allSensorsPrefix+"state_total_capacity_usable"
         unitname="Wh"
         friendlyname="Total Capacity Usable"
-        self._AddOrUpdateEntity(sensorname,friendlyname,int(total_installed_capacity-calc_resrtictedcapacity),unitname,"energy")
+        self._AddOrUpdateEntity(sensorname,friendlyname,int(total_installed_capacity-calc_resrtictedcapacity),unitname,SensorDeviceClass.ENERGY)
 
 
         sensorname=allSensorsPrefix+"state_remaining_capacity_real"
         unitname="Wh"
         friendlyname="Remaining Capacity Real"
-        self._AddOrUpdateEntity(sensorname,friendlyname,int(calc_remainingcapacity),unitname,"energy")
+        self._AddOrUpdateEntity(sensorname,friendlyname,int(calc_remainingcapacity),unitname,SensorDeviceClass.ENERGY)
 
         sensorname=allSensorsPrefix+"state_remaining_capacity_usable"
         unitname="Wh"
         friendlyname="Remaining Capacity Usable"
-        self._AddOrUpdateEntity(sensorname,friendlyname,int(calc_remainingcapacity_usable),unitname,"energy")
+        self._AddOrUpdateEntity(sensorname,friendlyname,int(calc_remainingcapacity_usable),unitname,SensorDeviceClass.ENERGY)
 
 
         """end battery states"""
@@ -431,10 +453,10 @@ class SonnenBatterieMonitor:
                 val=meter[sensormeter]
                 val=round(val,2)
                 unitname=(sensormeter[0]+"").upper()
-                device_class="power"
+                device_class=SensorDeviceClass.POWER
                 if(unitname=="V"):
-                    device_class="voltage"
+                    device_class=SensorDeviceClass.VOLTAGE
                 elif unitname=="A":
-                    device_class="current"
+                    device_class=SensorDeviceClass.CURRENT
                 friendlyname="{0} {1}".format(meter['direction'],sensormeter)
                 self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,device_class)
