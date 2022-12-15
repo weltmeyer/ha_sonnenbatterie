@@ -291,7 +291,7 @@ class SonnenBatterieMonitor:
                 val=inverter['status']['ppv']
                 sensorname=allSensorsPrefix+"inverter_ppv"
                 unitname="W"
-                friendlyname="Inverter PPV1 - Hybrid Solar Power"
+                friendlyname="Inverter PPV1 - Hybrid Solar Power PPV1"
                 device_class=SensorDeviceClass.POWER#"power"
                 self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,device_class)
             except:
@@ -299,8 +299,20 @@ class SonnenBatterieMonitor:
                 e = traceback.format_exc()
                 LOGGER.error(e)
                 LOGGER.error(inverter)
-
-
+                
+        if not "inverter_ppv2" in self.disabledSensors:
+            try:
+                val=inverter['status']['ppv2']
+                sensorname=allSensorsPrefix+"inverter_ppv2"
+                unitname="W"
+                friendlyname="Inverter PPV2 - Hybrid Solar Power PPV2"
+                device_class=SensorDeviceClass.POWER#"power"
+                self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,device_class)
+            except:
+                self.disabledSensors.append("inverter_ppv2")
+                e = traceback.format_exc()
+                LOGGER.error(e)
+                LOGGER.error(inverter)
 
          
 
@@ -312,18 +324,20 @@ class SonnenBatterieMonitor:
         unitname=""
         friendlyname="Battery module count"
         self._AddOrUpdateEntity(sensorname,friendlyname,val_modulecount,unitname,SensorDeviceClass.BATTERY)
-
-        try:
-            val_tmax=float(battery_system['grid_information']['tmax'])
-            sensorname=allSensorsPrefix+"tmax"
-            unitname="°C"
-            friendlyname="Max Temperature"
-            self._AddOrUpdateEntity(sensorname,friendlyname,val_tmax,unitname,SensorDeviceClass.TEMPERATURE)
-        except:
-            self.disabledSensors.append("state_netfrequency")
-            e = traceback.format_exc()
-            LOGGER.error(e)
-            LOGGER.error(inverter)
+        
+        
+        if not "tmax" in self.disabledSensors:
+            try:
+                val_tmax=float(battery_system['grid_information']['tmax'])
+                sensorname=allSensorsPrefix+"tmax"
+                unitname="°C"
+                friendlyname="Max Temperature"
+                self._AddOrUpdateEntity(sensorname,friendlyname,val_tmax,unitname,SensorDeviceClass.TEMPERATURE)
+            except:
+                self.disabledSensors.append("tmax")
+                e = traceback.format_exc()
+                LOGGER.error(e)
+                LOGGER.error(inverter)
         
         val_module_capacity=int(battery_system['battery_system']['system']['storage_capacity_per_module'])
         sensorname=allSensorsPrefix+"module_capacity"
