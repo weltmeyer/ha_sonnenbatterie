@@ -145,6 +145,7 @@ class SonnenBatterieMonitor:
         self.async_add_entities=async_add_entities
         #self.setupEntities()
         self.debug=debug_mode
+        self.fullLogsAlreadySent = False
 
     def start(self):
         threading.Thread(target=self.watcher).start()
@@ -580,15 +581,17 @@ class SonnenBatterieMonitor:
             Since we're in "debug" mode, send all data to the log so we dont' have to search for the
             variable we're looking for if it's not where we expect it to be
         """
-        LOGGER.warning("Powermeter data:")
-        LOGGER.warning(self.latestData["powermeter"])
-        LOGGER.warning("Battery system data:")
-        LOGGER.warning(self.latestData["battery_system"])
-        LOGGER.warning("Inverter:")
-        LOGGER.warning(self.latestData["inverter"])
-        LOGGER.warning("System data:")
-        LOGGER.warning(self.latestData["systemdata"])
-        LOGGER.warning("Status:")
-        LOGGER.warning(self.latestData["status"])
-        LOGGER.warning("Battery:")
-        LOGGER.warning(self.latestData["battery"])
+        if not self.fullLogsAlreadySent:
+            LOGGER.warning("Powermeter data:")
+            LOGGER.warning(self.latestData["powermeter"])
+            LOGGER.warning("Battery system data:")
+            LOGGER.warning(self.latestData["battery_system"])
+            LOGGER.warning("Inverter:")
+            LOGGER.warning(self.latestData["inverter"])
+            LOGGER.warning("System data:")
+            LOGGER.warning(self.latestData["systemdata"])
+            LOGGER.warning("Status:")
+            LOGGER.warning(self.latestData["status"])
+            LOGGER.warning("Battery:")
+            LOGGER.warning(self.latestData["battery"])
+            self.fullLogsAlreadySent = True
