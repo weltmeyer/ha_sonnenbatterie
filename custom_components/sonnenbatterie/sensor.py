@@ -328,6 +328,71 @@ class SonnenBatterieMonitor:
                 LOGGER.error("NO 'ppv2' in interverter")
                 LOGGER.error(inverter)
 
+        if not "inverter_ipv" in self.disabledSensors:
+            try:
+                LOGGER.error("inverter JSON For Developer in next message")
+                LOGGER.error(inverter)
+                val=inverter['status']['ipv']
+                sensorname=allSensorsPrefix+"inverter_ipv"
+                unitname="A"
+                friendlyname="Inverter IPV - Current IPV"
+                device_class=SensorDeviceClass.CURRENT
+                self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,device_class)
+            except:
+                self.disabledSensors.append("inverter_ipv")
+                e = traceback.format_exc()
+                LOGGER.error(e)
+                LOGGER.error(inverter)
+
+        if not "inverter_ipv2" in self.disabledSensors:
+            try:
+                LOGGER.error("inverter JSON For Developer in next message")
+                LOGGER.error(inverter)
+                val=inverter['status']['ipv2']
+                sensorname=allSensorsPrefix+"inverter_ipv2"
+                unitname="A"
+                friendlyname="Inverter IPV - Current IPV2"
+                device_class=SensorDeviceClass.CURRENT
+                self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,device_class)
+            except:
+                self.disabledSensors.append("inverter_ipv2")
+                e = traceback.format_exc()
+                LOGGER.error(e)
+                LOGGER.error(inverter)
+
+        if not "inverter_upv" in self.disabledSensors:
+            try:
+                LOGGER.error("inverter JSON For Developer in next message")
+                LOGGER.error(inverter)
+                val=inverter['status']['upv']
+                sensorname=allSensorsPrefix+"inverter_upv"
+                unitname="V"
+                friendlyname="Inverter IPV - Voltage UPV"
+                device_class=SensorDeviceClass.VOLTAGE
+                self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,device_class)
+            except:
+                self.disabledSensors.append("inverter_upv")
+                e = traceback.format_exc()
+                LOGGER.error(e)
+                LOGGER.error(inverter)
+
+        if not "inverter_upv2" in self.disabledSensors:
+            try:
+                LOGGER.error("inverter JSON For Developer in next message")
+                LOGGER.error(inverter)
+                val=inverter['status']['upv2']
+                sensorname=allSensorsPrefix+"inverter_upv2"
+                unitname="V"
+                friendlyname="Inverter IPV - Voltage UPV2"
+                device_class=SensorDeviceClass.VOLTAGE
+                self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,device_class)
+            except:
+                self.disabledSensors.append("inverter_upv2")
+                e = traceback.format_exc()
+                LOGGER.error(e)
+                LOGGER.error(inverter)
+
+
         """whatever comes next"""
         val_modulecount=int(battery_system['modules'])
         sensorname=allSensorsPrefix+"module_count"
