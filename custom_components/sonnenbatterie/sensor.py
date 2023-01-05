@@ -316,8 +316,6 @@ class SonnenBatterieMonitor:
 
         if not "inverter_ipv" in self.disabledSensors:
             try:
-                LOGGER.error("inverter JSON For Developer in next message")
-                LOGGER.error(inverter)
                 val=inverter['status']['ipv']
                 sensorname=allSensorsPrefix+"inverter_ipv"
                 unitname="A"
@@ -332,8 +330,6 @@ class SonnenBatterieMonitor:
 
         if not "inverter_ipv2" in self.disabledSensors:
             try:
-                LOGGER.error("inverter JSON For Developer in next message")
-                LOGGER.error(inverter)
                 val=inverter['status']['ipv2']
                 sensorname=allSensorsPrefix+"inverter_ipv2"
                 unitname="A"
@@ -348,8 +344,6 @@ class SonnenBatterieMonitor:
         
         if not "inverter_upv" in self.disabledSensors:
             try:
-                LOGGER.error("inverter JSON For Developer in next message")
-                LOGGER.error(inverter)
                 val=inverter['status']['upv']
                 sensorname=allSensorsPrefix+"inverter_upv"
                 unitname="V"
@@ -364,8 +358,6 @@ class SonnenBatterieMonitor:
         
         if not "inverter_upv2" in self.disabledSensors:
             try:
-                LOGGER.error("inverter JSON For Developer in next message")
-                LOGGER.error(inverter)
                 val=inverter['status']['upv2']
                 sensorname=allSensorsPrefix+"inverter_upv2"
                 unitname="V"
