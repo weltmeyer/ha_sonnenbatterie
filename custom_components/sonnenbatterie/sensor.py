@@ -32,6 +32,7 @@ async def async_setup_entry(hass, config_entry,async_add_entities):
     password=config_entry.data.get(CONF_PASSWORD)
     ipaddress=config_entry.data.get(CONF_IP_ADDRESS)
     updateIntervalSeconds=config_entry.options.get(CONF_SCAN_INTERVAL)
+    debug_mode=config_entry.options.get(ATTR_SONNEN_DEBUG)
     def _internal_setup(_username,_password,_ipaddress):
         return sonnenbatterie(_username,_password,_ipaddress)
     sonnenInst=await hass.async_add_executor_job(_internal_setup,username,password,ipaddress);
@@ -42,7 +43,7 @@ async def async_setup_entry(hass, config_entry,async_add_entities):
     sensor = SonnenBatterieSensor(id="sensor.{0}_{1}".format(DOMAIN,serial))
     async_add_entities([sensor])
 
-    monitor = SonnenBatterieMonitor(hass,sonnenInst, sensor, async_add_entities,updateIntervalSeconds)
+    monitor = SonnenBatterieMonitor(hass,sonnenInst, sensor, async_add_entities,updateIntervalSeconds,debug_mode)
     hass.data[DOMAIN][config_entry.entry_id]={"monitor":monitor}
     monitor.start()
 
@@ -128,7 +129,7 @@ class SonnenBatterieSensor(SensorEntity):
 
 
 class SonnenBatterieMonitor:
-    def __init__(self,hass, sbInst, sensor,async_add_entities,updateIntervalSeconds):
+    def __init__(self,hass, sbInst, sensor,async_add_entities,updateIntervalSeconds,debug_mode):
         self.hass=hass;
         self.latestData={}
         self.disabledSensors=[""]
@@ -143,6 +144,7 @@ class SonnenBatterieMonitor:
         self.updateIntervalSeconds=updateIntervalSeconds
         self.async_add_entities=async_add_entities
         #self.setupEntities()
+        self.debug=debug_mode
 
     def start(self):
         threading.Thread(target=self.watcher).start()
@@ -161,20 +163,22 @@ class SonnenBatterieMonitor:
             return
 
         """ some batteries seem to have status in status key instead directly in status... """
+        if 'status' in self.latestData['inverter']['status']:       # if there's a "nested" status it should be safe to just copy it
+            self.latestData['inverter']['status'] = self.latestData['inverter']['status']['status']
+
+        # simplified logic to detect 'fac'
         if not "state_netfrequency" in self.disabledSensors:
-            try:
-                if not 'fac' in self.latestData["inverter"]['status']:
-                    # try to find frequency in battery_system/grid_information
-                    if 'fac' in self.latestData["battery_system"]["grid_information"]:
-                        self.latestData['inverter']['status']['fac'] = self.latestData['battery_system']['grid_information']['fac']
-                    else:
-                        self.latestData["inverter"]['status']=self.latestData["inverter"]['status']['status']
-            except:
-                self.disabledSensors.append("state_netfrequency")
-                e = traceback.format_exc()
-                LOGGER.error(e)
-                LOGGER.error("inverter JSON For Developer in next message")
-                LOGGER.error(self.latestData["inverter"])
+            if not 'fac' in self.latestData["inverter"]['status']:
+                # try to find frequency in battery_system/grid_information
+                if 'fac' in self.latestData["battery_system"]["grid_information"]:
+                    self.latestData['inverter']['status']['fac'] = self.latestData['battery_system']['grid_information']['fac']
+                else:
+                    self.disabledSensors.append("state_netfrequency")
+                    e = traceback.format_exc()
+                    LOGGER.warning("No 'fac' found anywhere -> sensor disabled")
+                    if self.debug:
+                        LOGGER.error(e)
+                        self.SendAllDataToLog()
 
     def setupEntities(self):
         self.updateData();
@@ -265,6 +269,10 @@ class SonnenBatterieMonitor:
         """this and that from the states"""
         if not "state_netfrequency" in self.disabledSensors:
             # try:
+            # actually we shouldn't need this anymore since we fixed it already
+            # -> either we have the value or 'state_netfrequency' is already in
+            #    self.disabledSensors. But since I can't test this I'll leave it
+            #    as is ;)
             if 'fac' in inverter['status']:
                 val=inverter['status']['fac']
                 sensorname=allSensorsPrefix+"state_netfrequency"
@@ -277,8 +285,9 @@ class SonnenBatterieMonitor:
                 self.disabledSensors.append("state_netfrequency")
                 # e = traceback.format_exc()
                 # LOGGER.error(e)
-                LOGGER.error("No 'fac' in inverter")
-                LOGGER.error(inverter)
+                LOGGER.warning("No 'fac' in inverter -> sensor disabled")
+                if self.debug:
+                    self.SendAllDataToLog()
 
         if not "inverter_ppv" in self.disabledSensors:
             # try:
@@ -301,8 +310,9 @@ class SonnenBatterieMonitor:
                 self.disabledSensors.append("inverter_ppv")
                 # e = traceback.format_exc()
                 # LOGGER.error(e)
-                LOGGER.error("No 'ppv' in inverter")
-                LOGGER.error(inverter)
+                LOGGER.warning("No 'ppv' in inverter -> sensor disabled")
+                if self.debug:
+                    self.SendAllDataToLog()
 
         if not "inverter_ppv2" in self.disabledSensors:
             # try:
@@ -325,64 +335,78 @@ class SonnenBatterieMonitor:
                 self.disabledSensors.append("inverter_ppv2")
                 # e = traceback.format_exc()
                 # LOGGER.error(e)
-                LOGGER.error("NO 'ppv2' in interverter")
-                LOGGER.error(inverter)
+                LOGGER.warning("No 'ppv2' in inverter -> sensor disabled")
+                if self.debug:
+                    self.SendAllDataToLog()
 
         if not "inverter_ipv" in self.disabledSensors:
-            try:
+            # try:
+            if 'ipv' in inverter['status']:
                 val=inverter['status']['ipv']
                 sensorname=allSensorsPrefix+"inverter_ipv"
                 unitname="A"
                 friendlyname="Inverter IPV - Current IPV"
                 device_class=SensorDeviceClass.CURRENT
                 self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,device_class)
-            except:
+            # except:
+            else:
                 self.disabledSensors.append("inverter_ipv")
-                e = traceback.format_exc()
-                LOGGER.error(e)
-                LOGGER.error(inverter)
+                # e = traceback.format_exc()
+                # LOGGER.error(e)
+                LOGGER.warning("No 'ipv' in inverter -> sensor disabled")
+                if self.debug:
+                    self.SendAllDataToLog()
 
         if not "inverter_ipv2" in self.disabledSensors:
-            try:
+            # try:
+            if 'ipv2' in inverter['status']:
                 val=inverter['status']['ipv2']
                 sensorname=allSensorsPrefix+"inverter_ipv2"
                 unitname="A"
                 friendlyname="Inverter IPV - Current IPV2"
                 device_class=SensorDeviceClass.CURRENT
                 self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,device_class)
-            except:
+            # except:
+            else:
                 self.disabledSensors.append("inverter_ipv2")
-                e = traceback.format_exc()
-                LOGGER.error(e)
-                LOGGER.error(inverter)
+                # e = traceback.format_exc()
+                LOGGER.warning("No 'ipv2' in inverter -> sensor disabled")
+                if self.debug:
+                    self.SendAllDataToLog()
 
         if not "inverter_upv" in self.disabledSensors:
-            try:
+            # try:
+            if 'upv' in inverter['status']:
                 val=inverter['status']['upv']
                 sensorname=allSensorsPrefix+"inverter_upv"
                 unitname="V"
                 friendlyname="Inverter IPV - Voltage UPV"
                 device_class=SensorDeviceClass.VOLTAGE
                 self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,device_class)
-            except:
+            # except:
+            else:
                 self.disabledSensors.append("inverter_upv")
-                e = traceback.format_exc()
-                LOGGER.error(e)
-                LOGGER.error(inverter)
+                # e = traceback.format_exc()
+                LOGGER.warning("No 'upv' in inverter -> sensor disabled")
+                if self.debug:
+                    self.SendAllDataToLog()
 
         if not "inverter_upv2" in self.disabledSensors:
-            try:
+            # try:
+            if 'upv2' in inverter['status']:
                 val=inverter['status']['upv2']
                 sensorname=allSensorsPrefix+"inverter_upv2"
                 unitname="V"
                 friendlyname="Inverter IPV - Voltage UPV2"
                 device_class=SensorDeviceClass.VOLTAGE
                 self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,device_class)
-            except:
+            # except:
+            else:
                 self.disabledSensors.append("inverter_upv2")
-                e = traceback.format_exc()
-                LOGGER.error(e)
-                LOGGER.error(inverter)
+                # e = traceback.format_exc()
+                LOGGER.warning("No 'upv2' in inverter -> sensor disabled")
+                if self.debug:
+                    self.SendAllDataToLog()
 
 
         """whatever comes next"""
@@ -405,8 +429,9 @@ class SonnenBatterieMonitor:
                 self.disabledSensors.append("tmax")
                 # e = traceback.format_exc()
                 # LOGGER.error(e)
-                LOGGER.error("No 'tmax' in grid_information")
-                LOGGER.error(battery_system)
+                LOGGER.warning("No 'tmax' in grid_information -> sensor disabled")
+                if self.debug:
+                    self.SendAllDataToLog()
 
         val_module_capacity=int(battery_system['battery_system']['system']['storage_capacity_per_module'])
         sensorname=allSensorsPrefix+"module_capacity"
@@ -549,3 +574,21 @@ class SonnenBatterieMonitor:
                     device_class=SensorDeviceClass.CURRENT
                 friendlyname="{0} {1}".format(meter['direction'],sensormeter)
                 self._AddOrUpdateEntity(sensorname,friendlyname,val,unitname,device_class)
+
+    def SendAllDataToLog(self):
+        """
+            Since we're in "debug" mode, send all data to the log so we dont' have to search for the
+            variable we're looking for if it's not where we expect it to be
+        """
+        LOGGER.warning("Powermeter data:")
+        LOGGER.warning(self.latestData["powermeter"])
+        LOGGER.warning("Battery system data:")
+        LOGGER.warning(self.latestData["battery_system"])
+        LOGGER.warning("Inverter:")
+        LOGGER.warning(self.latestData["inverter"])
+        LOGGER.warning("System data:")
+        LOGGER.warning(self.latestData["systemdata"])
+        LOGGER.warning("Status:")
+        LOGGER.warning(self.latestData["status"])
+        LOGGER.warning("Battery:")
+        LOGGER.warning(self.latestData["battery"])

@@ -28,6 +28,8 @@ CONFIG_SCHEMA = vol.Schema(
     extra=vol.ALLOW_EXTRA,
 )
 
+ATTR_SONNEN_DEBUG = "sonnenbatterie_debug"
+DEFAULT_SONNEN_DEBUG = False
 
 def flattenObj(prefix,seperator,obj):
     result={}

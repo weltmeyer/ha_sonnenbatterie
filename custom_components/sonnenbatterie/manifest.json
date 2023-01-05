@@ -1,7 +1,7 @@
 {
     "domain": "sonnenbatterie",
     "name": "Sonnenbatterie",
-    "documentation": "https://www.weltmeyer.net",
+    "documentation": "https://github.com/weltmeyer/ha_sonnenbatterie",
     "dependencies": [],
     "codeowners": ["@weltmeyer"],
     "requirements": ["requests","sonnenbatterie>=0.1.1"],
