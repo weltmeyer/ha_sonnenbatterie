@@ -164,9 +164,13 @@ class SonnenBatterieMonitor:
             return
 
         """ some batteries seem to have status in status key instead directly in status... """
-        if 'status' in self.latestData['inverter']['status']:       # if there's a "nested" status it should be safe to just copy it
-            self.latestData['inverter']['status'] = self.latestData['inverter']['status']['status']
-
+        if not 'fac' in self.latestData["inverter"]['status']:
+            # try to find frequency in battery_system/grid_information
+            if 'fac' in self.latestData["battery_system"]["grid_information"]:
+                self.latestData['inverter']['status']['fac'] = self.latestData['battery_system']['grid_information']['fac']
+            else:
+                self.latestData["inverter"]['status']=self.latestData["inverter"]['status']['status']
+        
         # simplified logic to detect 'fac'
         if not "state_netfrequency" in self.disabledSensors:
             if not 'fac' in self.latestData["inverter"]['status']:
