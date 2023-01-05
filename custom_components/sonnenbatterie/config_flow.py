@@ -1,6 +1,6 @@
 
 # pylint: disable=no-name-in-module
-from sonnenbatterie import sonnenbatterie 
+from sonnenbatterie import sonnenbatterie
 # pylint: enable=no-name-in-module
 import traceback
 import logging
@@ -8,7 +8,7 @@ import voluptuous as vol
 from homeassistant import config_entries,core
 from homeassistant.core import callback
 # pylint: disable=unused-wildcard-import
-from .const import * # 
+from .const import * #
 # pylint: enable=unused-wildcard-import
 import voluptuous as vol
 from homeassistant.const import (
@@ -34,8 +34,8 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow,domain=DOMAIN):
         username = user_input[CONF_USERNAME]
         password = user_input[CONF_PASSWORD]
         ipaddress=user_input[CONF_IP_ADDRESS]
-        
-        
+
+
         try:
             def _internal_setup(_username,_password,_ipaddress):
                 return sonnenbatterie(_username,_password,_ipaddress)
@@ -51,7 +51,7 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow,domain=DOMAIN):
             #if ex.errcode == 400:
             #    return self._show_form({"base": "invalid_credentials"})
             return self._show_form({"base": "connection_error"})
-        
+
         return self.async_create_entry(
             title=user_input[CONF_IP_ADDRESS],
             data={
@@ -100,9 +100,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             data_schema=vol.Schema(
                 {
                     vol.Optional(CONF_SCAN_INTERVAL, default=self.config_entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)): cv.positive_int,
+                    vol.Optional(ATTR_SONNEN_DEBUG, default=self.config_entry.options.get(ATTR_SONNEN_DEBUG, DEFAULT_SONNEN_DEBUG)): bool,
                 }
             )
-
         )
     async def _update_options(self):
         """Update config entry options."""

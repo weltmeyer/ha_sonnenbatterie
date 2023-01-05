@@ -18,7 +18,7 @@
                 },
                 "title": "Enter your Sonnenbatterie-login information"
             }
-            
+
         },
         "title": "Sonnenbatterie"
     },
@@ -26,7 +26,8 @@
         "step":{
             "init":{
                 "data":{
-                    "scan_interval": "Updateinterval(seconds)"
+                    "scan_interval": "Updateinterval(seconds)",
+                    "sonnenbatterie_debug": "Debug mode (more log entries)"
                 }
             }
         }

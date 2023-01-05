@@ -18,7 +18,7 @@
                 },
                 "title": "Gib deine Sonnenbatterie-Anmeldeinformationen ein"
             }
-            
+
         },
         "title": "Sonnenbatterie"
     },
@@ -26,7 +26,8 @@
         "step":{
             "init":{
                 "data":{
-                    "scan_interval": "Aktualisierungsinterval(Sekunden)"
+                    "scan_interval": "Aktualisierungsinterval(Sekunden)",
+                    "sonnenbatterie_debug": "Debug-Modus (mehr Logs)"
                 }
             }
         }
