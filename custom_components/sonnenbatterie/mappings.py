@@ -103,7 +103,7 @@ SBmap = {
           "friendly_name":  "Inverter - Net frequency",
           "unit":           "Hz",
           "class":          SensorDeviceClass.FREQUENCY,
-          "aka":            ["state_netfreqency"],
+          "aka":            ["state_netfrequency"],
           "convert":        float,
         },
       },
@@ -112,7 +112,7 @@ SBmap = {
         "friendly_name":  "Inverter - Net frequency",
         "unit":           "Hz",
         "class":          SensorDeviceClass.FREQUENCY,
-        "aka":            ["state_netfreqency"],
+        "aka":            ["state_netfrequency"],
         "convert":        float,
       },
       "ipv": {
