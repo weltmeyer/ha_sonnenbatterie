@@ -318,26 +318,26 @@ class SonnenBatterieMonitor:
         sensorname   = "{}{}".format(self.allSensorsPrefix, "state_total_capacity_real")
         unitname     = "Wh"
         friendlyname = "Total Capacity Real"
-        self._AddOrUpdateEntity(sensorname, friendlyname, int(total_installed_capacity), unitname, SensorDeviceClass.ENERGY)
+        self._AddOrUpdateEntity(sensorname, friendlyname, total_installed_capacity, unitname, SensorDeviceClass.ENERGY)
 
-        calc_restrictedcapacity = total_installed_capacity * (float(self.latestData['status']['BackupBuffer'])/100)
+        calc_restrictedcapacity = total_installed_capacity * (1 - ((self.latestData['status']['RSOC'] - self.latestData['status']['USOC']) / 100.0))
         sensorname   = "{}{}".format(self.allSensorsPrefix, "state_total_capacity_usable")
         unitname     = "Wh"
         friendlyname = "Total Capacity Usable"
-        self._AddOrUpdateEntity(sensorname, friendlyname, int(total_installed_capacity - calc_restrictedcapacity), unitname, SensorDeviceClass.ENERGY)
+        self._AddOrUpdateEntity(sensorname, friendlyname, calc_restrictedcapacity, unitname, SensorDeviceClass.ENERGY)
 
         #Wh, real value => pecentage is RSOC
-        calc_remainingcapacity = total_installed_capacity*(float(self.latestData["status"]["RSOC"])/100.0)
+        calc_remainingcapacity = float(total_installed_capacity * self.latestData["status"]["RSOC"]) / 100.0
         sensorname   = "{}{}".format(self.allSensorsPrefix, "state_remaining_capacity_real")
         unitname     = "Wh"
         friendlyname = "Remaining Capacity Real"
-        self._AddOrUpdateEntity(sensorname, friendlyname, int(calc_remainingcapacity), unitname, SensorDeviceClass.ENERGY)
+        self._AddOrUpdateEntity(sensorname, friendlyname, calc_remainingcapacity, unitname, SensorDeviceClass.ENERGY)
 
-        calc_remainingcapacity_usable = calc_remainingcapacity - calc_restrictedcapacity
+        calc_remainingcapacity_usable = float(total_installed_capacity * self.latestData["status"]["USOC"]) / 100.0
         sensorname   = "{}{}".format(self.allSensorsPrefix, "state_remaining_capacity_usable")
         unitname     = "Wh"
         friendlyname = "Remaining Capacity Usable"
-        self._AddOrUpdateEntity(sensorname, friendlyname, int(calc_remainingcapacity_usable), unitname, SensorDeviceClass.ENERGY)
+        self._AddOrUpdateEntity(sensorname, friendlyname, calc_remainingcapacity_usable, unitname, SensorDeviceClass.ENERGY)
 
         """powermeter values"""
         for meter in self.latestData["powermeter"]:
