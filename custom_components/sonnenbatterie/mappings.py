@@ -30,9 +30,9 @@ A `<key definition>` has the following elements:
                       (mostly used for backward compatibility)
     `inout`:          if set to `True` two additional entities will be
                       created: 
-                        an `in` one that is set to abs(keyval) if
+                        an `_input` one that is set to abs(keyval) if
                         `keyval` is negative, 0 otherwiese
-                        an `out` one if `keyval` is positive, 0 otherwise
+                        an `_output` one if `keyval` is positive, 0 otherwise
     `convert`:        Convert returned value to type ("int" or "float")
 """
 
