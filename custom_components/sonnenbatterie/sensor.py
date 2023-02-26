@@ -234,7 +234,7 @@ class SonnenBatterieMonitor:
                     try:
                         real_val = entities["convert"](lookup)
                     except:
-                        LOGGER.critical("Wrong conversion info for '{}' in {} -> sending raw walue".format(key, "/".join(parents)))
+                        LOGGER.critical("Wrong conversion info for '{}' in {} -> sending raw value".format(key, "/".join(parents)))
                         real_val = lookup
                 else:
                     real_val = lookup
