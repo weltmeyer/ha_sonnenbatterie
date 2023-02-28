@@ -307,10 +307,6 @@ class SonnenBatterieMonitor:
         """ (almost) all sensors in one go """
         self.walkEntities(SBmap)
 
-        """systemdata defines the serialnumber of the battery"""
-        # serial = systemdata["DE_Ticket_Number"]
-        # self.allSensorsPrefix = "sensor."+DOMAIN+"_"+serial+"_"
-
         """ some manually calculated values """
         val_module_capacity      = int(self.latestData['battery_system']['battery_system']['system']['storage_capacity_per_module'])
         val_modulecount          = int(self.latestData['battery_system']['modules'])
@@ -328,7 +324,6 @@ class SonnenBatterieMonitor:
         friendlyname = "Total Capacity Usable"
         self._AddOrUpdateEntity(sensorname, friendlyname, total_installed_capacity - calc_reservedcapacity, unitname, SensorDeviceClass.ENERGY)
 
-        #Wh, real value => pecentage is RSOC
         calc_remainingcapacity = int(total_installed_capacity * self.latestData["status"]["RSOC"]) / 100.0
         sensorname   = "{}{}".format(self.allSensorsPrefix, "state_remaining_capacity_real")
         unitname     = "Wh"
