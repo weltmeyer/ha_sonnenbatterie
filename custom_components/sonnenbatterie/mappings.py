@@ -99,8 +99,8 @@ SBmap = {
     "status": {
       "status": {
         "fac": {
-          "sensor":         "inverter_fac",
-          "friendly_name":  "Inverter - Net frequency",
+          "sensor":         "inverter_status_fac",
+          "friendly_name":  "Inverter (Status) - Net frequency",
           "unit":           "Hz",
           "class":          SensorDeviceClass.FREQUENCY,
           "aka":            ["state_netfrequency"],
