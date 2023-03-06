@@ -142,8 +142,11 @@ class SonnenBatterieMonitor:
         self.debug = debug_mode
         self.fullLogsAlreadySent = False
 
+        # fixed value, percentage of total installed power reserved for
+        # internal battery system purposes
         self.reservedFactor = 7.0
 
+        # placeholders, will be filled later
         self.serial = ""
         self.allSensorsPrefix = ""
 
@@ -151,7 +154,7 @@ class SonnenBatterieMonitor:
         threading.Thread(target=self.watcher).start()
 
     def updateData(self):
-        try:##ignore errors here, may be transient
+        try:        ##ignore errors here, may be transient
             self.latestData["battery"]        = self.sbInst.get_battery()
             self.latestData["battery_system"] = self.sbInst.get_batterysystem()
             self.latestData["inverter"]       = self.sbInst.get_inverter()
@@ -248,6 +251,7 @@ class SonnenBatterieMonitor:
                     entities["unit"],
                     entities["class"]
                 )
+
                 # add alias names if needed
                 if "aka" in entities:
                     for altname in entities["aka"]:
@@ -258,6 +262,7 @@ class SonnenBatterieMonitor:
                             entities["unit"],
                             entities["class"]
                         )
+
                 # do we need to add in/out values?
                 if "inout" in entities:
                     val_in = abs(real_val) if real_val < 0 else 0
@@ -282,8 +287,10 @@ class SonnenBatterieMonitor:
             # recursively check deeper down
             for elem in entities:
                 LOGGER.info("Descending into '{}'".format(elem))
+                # push current path to "stack"
                 parents.append(elem)
                 self.walkEntities(entities[elem], parents, elem)
+                # pop path from stack to prevent ever growing path array
                 parents.remove(elem)
 
     def _AddOrUpdateEntity(self,id,friendlyname,value,unit,device_class):
