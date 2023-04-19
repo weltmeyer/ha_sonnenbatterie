@@ -198,6 +198,12 @@ SBmap = {
       "unit":           "%",
       "class":          SensorDeviceClass.BATTERY,
     },
+    "SystemStatus": {
+      "sensor":         "systemstatus",
+      "friendly_name":  "System Status",
+      "unit":           None,
+      "class":          None,
+    },
   }
 }
 """ Copy/Paste template ;)
