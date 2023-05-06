@@ -179,6 +179,13 @@ SBmap = {
       "class":          SensorDeviceClass.POWER,
       "inout":          True,
     },
+    "Production_W": {
+      "sensor":         "production_w",
+      "friendly_name":  "Current production",
+      "unit":           "W",
+      "class":          SensorDeviceClass.POWER,
+      "inout":          False,
+    },
     "Pac_total_W": {
       "sensor":         "state_battery_inout",
       "friendly_name":  "Battery in/out power",
