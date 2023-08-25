@@ -9,6 +9,11 @@ from .mappings import SBmap
 import threading
 import time
 from homeassistant.helpers import config_validation as cv
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr, entity_registry as er
+#from homeassistant.helpers.device_registry import DeviceInfo ##this seems to be the way in some of the next updates...?
+from homeassistant.helpers.entity import DeviceInfo
+
 
 from homeassistant.components.sensor import (
     SensorEntity,
@@ -44,10 +49,13 @@ async def async_setup_entry(hass, config_entry,async_add_entities):
     LOGGER.info("{0} - INTERVAL: {1}".format(DOMAIN, updateIntervalSeconds))
 
     serial = systemdata["DE_Ticket_Number"]
-    sensor = SonnenBatterieSensor(id="sensor.{0}_{1}".format(DOMAIN, serial))
+    deviceinfo=generateDeviceInfo(config_entry.entry_id,systemdata)
+
+    #SonnenBatterieSensor(id=id,devicename=self.deviceName,device_id=self.device_id)
+    sensor = SonnenBatterieSensor(id="sensor.{0}_{1}".format(DOMAIN, serial),deviceinfo=deviceinfo,name=serial)
     async_add_entities([sensor])
 
-    monitor = SonnenBatterieMonitor(hass, sonnenInst, sensor, async_add_entities, updateIntervalSeconds, debug_mode)
+    monitor = SonnenBatterieMonitor(hass, sonnenInst, sensor, async_add_entities, updateIntervalSeconds, debug_mode,config_entry.entry_id)
     hass.data[DOMAIN][config_entry.entry_id]={"monitor":monitor}
     monitor.start()
 
@@ -59,16 +67,58 @@ async def async_setup_entry(hass, config_entry,async_add_entities):
     LOGGER.info('Init done')
     return True
 
+def generateDeviceInfo(configentry_id,systemdata):
+
+    model="unknown"
+    serial="unknown"
+    version="unknown"
+    
+    if "ERP_ArticleName" in systemdata:
+        model=systemdata["ERP_ArticleName"]
+    if "DE_Ticket_Number" in systemdata:
+        serial=systemdata["DE_Ticket_Number"]
+    if "software_version" in systemdata:
+        version=systemdata["software_version"]
+
+
+    devicename=devicename="{}_{}".format(DOMAIN, serial)
+
+    return DeviceInfo(
+                identifiers={(DOMAIN, configentry_id)},
+                manufacturer="Sonnen",
+                model=model,
+                name=devicename,
+                sw_version=version,
+                #identifiers={
+                #    # Serial numbers are unique identifiers within a specific domain
+                #    (DOMAIN, self._devicename)
+                #},
+                #name=self.name,
+                #manufacturer=self.light.manufacturername,
+                #model=self.light.productname,
+                #sw_version=self.light.swversion,
+                #via_device=(hue.DOMAIN, self.api.bridgeid),
+            )
 
 class SonnenBatterieSensor(SensorEntity):
-    def __init__(self,id,name=None):
+    def __init__(self,id,deviceinfo,name=None):
         self._attributes = {}
         self._state = "NOTRUN"
+        self._deviceinfo=deviceinfo
+        
         self.entity_id = id
         if name is None:
             name = id
         self._name = name
+       
         LOGGER.info("Create Sensor {0}".format(id))
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return the device info."""
+        return self._deviceinfo
+        
+
 
     def set_state(self, state):
         """Set the state."""
@@ -128,10 +178,11 @@ class SonnenBatterieSensor(SensorEntity):
         return self._attributes.get("state_class", None)
 
 class SonnenBatterieMonitor:
-    def __init__(self,hass, sbInst, sensor, async_add_entities, updateIntervalSeconds, debug_mode):
+    def __init__(self,hass, sbInst, sensor, async_add_entities, updateIntervalSeconds, debug_mode,device_id):
         self.hass = hass
         self.latestData = {}
         self.disabledSensors = []
+        self.device_id=device_id;
 
         self.stopped = False
         self.sensor = sensor
@@ -149,6 +200,7 @@ class SonnenBatterieMonitor:
         # placeholders, will be filled later
         self.serial = ""
         self.allSensorsPrefix = ""
+        self.deviceName="to be set"
 
     def start(self):
         threading.Thread(target=self.watcher).start()
@@ -191,6 +243,7 @@ class SonnenBatterieMonitor:
                     else:
                         self.serial = "UNKNOWN"
                     self.allSensorsPrefix = "sensor.{}_{}_".format(DOMAIN, self.serial)
+                    self.deviceName = "{}_{}".format(DOMAIN, self.serial)
 
                 self.sensor.set_state(statedisplay)
                 self.AddOrUpdateEntities()
@@ -298,7 +351,10 @@ class SonnenBatterieMonitor:
             sensor = self.meterSensors[id]
             sensor.set_state(value)
         else:
-            sensor = SonnenBatterieSensor(id,friendlyname)
+            deviceinfo=generateDeviceInfo(self.device_id,self.latestData["systemdata"] )
+
+            
+            sensor = SonnenBatterieSensor(id=id,deviceinfo=deviceinfo,name=friendlyname)
             sensor.set_attributes(
                 {
                     "unit_of_measurement": unit,
