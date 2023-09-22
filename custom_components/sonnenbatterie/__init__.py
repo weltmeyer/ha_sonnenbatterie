@@ -24,10 +24,6 @@ async def async_setup(hass, config):
     return True
 
 async def async_setup_entry(hass, config_entry):
-    #username = config_entry.data.get(CONF_USERNAME)
-    #password = config_entry.data.get(CONF_PASSWORD)
-    #ipaddress = config_entry.data.get(CONF_IP_ADDRESS)
-    #hass.states.async_set('sonnenbatterie.test2', 'Works!'+username+' '+password+' '+ipaddress)
     LOGGER.info("setup_entry: "+json.dumps(dict(config_entry.data)))
     
     hass.async_add_job(hass.config_entries.async_forward_entry_setup(config_entry, "sensor"))
@@ -38,5 +34,5 @@ async def async_setup_entry(hass, config_entry):
 async def update_listener(hass, entry):
     LOGGER.info("Update listener"+json.dumps(dict(entry.options)))
     hass.data[DOMAIN][entry.entry_id]["monitor"].updateIntervalSeconds=entry.options.get(CONF_SCAN_INTERVAL)
-    #hass.async_add_job(hass.config_entries.async_forward_entry_setup(config_entry, "sensor"))
+
 

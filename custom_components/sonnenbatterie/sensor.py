@@ -11,9 +11,14 @@ import time
 from homeassistant.helpers import config_validation as cv
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers.reload import async_setup_reload_service
 #from homeassistant.helpers.device_registry import DeviceInfo ##this seems to be the way in some of the next updates...?
 from homeassistant.helpers.entity import DeviceInfo
-
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+    DataUpdateCoordinator,
+    UpdateFailed,
+)
 
 from homeassistant.components.sensor import (
     SensorEntity,
@@ -32,9 +37,20 @@ from homeassistant.const import (
     CONF_SCAN_INTERVAL,
 )
 
+
+_LOGGER = logging.getLogger(__name__)
+
+
+async def async_unload_entry(hass, entry):
+    """Unload a config entry."""
+    ## we dont have anything special going on.. unload should just work, right?
+    ##bridge = hass.data[DOMAIN].pop(entry.data['host'])
+    return 
+
 async def async_setup_entry(hass, config_entry,async_add_entities):
     """Set up the sensor platform."""
     LOGGER.info('SETUP_ENTRY')
+    #await async_setup_reload_service(hass, DOMAIN, PLATFORMS)
     username = config_entry.data.get(CONF_USERNAME)
     password = config_entry.data.get(CONF_PASSWORD)
     ipaddress = config_entry.data.get(CONF_IP_ADDRESS)
@@ -45,25 +61,15 @@ async def async_setup_entry(hass, config_entry,async_add_entities):
         return sonnenbatterie(_username, _password, _ipaddress)
 
     sonnenInst = await hass.async_add_executor_job(_internal_setup, username, password, ipaddress)
-    systemdata = await hass.async_add_executor_job(sonnenInst.get_systemdata)
-    LOGGER.info("{0} - INTERVAL: {1}".format(DOMAIN, updateIntervalSeconds))
+    updateIntervalSeconds = updateIntervalSeconds or 1
+    LOGGER.info("{0} - UPDATEINTERVAL: {1}".format(DOMAIN, updateIntervalSeconds))
 
-    serial = systemdata["DE_Ticket_Number"]
-    deviceinfo=generateDeviceInfo(config_entry.entry_id,systemdata)
+    """ The Coordinator is called from HA for updates from API """
+    coordinator = SonnenBatterieCoordinator(hass, sonnenInst, async_add_entities, updateIntervalSeconds, debug_mode,config_entry.entry_id)
 
-    #SonnenBatterieSensor(id=id,devicename=self.deviceName,device_id=self.device_id)
-    sensor = SonnenBatterieSensor(id="sensor.{0}_{1}".format(DOMAIN, serial),deviceinfo=deviceinfo,name=serial)
-    async_add_entities([sensor])
-
-    monitor = SonnenBatterieMonitor(hass, sonnenInst, sensor, async_add_entities, updateIntervalSeconds, debug_mode,config_entry.entry_id)
-    hass.data[DOMAIN][config_entry.entry_id]={"monitor":monitor}
-    monitor.start()
-
-    def _stop_monitor(_event):
-        monitor.stopped = True
-
-    #hass.states.async_set
-    hass.bus.async_listen(EVENT_HOMEASSISTANT_STOP, _stop_monitor)
+    await coordinator.async_config_entry_first_refresh()
+    
+    
     LOGGER.info('Init done')
     return True
 
@@ -100,17 +106,17 @@ def generateDeviceInfo(configentry_id,systemdata):
                 #via_device=(hue.DOMAIN, self.api.bridgeid),
             )
 
-class SonnenBatterieSensor(SensorEntity):
-    def __init__(self,id,deviceinfo,name=None):
+class SonnenBatterieSensor(CoordinatorEntity,SensorEntity):
+    def __init__(self,id,deviceinfo,coordinator,name=None):
         self._attributes = {}
         self._state = "NOTRUN"
         self._deviceinfo=deviceinfo
-        
+        self.coordinator=coordinator
         self.entity_id = id
         if name is None:
             name = id
         self._name = name
-       
+        super().__init__(coordinator)
         LOGGER.info("Create Sensor {0}".format(id))
 
     @property
@@ -125,10 +131,14 @@ class SonnenBatterieSensor(SensorEntity):
         if self._state==state:
             return
         self._state = state
-        try:
-            self.schedule_update_ha_state()
-        except:
-            LOGGER.error("Failing sensor: {} ".format(self.name))
+        if self.hass is None:
+            LOGGER.warning("hass not set, sensor: {} ".format(self.name))
+            return
+        self.schedule_update_ha_state()
+        #try:
+        #self.schedule_update_ha_state()
+        #except:
+        #    LOGGER.error("Failing sensor: {} ".format(self.name))
 
     def set_attributes(self, attributes):
         """Set the state attributes."""
@@ -177,15 +187,29 @@ class SonnenBatterieSensor(SensorEntity):
         """Return the unit of measurement."""
         return self._attributes.get("state_class", None)
 
-class SonnenBatterieMonitor:
-    def __init__(self,hass, sbInst, sensor, async_add_entities, updateIntervalSeconds, debug_mode,device_id):
+
+class SonnenBatterieCoordinator(DataUpdateCoordinator):
+    """My custom coordinator."""
+
+    def __init__(self, hass, sbInst, async_add_entities, updateIntervalSeconds, debug_mode,device_id):
+        """Initialize my coordinator."""
+        super().__init__(
+            hass,
+            _LOGGER,
+            # Name of the data. For logging purposes.
+            name="SonnenBatterieCoordinator",
+            # Polling interval. Will only be polled if there are subscribers.
+            update_interval=timedelta(seconds=updateIntervalSeconds),
+        )
+        self.sensor=None
         self.hass = hass
         self.latestData = {}
         self.disabledSensors = []
         self.device_id=device_id;
 
         self.stopped = False
-        self.sensor = sensor
+        
+        #self.sensor = sensor
         self.sbInst: sonnenbatterie = sbInst
         self.meterSensors = {}
         self.updateIntervalSeconds = updateIntervalSeconds
@@ -201,60 +225,63 @@ class SonnenBatterieMonitor:
         self.serial = ""
         self.allSensorsPrefix = ""
         self.deviceName="to be set"
-
-    def start(self):
-        threading.Thread(target=self.watcher).start()
-
-    def updateData(self):
+    async def updateData(self):
         try:        ##ignore errors here, may be transient
-            self.latestData["battery"]        = self.sbInst.get_battery()
-            self.latestData["battery_system"] = self.sbInst.get_batterysystem()
-            self.latestData["inverter"]       = self.sbInst.get_inverter()
-            self.latestData["powermeter"]     = self.sbInst.get_powermeter()
-            self.latestData["status"]         = self.sbInst.get_status()
-            self.latestData["systemdata"]     = self.sbInst.get_systemdata()
+            self.latestData["battery"]        = await self.hass.async_add_executor_job(self.sbInst.get_battery);
+            self.latestData["battery_system"] = await self.hass.async_add_executor_job(self.sbInst.get_batterysystem);
+            self.latestData["inverter"]       = await self.hass.async_add_executor_job(self.sbInst.get_inverter);
+            self.latestData["powermeter"]     = await self.hass.async_add_executor_job(self.sbInst.get_powermeter);
+            self.latestData["status"]         = await self.hass.async_add_executor_job(self.sbInst.get_status);
+            self.latestData["systemdata"]     = await self.hass.async_add_executor_job(self.sbInst.get_systemdata);
+            
         except:
             e = traceback.format_exc()
             LOGGER.error(e)
-            return
+        if self.debug:
+            self.SendAllDataToLog();
 
-    def setupEntities(self):
-        self.updateData()
+       
+
+    async def _async_update_data(self):
+        """Fetch data from API endpoint.
+
+        This is the place to pre-process the data to lookup tables
+        so entities can quickly look up their data.
+        """
+        await self.updateData()
+        self.parse()
+        
+        #Create/Update the Main Sensor, named after the battery serial
+        systemdata = self.latestData["systemdata"]
+        deviceinfo=generateDeviceInfo(self.device_id,systemdata)
+        serial = systemdata["DE_Ticket_Number"]
+        if self.sensor is None:
+            self.sensor =  SonnenBatterieSensor(id="sensor.{0}_{1}".format(DOMAIN, serial),deviceinfo=deviceinfo,coordinator=self,name=serial)
+            self.async_add_entities([self.sensor])
+
+
+        statedisplay = "standby"
+        if self.latestData["status"]["BatteryCharging"]:
+            statedisplay = "charging"
+        elif self.latestData["status"]["BatteryDischarging"]:
+            statedisplay = "discharging"
+
+        # let's do this just once
+        if self.serial == "":
+            if "DE_Ticket_Number" in self.latestData["systemdata"]:
+                self.serial = self.latestData["systemdata"]["DE_Ticket_Number"]
+            else:
+                self.serial = "UNKNOWN"
+            self.allSensorsPrefix = "sensor.{}_{}_".format(DOMAIN, self.serial)
+            self.deviceName = "{}_{}".format(DOMAIN, self.serial)
+
+        self.sensor.set_state(statedisplay)
+        self.sensor.set_attributes(self.latestData["systemdata"])
+        #finish Update/Create Main Sensor
+
+        #update all other entities/sensors
         self.AddOrUpdateEntities()
-
-    def watcher(self):
-        LOGGER.info('Start Watcher Thread:')
-
-        while not self.stopped:
-            try:
-                self.updateData()
-                self.parse()
-
-                statedisplay = "standby"
-                if self.latestData["status"]["BatteryCharging"]:
-                    statedisplay = "charging"
-                elif self.latestData["status"]["BatteryDischarging"]:
-                    statedisplay = "discharging"
-
-                # let's do this just once
-                if self.serial == "":
-                    if "DE_Ticket_Number" in self.latestData["systemdata"]:
-                        self.serial = self.latestData["systemdata"]["DE_Ticket_Number"]
-                    else:
-                        self.serial = "UNKNOWN"
-                    self.allSensorsPrefix = "sensor.{}_{}_".format(DOMAIN, self.serial)
-                    self.deviceName = "{}_{}".format(DOMAIN, self.serial)
-
-                self.sensor.set_state(statedisplay)
-                self.AddOrUpdateEntities()
-                self.sensor.set_attributes(self.latestData["systemdata"])
-            except:
-                e = traceback.format_exc()
-                LOGGER.error(e)
-            if self.updateIntervalSeconds is None:
-                self.updateIntervalSeconds = 10
-
-            time.sleep(max(1,self.updateIntervalSeconds))
+        
 
     def parse(self):
         meters = self.latestData["powermeter"]
@@ -354,7 +381,7 @@ class SonnenBatterieMonitor:
             deviceinfo=generateDeviceInfo(self.device_id,self.latestData["systemdata"] )
 
             
-            sensor = SonnenBatterieSensor(id=id,deviceinfo=deviceinfo,name=friendlyname)
+            sensor = SonnenBatterieSensor(id=id,deviceinfo=deviceinfo,coordinator=self,name=friendlyname)
             sensor.set_attributes(
                 {
                     "unit_of_measurement": unit,
@@ -456,3 +483,6 @@ class SonnenBatterieMonitor:
             LOGGER.warning("Battery:")
             LOGGER.warning(self.latestData["battery"])
             self.fullLogsAlreadySent = True
+
+
+
