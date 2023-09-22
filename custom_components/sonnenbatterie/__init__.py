@@ -1,6 +1,7 @@
 """The Sonnenbatterie integration."""
 from .const import *
 import json
+import asyncio
 import voluptuous as vol
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity import Entity
@@ -28,11 +29,22 @@ async def async_setup_entry(hass, config_entry):
     
     hass.async_add_job(hass.config_entries.async_forward_entry_setup(config_entry, "sensor"))
     config_entry.add_update_listener(update_listener)
-
+    config_entry.async_on_unload(config_entry.add_update_listener(async_reload_entry))
     return True
+
+async def async_reload_entry(hass, entry):
+    """Reload config entry."""
+    await async_unload_entry(hass, entry)
+    await async_setup_entry(hass, entry)
 
 async def update_listener(hass, entry):
     LOGGER.info("Update listener"+json.dumps(dict(entry.options)))
     hass.data[DOMAIN][entry.entry_id]["monitor"].updateIntervalSeconds=entry.options.get(CONF_SCAN_INTERVAL)
 
 
+async def async_unload_entry(hass, entry):
+    """Handle removal of an entry."""
+    return await hass.config_entries.async_forward_entry_unload(entry, 'sensor')
+
+
+    
