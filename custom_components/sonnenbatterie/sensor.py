@@ -109,7 +109,7 @@ def generateDeviceInfo(configentry_id,systemdata):
 class SonnenBatterieSensor(CoordinatorEntity,SensorEntity):
     def __init__(self,id,deviceinfo,coordinator,name=None):
         self._attributes = {}
-        self._state = "NOTRUN"
+        self._state = "0"
         self._deviceinfo=deviceinfo
         self.coordinator=coordinator
         self.entity_id = id
