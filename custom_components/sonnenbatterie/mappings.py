@@ -91,8 +91,8 @@ SBmap = {
     "modules": {
       "sensor":         "module_count",
       "friendly_name":  "Battery module count",
-      "unit":           "",
-      "class":          SensorDeviceClass.BATTERY,
+      "unit":           None,
+      "class":          None,
     },
   },
   "inverter": {
