@@ -34,6 +34,9 @@ A `<key definition>` has the following elements:
                         `keyval` is negative, 0 otherwiese
                         an `_output` one if `keyval` is positive, 0 otherwise
     `convert`:        Convert returned value to type ("int" or "float")
+    `textmap`:        Adds another sensor postfixed with _text to the 
+                      current sensor. The map needs to be specified in
+                      PYTHON synatx, not JSON!
 """
 
 SBmap = {
@@ -211,6 +214,14 @@ SBmap = {
       "unit":           None,
       "class":          None,
     },
+    "OperatingMode": {
+      "sensor":         "operating_mode",
+      "friendly_name":  "Operating Mode",
+      "unit":           None,
+      "class":          None,
+      "convert":        int,
+      "textmap":        "{1:'Self Consumption', 2:'Auto', 6:'Extension module', 10:'Time of Use'}"
+    }
   }
 }
 """ Copy/Paste template ;)
