@@ -5,6 +5,7 @@ import sys
 from .const import *
 from .mappings import SBmap
 
+import ast
 # pylint: enable=unused-wildcard-import
 import threading
 import time
@@ -68,7 +69,6 @@ async def async_setup_entry(hass, config_entry,async_add_entities):
     coordinator = SonnenBatterieCoordinator(hass, sonnenInst, async_add_entities, updateIntervalSeconds, debug_mode,config_entry.entry_id)
 
     await coordinator.async_config_entry_first_refresh()
-    
     
     LOGGER.info('Init done')
     return True
@@ -363,6 +363,20 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
                         entities["class"]
                     )
 
+                # do we have a text mapping?
+                if "textmap" in entities:
+                    tmap = ast.literal_eval(entities["textmap"])
+                    if real_val in tmap:
+                        tval = tmap[real_val]
+                    else:
+                        tval = "Unknown"
+                    self._AddOrUpdateEntity(
+                        "{}{}_{}".format(self.allSensorsPrefix, entities["sensor"], "text"),
+                        "{} (text)".format(entities["friendly_name"]),
+                        tval,
+                        entities["unit"],
+                        entities["class"]
+                    )
         else:
             # recursively check deeper down
             for elem in entities:
