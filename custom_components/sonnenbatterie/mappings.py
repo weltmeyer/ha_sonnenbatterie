@@ -220,7 +220,7 @@ SBmap = {
       "unit":           None,
       "class":          None,
       "convert":        int,
-      "textmap":        "{1:'Self Consumption', 2:'Auto', 10:'Time of Use'}"
+      "textmap":        "{1:'Self Consumption', 2:'Auto', 6:'Extension module', 10:'Time of Use'}"
     }
   }
 }
