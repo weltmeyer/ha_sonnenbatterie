@@ -1,17 +1,14 @@
 """The Sonnenbatterie integration."""
 from .const import *
 import json
-import asyncio
-import voluptuous as vol
-from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers.entity import Entity
+# from homeassistant.helpers import config_validation as cv
+# from homeassistant.helpers.entity import Entity
 from homeassistant.const import (
     CONF_PASSWORD,
     CONF_USERNAME,
     CONF_IP_ADDRESS,
     CONF_SCAN_INTERVAL
 )
-
 
 
 async def async_setup(hass, config):
@@ -45,6 +42,4 @@ async def update_listener(hass, entry):
 async def async_unload_entry(hass, entry):
     """Handle removal of an entry."""
     return await hass.config_entries.async_forward_entry_unload(entry, 'sensor')
-
-
     

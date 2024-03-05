@@ -1,16 +1,11 @@
 import traceback
-from datetime import datetime
-import sys
 # pylint: disable=unused-wildcard-import
 from .const import *
 from .mappings import SBmap
 
 import ast
 # pylint: enable=unused-wildcard-import
-import threading
-import time
 from homeassistant.helpers import config_validation as cv
-from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.reload import async_setup_reload_service
 #from homeassistant.helpers.device_registry import DeviceInfo ##this seems to be the way in some of the next updates...?
@@ -18,7 +13,6 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
     DataUpdateCoordinator,
-    UpdateFailed,
 )
 
 from homeassistant.components.sensor import (
@@ -90,28 +84,20 @@ def generateDeviceInfo(configentry_id,systemdata):
     devicename=devicename="{}_{}".format(DOMAIN, serial)
 
     return DeviceInfo(
-                identifiers={(DOMAIN, configentry_id)},
-                manufacturer="Sonnen",
-                model=model,
-                name=devicename,
-                sw_version=version,
-                #identifiers={
-                #    # Serial numbers are unique identifiers within a specific domain
-                #    (DOMAIN, self._devicename)
-                #},
-                #name=self.name,
-                #manufacturer=self.light.manufacturername,
-                #model=self.light.productname,
-                #sw_version=self.light.swversion,
-                #via_device=(hue.DOMAIN, self.api.bridgeid),
+                identifiers = {(DOMAIN, configentry_id)},
+                manufacturer = "Sonnen",
+                model = model,
+                name = devicename,
+                sw_version = version,
             )
 
-class SonnenBatterieSensor(CoordinatorEntity,SensorEntity):
-    def __init__(self,id,deviceinfo,coordinator,name=None):
+
+class SonnenBatterieSensor(CoordinatorEntity, SensorEntity):
+    def __init__(self, id, deviceinfo, coordinator, name=None):
         self._attributes = {}
         self._state = "0"
-        self._deviceinfo=deviceinfo
-        self.coordinator=coordinator
+        self._deviceinfo = deviceinfo
+        self.coordinator = coordinator
         self.entity_id = id
         if name is None:
             name = id
@@ -124,8 +110,6 @@ class SonnenBatterieSensor(CoordinatorEntity,SensorEntity):
         """Return the device info."""
         return self._deviceinfo
         
-
-
     def set_state(self, state):
         """Set the state."""
         if self._state==state:
@@ -191,15 +175,15 @@ class SonnenBatterieSensor(CoordinatorEntity,SensorEntity):
 class SonnenBatterieCoordinator(DataUpdateCoordinator):
     """My custom coordinator."""
 
-    def __init__(self, hass, sbInst, async_add_entities, updateIntervalSeconds, debug_mode,device_id):
+    def __init__(self, hass, sbInst, async_add_entities, updateIntervalSeconds, debug_mode, device_id):
         """Initialize my coordinator."""
         super().__init__(
             hass,
             _LOGGER,
             # Name of the data. For logging purposes.
-            name="SonnenBatterieCoordinator",
+            name = "SonnenBatterieCoordinator",
             # Polling interval. Will only be polled if there are subscribers.
-            update_interval=timedelta(seconds=updateIntervalSeconds),
+            update_interval = timedelta(seconds = updateIntervalSeconds),
         )
         self.sensor=None
         self.hass = hass
@@ -225,6 +209,7 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
         self.serial = ""
         self.allSensorsPrefix = ""
         self.deviceName="to be set"
+    
     async def updateData(self):
         try:        ##ignore errors here, may be transient
             self.latestData["battery"]        = await self.hass.async_add_executor_job(self.sbInst.get_battery);
@@ -240,8 +225,6 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
         if self.debug:
             self.SendAllDataToLog();
 
-       
-
     async def _async_update_data(self):
         """Fetch data from API endpoint.
 
@@ -253,12 +236,11 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
         
         #Create/Update the Main Sensor, named after the battery serial
         systemdata = self.latestData["systemdata"]
-        deviceinfo=generateDeviceInfo(self.device_id,systemdata)
+        deviceinfo = generateDeviceInfo(self.device_id, systemdata)
         serial = systemdata["DE_Ticket_Number"]
         if self.sensor is None:
-            self.sensor =  SonnenBatterieSensor(id="sensor.{0}_{1}".format(DOMAIN, serial),deviceinfo=deviceinfo,coordinator=self,name=serial)
+            self.sensor = SonnenBatterieSensor(id="sensor.{0}_{1}".format(DOMAIN, serial), deviceinfo=deviceinfo, coordinator=self, name=serial)
             self.async_add_entities([self.sensor])
-
 
         statedisplay = "standby"
         if self.latestData["status"]["BatteryCharging"]:
@@ -289,7 +271,7 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
 
         attr = {}
         for meter in meters:
-            prefix = "{0}_{1}_{2}-".format(meter['direction'],meter['deviceid'],meter['channel'])
+            prefix = "{0}_{1}_{2}-".format(meter['direction'], meter['deviceid'], meter['channel'])
             for name in meter:
                 parmName = prefix+name
                 attr[parmName] = meter[name]
@@ -329,7 +311,8 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
                     entities["friendly_name"],
                     real_val,
                     entities["unit"],
-                    entities["class"]
+                    entities["class"],
+                    entities["state_class"] if "state_class" in entities else "measurement"
                 )
 
                 # add alias names if needed
@@ -375,7 +358,8 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
                         "{} (text)".format(entities["friendly_name"]),
                         tval,
                         entities["unit"],
-                        entities["class"]
+                        entities["class"],
+                        None
                     )
         else:
             # recursively check deeper down
@@ -387,21 +371,21 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
                 # pop path from stack to prevent ever growing path array
                 parents.remove(elem)
 
-    def _AddOrUpdateEntity(self,id,friendlyname,value,unit,device_class):
+    def _AddOrUpdateEntity(self, id, friendlyname, value, unit, device_class, state_class="measurement"):
         if id in self.meterSensors:
             sensor = self.meterSensors[id]
             sensor.set_state(value)
         else:
-            deviceinfo=generateDeviceInfo(self.device_id,self.latestData["systemdata"] )
+            deviceinfo = generateDeviceInfo(self.device_id, self.latestData["systemdata"] )
 
             
-            sensor = SonnenBatterieSensor(id=id,deviceinfo=deviceinfo,coordinator=self,name=friendlyname)
+            sensor = SonnenBatterieSensor(id=id, deviceinfo=deviceinfo, coordinator=self, name=friendlyname)
             sensor.set_attributes(
                 {
                     "unit_of_measurement": unit,
                     "device_class":        device_class,
                     "friendly_name":       friendlyname,
-                    "state_class":         "measurement"
+                    "state_class":         state_class
                 }
             )
             self.async_add_entities([sensor])
@@ -468,7 +452,7 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
                 if unitname == "V":
                     device_class = SensorDeviceClass.VOLTAGE
                 elif unitname == "A":
-                    device_class=SensorDeviceClass.CURRENT
+                    device_class = SensorDeviceClass.CURRENT
                 friendlyname = "{0} {1}".format(meter['direction'], sensormeter)
                 self._AddOrUpdateEntity(
                     sensorname,
@@ -497,6 +481,3 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
             LOGGER.warning("Battery:")
             LOGGER.warning(self.latestData["battery"])
             self.fullLogsAlreadySent = True
-
-
-

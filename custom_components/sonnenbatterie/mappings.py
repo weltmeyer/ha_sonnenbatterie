@@ -37,6 +37,11 @@ A `<key definition>` has the following elements:
     `textmap`:        Adds another sensor postfixed with _text to the 
                       current sensor. The map needs to be specified in
                       PYTHON synatx, not JSON!
+                      The state_class (see below) will be set to `None``
+                      automatically.
+    `state_class`:    Override the default state class `measurement`with
+                      the value given here. For a list of valid classes see
+                      https://developers.home-assistant.io/docs/core/entity/sensor/
 """
 
 SBmap = {
@@ -213,6 +218,7 @@ SBmap = {
       "friendly_name":  "System Status",
       "unit":           None,
       "class":          None,
+      "state_class":    None,
     },
     "OperatingMode": {
       "sensor":         "operating_mode",
