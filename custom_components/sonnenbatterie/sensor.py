@@ -1,15 +1,8 @@
 import traceback
 
-# pylint: disable=unused-wildcard-import
-from .const import *
 from .mappings import SBmap
 
 import ast
-
-# pylint: enable=unused-wildcard-import
-from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers import device_registry as dr, entity_registry as er
-from homeassistant.helpers.reload import async_setup_reload_service
 
 # from homeassistant.helpers.device_registry import DeviceInfo ##this seems to be the way in some of the next updates...?
 from homeassistant.helpers.entity import DeviceInfo
@@ -25,17 +18,14 @@ from sonnenbatterie import sonnenbatterie
 
 # pylint: enable=no-name-in-module
 
-from homeassistant.const import (
+from .const import (
     CONF_PASSWORD,
     CONF_USERNAME,
     CONF_IP_ADDRESS,
-    EVENT_HOMEASSISTANT_STOP,
     CONF_SCAN_INTERVAL,
 )
 
-
 _LOGGER = logging.getLogger(__name__)
-
 
 async def async_unload_entry(hass, entry):
     """Unload a config entry."""
@@ -51,7 +41,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     username = config_entry.data.get(CONF_USERNAME)
     password = config_entry.data.get(CONF_PASSWORD)
     ipaddress = config_entry.data.get(CONF_IP_ADDRESS)
-    updateIntervalSeconds = config_entry.options.get(CONF_SCAN_INTERVAL)
+    update_interval_seconds = config_entry.options.get(CONF_SCAN_INTERVAL)
     debug_mode = config_entry.options.get(ATTR_SONNEN_DEBUG)
 
     def _internal_setup(_username, _password, _ipaddress):
@@ -60,15 +50,15 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     sonnenInst = await hass.async_add_executor_job(
         _internal_setup, username, password, ipaddress
     )
-    updateIntervalSeconds = updateIntervalSeconds or 1
-    LOGGER.info("{0} - UPDATEINTERVAL: {1}".format(DOMAIN, updateIntervalSeconds))
+    update_interval_seconds = update_interval_seconds or 1
+    LOGGER.info("{0} - UPDATEINTERVAL: {1}".format(DOMAIN, update_interval_seconds))
 
     """ The Coordinator is called from HA for updates from API """
     coordinator = SonnenBatterieCoordinator(
         hass,
         sonnenInst,
         async_add_entities,
-        updateIntervalSeconds,
+        update_interval_seconds,
         debug_mode,
         config_entry.entry_id,
     )
