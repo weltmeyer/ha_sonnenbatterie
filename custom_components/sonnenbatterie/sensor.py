@@ -1,27 +1,28 @@
 import traceback
+
 # pylint: disable=unused-wildcard-import
 from .const import *
 from .mappings import SBmap
 
 import ast
+
 # pylint: enable=unused-wildcard-import
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.reload import async_setup_reload_service
-#from homeassistant.helpers.device_registry import DeviceInfo ##this seems to be the way in some of the next updates...?
+
+# from homeassistant.helpers.device_registry import DeviceInfo ##this seems to be the way in some of the next updates...?
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
     DataUpdateCoordinator,
 )
 
-from homeassistant.components.sensor import (
-    SensorEntity,
-    SensorDeviceClass
-)
+from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
 
 # pylint: disable=no-name-in-module
 from sonnenbatterie import sonnenbatterie
+
 # pylint: enable=no-name-in-module
 
 from homeassistant.const import (
@@ -40,12 +41,13 @@ async def async_unload_entry(hass, entry):
     """Unload a config entry."""
     ## we dont have anything special going on.. unload should just work, right?
     ##bridge = hass.data[DOMAIN].pop(entry.data['host'])
-    return 
+    return
 
-async def async_setup_entry(hass, config_entry,async_add_entities):
+
+async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the sensor platform."""
-    LOGGER.info('SETUP_ENTRY')
-    #await async_setup_reload_service(hass, DOMAIN, PLATFORMS)
+    LOGGER.info("SETUP_ENTRY")
+    # await async_setup_reload_service(hass, DOMAIN, PLATFORMS)
     username = config_entry.data.get(CONF_USERNAME)
     password = config_entry.data.get(CONF_PASSWORD)
     ipaddress = config_entry.data.get(CONF_IP_ADDRESS)
@@ -55,41 +57,50 @@ async def async_setup_entry(hass, config_entry,async_add_entities):
     def _internal_setup(_username, _password, _ipaddress):
         return sonnenbatterie(_username, _password, _ipaddress)
 
-    sonnenInst = await hass.async_add_executor_job(_internal_setup, username, password, ipaddress)
+    sonnenInst = await hass.async_add_executor_job(
+        _internal_setup, username, password, ipaddress
+    )
     updateIntervalSeconds = updateIntervalSeconds or 1
     LOGGER.info("{0} - UPDATEINTERVAL: {1}".format(DOMAIN, updateIntervalSeconds))
 
     """ The Coordinator is called from HA for updates from API """
-    coordinator = SonnenBatterieCoordinator(hass, sonnenInst, async_add_entities, updateIntervalSeconds, debug_mode,config_entry.entry_id)
+    coordinator = SonnenBatterieCoordinator(
+        hass,
+        sonnenInst,
+        async_add_entities,
+        updateIntervalSeconds,
+        debug_mode,
+        config_entry.entry_id,
+    )
 
     await coordinator.async_config_entry_first_refresh()
-    
-    LOGGER.info('Init done')
+
+    LOGGER.info("Init done")
     return True
 
-def generateDeviceInfo(configentry_id,systemdata):
 
-    model="unknown"
-    serial="unknown"
-    version="unknown"
-    
+def generateDeviceInfo(configentry_id, systemdata):
+
+    model = "unknown"
+    serial = "unknown"
+    version = "unknown"
+
     if "ERP_ArticleName" in systemdata:
-        model=systemdata["ERP_ArticleName"]
+        model = systemdata["ERP_ArticleName"]
     if "DE_Ticket_Number" in systemdata:
-        serial=systemdata["DE_Ticket_Number"]
+        serial = systemdata["DE_Ticket_Number"]
     if "software_version" in systemdata:
-        version=systemdata["software_version"]
+        version = systemdata["software_version"]
 
-
-    devicename=devicename="{}_{}".format(DOMAIN, serial)
+    devicename = devicename = "{}_{}".format(DOMAIN, serial)
 
     return DeviceInfo(
-                identifiers = {(DOMAIN, configentry_id)},
-                manufacturer = "Sonnen",
-                model = model,
-                name = devicename,
-                sw_version = version,
-            )
+        identifiers={(DOMAIN, configentry_id)},
+        manufacturer="Sonnen",
+        model=model,
+        name=devicename,
+        sw_version=version,
+    )
 
 
 class SonnenBatterieSensor(CoordinatorEntity, SensorEntity):
@@ -109,19 +120,19 @@ class SonnenBatterieSensor(CoordinatorEntity, SensorEntity):
     def device_info(self) -> DeviceInfo:
         """Return the device info."""
         return self._deviceinfo
-        
+
     def set_state(self, state):
         """Set the state."""
-        if self._state==state:
+        if self._state == state:
             return
         self._state = state
         if self.hass is None:
             LOGGER.warning("hass not set, sensor: {} ".format(self.name))
             return
         self.schedule_update_ha_state()
-        #try:
-        #self.schedule_update_ha_state()
-        #except:
+        # try:
+        # self.schedule_update_ha_state()
+        # except:
         #    LOGGER.error("Failing sensor: {} ".format(self.name))
 
     def set_attributes(self, attributes):
@@ -175,25 +186,33 @@ class SonnenBatterieSensor(CoordinatorEntity, SensorEntity):
 class SonnenBatterieCoordinator(DataUpdateCoordinator):
     """My custom coordinator."""
 
-    def __init__(self, hass, sbInst, async_add_entities, updateIntervalSeconds, debug_mode, device_id):
+    def __init__(
+        self,
+        hass,
+        sbInst,
+        async_add_entities,
+        updateIntervalSeconds,
+        debug_mode,
+        device_id,
+    ):
         """Initialize my coordinator."""
         super().__init__(
             hass,
             _LOGGER,
             # Name of the data. For logging purposes.
-            name = "SonnenBatterieCoordinator",
+            name="SonnenBatterieCoordinator",
             # Polling interval. Will only be polled if there are subscribers.
-            update_interval = timedelta(seconds = updateIntervalSeconds),
+            update_interval=timedelta(seconds=updateIntervalSeconds),
         )
-        self.sensor=None
+        self.sensor = None
         self.hass = hass
         self.latestData = {}
         self.disabledSensors = []
-        self.device_id=device_id;
+        self.device_id = device_id
 
         self.stopped = False
-        
-        #self.sensor = sensor
+
+        # self.sensor = sensor
         self.sbInst: sonnenbatterie = sbInst
         self.meterSensors = {}
         self.updateIntervalSeconds = updateIntervalSeconds
@@ -208,22 +227,34 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
         # placeholders, will be filled later
         self.serial = ""
         self.allSensorsPrefix = ""
-        self.deviceName="to be set"
-    
+        self.deviceName = "to be set"
+
     async def updateData(self):
-        try:        ##ignore errors here, may be transient
-            self.latestData["battery"]        = await self.hass.async_add_executor_job(self.sbInst.get_battery);
-            self.latestData["battery_system"] = await self.hass.async_add_executor_job(self.sbInst.get_batterysystem);
-            self.latestData["inverter"]       = await self.hass.async_add_executor_job(self.sbInst.get_inverter);
-            self.latestData["powermeter"]     = await self.hass.async_add_executor_job(self.sbInst.get_powermeter);
-            self.latestData["status"]         = await self.hass.async_add_executor_job(self.sbInst.get_status);
-            self.latestData["systemdata"]     = await self.hass.async_add_executor_job(self.sbInst.get_systemdata);
-            
+        try:  ##ignore errors here, may be transient
+            self.latestData["battery"] = await self.hass.async_add_executor_job(
+                self.sbInst.get_battery
+            )
+            self.latestData["battery_system"] = await self.hass.async_add_executor_job(
+                self.sbInst.get_batterysystem
+            )
+            self.latestData["inverter"] = await self.hass.async_add_executor_job(
+                self.sbInst.get_inverter
+            )
+            self.latestData["powermeter"] = await self.hass.async_add_executor_job(
+                self.sbInst.get_powermeter
+            )
+            self.latestData["status"] = await self.hass.async_add_executor_job(
+                self.sbInst.get_status
+            )
+            self.latestData["systemdata"] = await self.hass.async_add_executor_job(
+                self.sbInst.get_systemdata
+            )
+
         except:
             e = traceback.format_exc()
             LOGGER.error(e)
         if self.debug:
-            self.SendAllDataToLog();
+            self.SendAllDataToLog()
 
     async def _async_update_data(self):
         """Fetch data from API endpoint.
@@ -233,13 +264,18 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
         """
         await self.updateData()
         self.parse()
-        
-        #Create/Update the Main Sensor, named after the battery serial
+
+        # Create/Update the Main Sensor, named after the battery serial
         systemdata = self.latestData["systemdata"]
         deviceinfo = generateDeviceInfo(self.device_id, systemdata)
         serial = systemdata["DE_Ticket_Number"]
         if self.sensor is None:
-            self.sensor = SonnenBatterieSensor(id="sensor.{0}_{1}".format(DOMAIN, serial), deviceinfo=deviceinfo, coordinator=self, name=serial)
+            self.sensor = SonnenBatterieSensor(
+                id="sensor.{0}_{1}".format(DOMAIN, serial),
+                deviceinfo=deviceinfo,
+                coordinator=self,
+                name=serial,
+            )
             self.async_add_entities([self.sensor])
 
         statedisplay = "standby"
@@ -259,11 +295,10 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
 
         self.sensor.set_state(statedisplay)
         self.sensor.set_attributes(self.latestData["systemdata"])
-        #finish Update/Create Main Sensor
+        # finish Update/Create Main Sensor
 
-        #update all other entities/sensors
+        # update all other entities/sensors
         self.AddOrUpdateEntities()
-        
 
     def parse(self):
         meters = self.latestData["powermeter"]
@@ -271,12 +306,14 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
 
         attr = {}
         for meter in meters:
-            prefix = "{0}_{1}_{2}-".format(meter['direction'], meter['deviceid'], meter['channel'])
+            prefix = "{0}_{1}_{2}-".format(
+                meter["direction"], meter["deviceid"], meter["channel"]
+            )
             for name in meter:
-                parmName = prefix+name
+                parmName = prefix + name
                 attr[parmName] = meter[name]
 
-        bat_sys_dict = flattenObj("battery_system","-",battery_system)
+        bat_sys_dict = flattenObj("battery_system", "-", battery_system)
         attr.update(bat_sys_dict)
 
     def walkEntities(self, entities, parents=[], key=""):
@@ -290,9 +327,13 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
                         # move down to next section
                         lookup = lookup[section]
                     else:
-                        #section not found, disable sensor
+                        # section not found, disable sensor
                         self.disabledSensors.append(entities["sensor"])
-                        LOGGER.warning("'{}' not in {} -> disabled".format(entities["sensor"], "/".join(parents) ))
+                        LOGGER.warning(
+                            "'{}' not in {} -> disabled".format(
+                                entities["sensor"], "/".join(parents)
+                            )
+                        )
                         return
 
                 # when we get here 'lookup' already is the value we're looking for
@@ -301,7 +342,11 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
                     try:
                         real_val = entities["convert"](lookup)
                     except:
-                        LOGGER.critical("Wrong conversion info for '{}' in {} -> sending raw value".format(key, "/".join(parents)))
+                        LOGGER.critical(
+                            "Wrong conversion info for '{}' in {} -> sending raw value".format(
+                                key, "/".join(parents)
+                            )
+                        )
                         real_val = lookup
                 else:
                     real_val = lookup
@@ -312,7 +357,11 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
                     real_val,
                     entities["unit"],
                     entities["class"],
-                    entities["state_class"] if "state_class" in entities else "measurement"
+                    (
+                        entities["state_class"]
+                        if "state_class" in entities
+                        else "measurement"
+                    ),
                 )
 
                 # add alias names if needed
@@ -323,27 +372,29 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
                             "{} (alias)".format(entities["friendly_name"]),
                             real_val,
                             entities["unit"],
-                            entities["class"]
+                            entities["class"],
                         )
 
                 # do we need to add in/out values?
                 if "inout" in entities:
                     val_in = abs(real_val) if real_val < 0 else 0
                     val_out = real_val if real_val > 0 else 0
-                    sensor_base = entities["sensor"][:entities["sensor"].rfind("_")+1]
+                    sensor_base = entities["sensor"][
+                        : entities["sensor"].rfind("_") + 1
+                    ]
                     self._AddOrUpdateEntity(
                         "{}{}input".format(self.allSensorsPrefix, sensor_base),
                         "{} (in)".format(entities["friendly_name"]),
                         val_in,
                         entities["unit"],
-                        entities["class"]
+                        entities["class"],
                     )
                     self._AddOrUpdateEntity(
                         "{}{}output".format(self.allSensorsPrefix, sensor_base),
                         "{} (out)".format(entities["friendly_name"]),
                         val_out,
                         entities["unit"],
-                        entities["class"]
+                        entities["class"],
                     )
 
                 # do we have a text mapping?
@@ -354,12 +405,14 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
                     else:
                         tval = "Unknown"
                     self._AddOrUpdateEntity(
-                        "{}{}_{}".format(self.allSensorsPrefix, entities["sensor"], "text"),
+                        "{}{}_{}".format(
+                            self.allSensorsPrefix, entities["sensor"], "text"
+                        ),
                         "{} (text)".format(entities["friendly_name"]),
                         tval,
                         entities["unit"],
                         entities["class"],
-                        None
+                        None,
                     )
         else:
             # recursively check deeper down
@@ -371,62 +424,110 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
                 # pop path from stack to prevent ever growing path array
                 parents.remove(elem)
 
-    def _AddOrUpdateEntity(self, id, friendlyname, value, unit, device_class, state_class="measurement"):
+    def _AddOrUpdateEntity(
+        self, id, friendlyname, value, unit, device_class, state_class="measurement"
+    ):
         if id in self.meterSensors:
             sensor = self.meterSensors[id]
             sensor.set_state(value)
         else:
-            deviceinfo = generateDeviceInfo(self.device_id, self.latestData["systemdata"] )
+            deviceinfo = generateDeviceInfo(
+                self.device_id, self.latestData["systemdata"]
+            )
 
-            
-            sensor = SonnenBatterieSensor(id=id, deviceinfo=deviceinfo, coordinator=self, name=friendlyname)
+            sensor = SonnenBatterieSensor(
+                id=id, deviceinfo=deviceinfo, coordinator=self, name=friendlyname
+            )
             sensor.set_attributes(
                 {
                     "unit_of_measurement": unit,
-                    "device_class":        device_class,
-                    "friendly_name":       friendlyname,
-                    "state_class":         state_class
+                    "device_class": device_class,
+                    "friendly_name": friendlyname,
+                    "state_class": state_class,
                 }
             )
             self.async_add_entities([sensor])
             self.meterSensors[id] = sensor
 
     def AddOrUpdateEntities(self):
-        """ (almost) all sensors in one go """
+        """(almost) all sensors in one go"""
         self.walkEntities(SBmap)
 
         """ some manually calculated values """
-        val_module_capacity      = int(self.latestData['battery_system']['battery_system']['system']['storage_capacity_per_module'])
-        val_modulecount          = int(self.latestData['battery_system']['modules'])
+        val_module_capacity = int(
+            self.latestData["battery_system"]["battery_system"]["system"][
+                "storage_capacity_per_module"
+            ]
+        )
+        val_modulecount = int(self.latestData["battery_system"]["modules"])
         total_installed_capacity = int(val_modulecount * val_module_capacity)
 
         """" Battery Real Capacity Calc """
-        sensorname   = "{}{}".format(self.allSensorsPrefix, "state_total_capacity_real")
-        unitname     = "Wh"
+        sensorname = "{}{}".format(self.allSensorsPrefix, "state_total_capacity_real")
+        unitname = "Wh"
         friendlyname = "Total Capacity Real"
-        self._AddOrUpdateEntity(sensorname, friendlyname, total_installed_capacity, unitname, SensorDeviceClass.ENERGY)
+        self._AddOrUpdateEntity(
+            sensorname,
+            friendlyname,
+            total_installed_capacity,
+            unitname,
+            SensorDeviceClass.ENERGY,
+        )
 
-        calc_reservedcapacity = int(total_installed_capacity * (self.reservedFactor / 100.0))
-        sensorname   = "{}{}".format(self.allSensorsPrefix, "state_total_capacity_usable")
-        unitname     = "Wh"
+        calc_reservedcapacity = int(
+            total_installed_capacity * (self.reservedFactor / 100.0)
+        )
+        sensorname = "{}{}".format(self.allSensorsPrefix, "state_total_capacity_usable")
+        unitname = "Wh"
         friendlyname = "Total Capacity Usable"
-        self._AddOrUpdateEntity(sensorname, friendlyname, total_installed_capacity - calc_reservedcapacity, unitname, SensorDeviceClass.ENERGY)
+        self._AddOrUpdateEntity(
+            sensorname,
+            friendlyname,
+            total_installed_capacity - calc_reservedcapacity,
+            unitname,
+            SensorDeviceClass.ENERGY,
+        )
 
-        calc_remainingcapacity = int(total_installed_capacity * self.latestData["status"]["RSOC"]) / 100.0
-        sensorname   = "{}{}".format(self.allSensorsPrefix, "state_remaining_capacity_real")
-        unitname     = "Wh"
+        calc_remainingcapacity = (
+            int(total_installed_capacity * self.latestData["status"]["RSOC"]) / 100.0
+        )
+        sensorname = "{}{}".format(
+            self.allSensorsPrefix, "state_remaining_capacity_real"
+        )
+        unitname = "Wh"
         friendlyname = "Remaining Capacity Real"
-        self._AddOrUpdateEntity(sensorname, friendlyname, calc_remainingcapacity, unitname, SensorDeviceClass.ENERGY)
+        self._AddOrUpdateEntity(
+            sensorname,
+            friendlyname,
+            calc_remainingcapacity,
+            unitname,
+            SensorDeviceClass.ENERGY,
+        )
 
-        calc_remainingcapacity_usable = int(max(0, calc_remainingcapacity - calc_reservedcapacity))
-        sensorname   = "{}{}".format(self.allSensorsPrefix, "state_remaining_capacity_usable")
-        unitname     = "Wh"
+        calc_remainingcapacity_usable = int(
+            max(0, calc_remainingcapacity - calc_reservedcapacity)
+        )
+        sensorname = "{}{}".format(
+            self.allSensorsPrefix, "state_remaining_capacity_usable"
+        )
+        unitname = "Wh"
         friendlyname = "Remaining Capacity Usable"
-        self._AddOrUpdateEntity(sensorname, friendlyname, calc_remainingcapacity_usable, unitname, SensorDeviceClass.ENERGY)
+        self._AddOrUpdateEntity(
+            sensorname,
+            friendlyname,
+            calc_remainingcapacity_usable,
+            unitname,
+            SensorDeviceClass.ENERGY,
+        )
 
         """powermeter values"""
         for meter in self.latestData["powermeter"]:
-            sensornamePrefix = "{}meter_{}_{}_{}".format(self.allSensorsPrefix, meter['direction'], meter['deviceid'], meter['channel'])
+            sensornamePrefix = "{}meter_{}_{}_{}".format(
+                self.allSensorsPrefix,
+                meter["direction"],
+                meter["deviceid"],
+                meter["channel"],
+            )
             sensornamePrefix = sensornamePrefix.lower()
             generateSensorsFor = {
                 "a_l1",
@@ -446,26 +547,22 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
 
             for sensormeter in generateSensorsFor:
                 sensorname = "{}_{}".format(sensornamePrefix, sensormeter)
-                val = round(meter[sensormeter],2)
-                unitname = (sensormeter[0]+"").upper()
+                val = round(meter[sensormeter], 2)
+                unitname = (sensormeter[0] + "").upper()
                 device_class = SensorDeviceClass.POWER
                 if unitname == "V":
                     device_class = SensorDeviceClass.VOLTAGE
                 elif unitname == "A":
                     device_class = SensorDeviceClass.CURRENT
-                friendlyname = "{0} {1}".format(meter['direction'], sensormeter)
+                friendlyname = "{0} {1}".format(meter["direction"], sensormeter)
                 self._AddOrUpdateEntity(
-                    sensorname,
-                    friendlyname,
-                    val,
-                    unitname,
-                    device_class
+                    sensorname, friendlyname, val, unitname, device_class
                 )
 
     def SendAllDataToLog(self):
         """
-            Since we're in "debug" mode, send all data to the log so we dont' have to search for the
-            variable we're looking for if it's not where we expect it to be
+        Since we're in "debug" mode, send all data to the log so we dont' have to search for the
+        variable we're looking for if it's not where we expect it to be
         """
         if not self.fullLogsAlreadySent:
             LOGGER.warning("Powermeter data:")
