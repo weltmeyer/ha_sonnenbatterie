@@ -43,7 +43,7 @@ async def async_reload_entry(hass, entry):
 
 async def update_listener(hass, entry):
     LOGGER.info("Update listener" + json.dumps(dict(entry.options)))
-    hass.data[DOMAIN][entry.entry_id]["monitor"].updateIntervalSeconds = (
+    hass.data[DOMAIN][entry.entry_id]["monitor"].update_interval_seconds = (
         entry.options.get(CONF_SCAN_INTERVAL)
     )
 
