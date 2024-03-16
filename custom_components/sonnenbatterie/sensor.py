@@ -44,15 +44,15 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     # await async_setup_reload_service(hass, DOMAIN, PLATFORMS)
     username = config_entry.data.get(CONF_USERNAME)
     password = config_entry.data.get(CONF_PASSWORD)
-    ipaddress = config_entry.data.get(CONF_IP_ADDRESS)
+    ip_address = config_entry.data.get(CONF_IP_ADDRESS)
     update_interval_seconds = config_entry.options.get(CONF_SCAN_INTERVAL)
     debug_mode = config_entry.options.get(ATTR_SONNEN_DEBUG)
 
-    def _internal_setup(_username, _password, _ipaddress):
-        return sonnenbatterie(_username, _password, _ipaddress)
+    def _internal_setup(_username, _password, _ip_address):
+        return sonnenbatterie(_username, _password, _ip_address)
 
     sonnenInst = await hass.async_add_executor_job(
-        _internal_setup, username, password, ipaddress
+        _internal_setup, username, password, ip_address
     )
     update_interval_seconds = update_interval_seconds or 1
     LOGGER.info("{0} - UPDATEINTERVAL: {1}".format(DOMAIN, update_interval_seconds))
@@ -63,6 +63,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         sonnenInst,
         async_add_entities,
         update_interval_seconds,
+        ip_address,
         debug_mode,
         config_entry.entry_id,
     )
@@ -73,40 +74,35 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     return True
 
 
-def generate_device_info(configentry_id, system_data):
-    model = system_data.get("ERP_ArticleName", "unknown")
-    serial = system_data.get("DE_Ticket_Number", "unknown")
-    version = system_data.get("software_version", "unknown")
-    device_name = "{}_{}".format(DOMAIN, serial)
-    device_ip = CONF_IP_ADDRESS
-
+def generate_device_info(configentry_id, system_data, ip_address):
     return DeviceInfo(
-        configuration_url=f"http://{device_ip}/",
+        configuration_url=f"http://{ip_address}/",
         identifiers={(DOMAIN, configentry_id)},
         manufacturer="Sonnen",
-        model=model,
-        name=device_name,
-        sw_version=version,
+        model=system_data.get("ERP_ArticleName", "unknown"),
+        name=f"{DOMAIN}_{system_data.get('DE_Ticket_Number', 'unknown')}",
+        sw_version=system_data.get("software_version", "unknown"),
     )
 
 
 class SonnenBatterieSensor(CoordinatorEntity, SensorEntity):
-    def __init__(self, entity_id, device_info, coordinator, name=None):
+    """Represent an Sonnen sensor."""
+
+    _attr_should_poll = False
+
+    def __init__(self, entity_id, device_info, coordinator, name=None) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = entity_id
+        self._attr_device_info = device_info
         self._attributes = {}
-        self._state = "0"
-        self._device_info = device_info
+        self._state = None
         self.coordinator = coordinator
         self.entity_id = entity_id
         if name is None:
             name = entity_id
         self._name = name
-        super().__init__(coordinator)
-        LOGGER.info("Create Sensor {0}".format(entity_id))
 
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return the device info."""
-        return self._device_info
+        LOGGER.info("Create Sensor {0}".format(entity_id))
 
     def set_state(self, state):
         """Set the state."""
@@ -125,16 +121,6 @@ class SonnenBatterieSensor(CoordinatorEntity, SensorEntity):
     def set_attributes(self, attributes):
         """Set the state attributes."""
         self._attributes = attributes
-
-    @property
-    def unique_id(self) -> str:
-        """Return the unique ID for this sensor."""
-        return self.entity_id
-
-    @property
-    def should_poll(self):
-        """Only poll to update phonebook, if defined."""
-        return False
 
     @property
     def device_state_attributes(self):
@@ -179,6 +165,7 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
         sb_inst,
         async_add_entities,
         update_interval_seconds,
+        ip_address,
         debug_mode,
         device_id,
     ):
@@ -203,6 +190,7 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
         self.sbInst: sonnenbatterie = sb_inst
         self.meterSensors = {}
         self.update_interval_seconds = update_interval_seconds
+        self.ip_address = ip_address
         self.async_add_entities = async_add_entities
         self.debug = debug_mode
         self.fullLogsAlreadySent = False
@@ -254,7 +242,7 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
 
         # Create/Update the Main Sensor, named after the battery serial
         system_data = self.latestData["system_data"]
-        device_info = generate_device_info(self.device_id, system_data)
+        device_info = generate_device_info(self.device_id, system_data, self.ip_address)
         serial = system_data["DE_Ticket_Number"]
         if self.sensor is None:
             self.sensor = SonnenBatterieSensor(
@@ -425,7 +413,7 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
             sensor.set_state(value)
         else:
             device_info = generate_device_info(
-                self.device_id, self.latestData["system_data"]
+                self.device_id, self.latestData["system_data"], self.ip_address
             )
 
             sensor = SonnenBatterieSensor(
