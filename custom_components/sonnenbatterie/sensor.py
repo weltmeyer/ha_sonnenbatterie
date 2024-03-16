@@ -1,4 +1,5 @@
 import traceback
+from datetime import timedelta
 
 from .mappings import SBmap
 
@@ -26,6 +27,7 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
 
 async def async_unload_entry(hass, entry):
     """Unload a config entry."""
@@ -69,26 +71,17 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     return True
 
 
-def generateDeviceInfo(configentry_id, systemdata):
-
-    model = "unknown"
-    serial = "unknown"
-    version = "unknown"
-
-    if "ERP_ArticleName" in systemdata:
-        model = systemdata["ERP_ArticleName"]
-    if "DE_Ticket_Number" in systemdata:
-        serial = systemdata["DE_Ticket_Number"]
-    if "software_version" in systemdata:
-        version = systemdata["software_version"]
-
-    devicename = devicename = "{}_{}".format(DOMAIN, serial)
+def generate_device_info(configentry_id, systemdata):
+    model = systemdata.get("ERP_ArticleName", "unknown")
+    serial = systemdata.get("DE_Ticket_Number", "unknown")
+    version = systemdata.get("software_version", "unknown")
+    device_name = "{}_{}".format(DOMAIN, serial)
 
     return DeviceInfo(
         identifiers={(DOMAIN, configentry_id)},
         manufacturer="Sonnen",
         model=model,
-        name=devicename,
+        name=device_name,
         sw_version=version,
     )
 
@@ -219,7 +212,7 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
         self.allSensorsPrefix = ""
         self.deviceName = "to be set"
 
-    async def updateData(self):
+    async def update_data(self):
         try:  ##ignore errors here, may be transient
             self.latestData["battery"] = await self.hass.async_add_executor_job(
                 self.sbInst.get_battery
@@ -252,12 +245,12 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
         This is the place to pre-process the data to lookup tables
         so entities can quickly look up their data.
         """
-        await self.updateData()
+        await self.update_data()
         self.parse()
 
         # Create/Update the Main Sensor, named after the battery serial
         systemdata = self.latestData["systemdata"]
-        deviceinfo = generateDeviceInfo(self.device_id, systemdata)
+        deviceinfo = generate_device_info(self.device_id, systemdata)
         serial = systemdata["DE_Ticket_Number"]
         if self.sensor is None:
             self.sensor = SonnenBatterieSensor(
@@ -306,7 +299,7 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
         bat_sys_dict = flattenObj("battery_system", "-", battery_system)
         attr.update(bat_sys_dict)
 
-    def walkEntities(self, entities, parents=[], key=""):
+    def walk_entities(self, entities, parents=[], key=""):
         if "sensor" in entities:
             # only check if we haven't already disabled the sensor
             if entities["sensor"] not in self.disabledSensors:
@@ -410,7 +403,7 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
                 LOGGER.info("Descending into '{}'".format(elem))
                 # push current path to "stack"
                 parents.append(elem)
-                self.walkEntities(entities[elem], parents, elem)
+                self.walk_entities(entities[elem], parents, elem)
                 # pop path from stack to prevent ever growing path array
                 parents.remove(elem)
 
@@ -421,7 +414,7 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
             sensor = self.meterSensors[id]
             sensor.set_state(value)
         else:
-            deviceinfo = generateDeviceInfo(
+            deviceinfo = generate_device_info(
                 self.device_id, self.latestData["systemdata"]
             )
 
@@ -441,7 +434,7 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
 
     def AddOrUpdateEntities(self):
         """(almost) all sensors in one go"""
-        self.walkEntities(SBmap)
+        self.walk_entities(SBmap)
 
         """ some manually calculated values """
         val_module_capacity = int(
