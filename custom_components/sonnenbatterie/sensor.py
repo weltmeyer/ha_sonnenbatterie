@@ -232,7 +232,7 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
                 self.sbInst.get_status
             )
             self.latestData["system_data"] = await self.hass.async_add_executor_job(
-                self.sbInst.get_system_data
+                self.sbInst.get_systemdata
             )
 
         except:
