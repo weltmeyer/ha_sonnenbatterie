@@ -76,8 +76,10 @@ def generate_device_info(configentry_id, systemdata):
     serial = systemdata.get("DE_Ticket_Number", "unknown")
     version = systemdata.get("software_version", "unknown")
     device_name = "{}_{}".format(DOMAIN, serial)
+    device_ip = CONF_IP_ADDRESS
 
     return DeviceInfo(
+        configuration_url=f"http://{device_ip}/",
         identifiers={(DOMAIN, configentry_id)},
         manufacturer="Sonnen",
         model=model,
