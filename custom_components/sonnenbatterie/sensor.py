@@ -1,5 +1,6 @@
 import traceback
-#from datetime import timedelta
+
+# from datetime import timedelta
 
 from .const import *
 from .mappings import SBmap
@@ -111,7 +112,7 @@ class SonnenBatterieSensor(CoordinatorEntity, SensorEntity):
             return
         self._state = state
         if self.hass is None:
-            #LOGGER.warning("hass not set, sensor: {} ".format(self.name))
+            # LOGGER.warning("hass not set, sensor: {} ".format(self.name))
             return
         self.schedule_update_ha_state()
         # try:
@@ -409,7 +410,13 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
                 parents.remove(elem)
 
     def _add_or_update_entity(
-        self, entity_id, friendly_name, value, unit, device_class, state_class="measurement"
+        self,
+        entity_id,
+        friendly_name,
+        value,
+        unit,
+        device_class,
+        state_class="measurement",
     ):
         if entity_id in self.meterSensors:
             sensor = self.meterSensors[entity_id]
@@ -420,7 +427,10 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
             )
 
             sensor = SonnenBatterieSensor(
-                entity_id=entity_id, device_info=device_info, coordinator=self, name=friendly_name
+                entity_id=entity_id,
+                device_info=device_info,
+                coordinator=self,
+                name=friendly_name,
             )
             sensor.set_attributes(
                 {
@@ -461,7 +471,9 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
         calc_reserved_capacity = int(
             total_installed_capacity * (self.reservedFactor / 100.0)
         )
-        sensor_name = "{}{}".format(self.allSensorsPrefix, "state_total_capacity_usable")
+        sensor_name = "{}{}".format(
+            self.allSensorsPrefix, "state_total_capacity_usable"
+        )
         unit_name = "Wh"
         friendly_name = "Total Capacity Usable"
         self._add_or_update_entity(
@@ -488,7 +500,9 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
             SensorDeviceClass.ENERGY,
         )
 
-        calc_remaining_capacity_usable = max(0, int(calc_remaining_capacity - calc_reserved_capacity))
+        calc_remaining_capacity_usable = max(
+            0, int(calc_remaining_capacity - calc_reserved_capacity)
+        )
 
         sensor_name = "{}{}".format(
             self.allSensorsPrefix, "state_remaining_capacity_usable"

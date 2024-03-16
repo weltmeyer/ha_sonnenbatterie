@@ -3,8 +3,9 @@ from sonnenbatterie import sonnenbatterie
 
 # pylint: enable=no-name-in-module
 import traceback
-#import logging
-#import voluptuous as vol
+
+# import logging
+# import voluptuous as vol
 from homeassistant import config_entries, core
 from homeassistant.core import callback
 
