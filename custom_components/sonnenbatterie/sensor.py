@@ -1,6 +1,7 @@
 import traceback
-from datetime import timedelta
+#from datetime import timedelta
 
+from .const import *
 from .mappings import SBmap
 
 import ast
@@ -112,7 +113,7 @@ class SonnenBatterieSensor(CoordinatorEntity, SensorEntity):
             return
         self._state = state
         if self.hass is None:
-            LOGGER.warning("hass not set, sensor: {} ".format(self.name))
+            #LOGGER.warning("hass not set, sensor: {} ".format(self.name))
             return
         self.schedule_update_ha_state()
         # try:
