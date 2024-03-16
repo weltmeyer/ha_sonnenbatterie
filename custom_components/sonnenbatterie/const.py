@@ -1,7 +1,7 @@
 import logging
 import voluptuous as vol
-from datetime import timedelta
-from homeassistant.helpers import config_validation as cv
+#from datetime import timedelta
+#from homeassistant.helpers import config_validation as cv
 from homeassistant.const import (
     CONF_PASSWORD,
     CONF_USERNAME,
@@ -32,14 +32,14 @@ DEFAULT_SONNEN_DEBUG = False
 PLATFORMS = ["sensor"]
 
 
-def flattenObj(prefix, seperator, obj):
+def flatten_obj(prefix, seperator, obj):
     result = {}
     for field in obj:
         val = obj[field]
-        valprefix = prefix + seperator + field
+        val_prefix = prefix + seperator + field
         if type(val) is dict:
-            sub = flattenObj(valprefix, seperator, val)
+            sub = flatten_obj(val_prefix, seperator, val)
             result.update(sub)
         else:
-            result[valprefix] = val
+            result[val_prefix] = val
     return result

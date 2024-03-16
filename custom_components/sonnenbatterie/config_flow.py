@@ -3,8 +3,8 @@ from sonnenbatterie import sonnenbatterie
 
 # pylint: enable=no-name-in-module
 import traceback
-import logging
-import voluptuous as vol
+#import logging
+#import voluptuous as vol
 from homeassistant import config_entries, core
 from homeassistant.core import callback
 
@@ -43,7 +43,7 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             def _internal_setup(_username, _password, _ipaddress):
                 return sonnenbatterie(_username, _password, _ipaddress)
 
-            sonnenInst = await self.hass.async_add_executor_job(
+            sonnen_inst = await self.hass.async_add_executor_job(
                 _internal_setup, username, password, ipaddress
             )
             # sonnenbatterie(username,password,ipaddress)
