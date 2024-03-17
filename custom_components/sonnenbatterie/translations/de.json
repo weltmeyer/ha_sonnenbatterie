@@ -46,8 +46,20 @@
             "status_grid_inout": {
                 "name": "Netz import/export"
             },
+            "status_grid_in": {
+                "name": "Netz import"
+            },
+            "status_grid_out": {
+                "name": "Netz export"
+            },
             "status_battery_inout": {
                 "name": "Akku aufladen/entladen"
+            },
+            "status_battery_in": {
+                "name": "Akku Ladestrom"
+            },
+            "status_battery_out": {
+                "name": "Akku Entladestrom"
             },
             "status_battery_percentage_real": {
                 "name": "Akku Ladestand (echt)"

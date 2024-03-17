@@ -2,12 +2,7 @@
 
 import traceback
 
-from .const import (
-    DOMAIN,
-    LOGGER,
-    logging,
-    timedelta
-)
+from .const import DOMAIN, LOGGER, logging, timedelta
 
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import (
@@ -216,56 +211,8 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
     #                 ),
     #             )
     #
-    #             # add alias names if needed
-    #             if "aka" in entities:
-    #                 for altname in entities["aka"]:
-    #                     self._add_or_update_entity(
-    #                         "{}{}".format(self.allSensorsPrefix, altname),
-    #                         "{} (alias)".format(entities["friendly_name"]),
-    #                         real_val,
-    #                         entities["unit"],
-    #                         entities["class"],
-    #                     )
     #
-    #             # do we need to add in/out values?
-    #             if "inout" in entities:
-    #                 val_in = abs(real_val) if real_val < 0 else 0
-    #                 val_out = real_val if real_val > 0 else 0
-    #                 sensor_base = entities["sensor"][
-    #                     : entities["sensor"].rfind("_") + 1
-    #                 ]
-    #                 self._add_or_update_entity(
-    #                     "{}{}input".format(self.allSensorsPrefix, sensor_base),
-    #                     "{} (in)".format(entities["friendly_name"]),
-    #                     val_in,
-    #                     entities["unit"],
-    #                     entities["class"],
-    #                 )
-    #                 self._add_or_update_entity(
-    #                     "{}{}output".format(self.allSensorsPrefix, sensor_base),
-    #                     "{} (out)".format(entities["friendly_name"]),
-    #                     val_out,
-    #                     entities["unit"],
-    #                     entities["class"],
-    #                 )
     #
-    #             # do we have a text mapping?
-    #             if "textmap" in entities:
-    #                 tmap = ast.literal_eval(entities["textmap"])
-    #                 if real_val in tmap:
-    #                     tval = tmap[real_val]
-    #                 else:
-    #                     tval = "Unknown"
-    #                 self._add_or_update_entity(
-    #                     "{}{}_{}".format(
-    #                         self.allSensorsPrefix, entities["sensor"], "text"
-    #                     ),
-    #                     "{} (text)".format(entities["friendly_name"]),
-    #                     tval,
-    #                     entities["unit"],
-    #                     entities["class"],
-    #                     None,
-    #                 )
     #     else:
     #         # recursively check deeper down
     #         for elem in entities:

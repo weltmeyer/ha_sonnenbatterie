@@ -29,7 +29,6 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-
 async def async_unload_entry(hass, entry):
     """Unload a config entry."""
     ## we dont have anything special going on.. unload should just work, right?

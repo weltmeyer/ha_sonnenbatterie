@@ -46,8 +46,20 @@
             "status_grid_inout": {
                 "name": "Grid in/out power"
             },
+            "status_grid_in": {
+                "name": "Grid in power"
+            },
+            "status_grid_out": {
+                "name": "Grid out power"
+            },
             "status_battery_inout": {
-                "name": "Battery in/out power"
+                "name": "Battery charge/discharge power"
+            },
+            "status_battery_in": {
+                "name": "Battery charge power"
+            },
+            "status_battery_out": {
+                "name": "Battery discharge power"
             },
             "status_battery_percentage_real": {
                 "name": "Battery percentage (real)"
