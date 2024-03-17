@@ -18,6 +18,7 @@ from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
 
 # pylint: disable=no-name-in-module
 from sonnenbatterie import sonnenbatterie
+from homeassistant.core import HomeAssistant
 
 # pylint: enable=no-name-in-module
 
@@ -31,140 +32,15 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_unload_entry(hass, entry):
-    """Unload a config entry."""
-    ## we dont have anything special going on.. unload should just work, right?
-    ##bridge = hass.data[DOMAIN].pop(entry.data['host'])
-    return
-
-
-async def async_setup_entry(hass, config_entry, async_add_entities):
-    """Set up the sensor platform."""
-    LOGGER.info("SETUP_ENTRY")
-    # await async_setup_reload_service(hass, DOMAIN, PLATFORMS)
-    username = config_entry.data.get(CONF_USERNAME)
-    password = config_entry.data.get(CONF_PASSWORD)
-    ip_address = config_entry.data.get(CONF_IP_ADDRESS)
-    update_interval_seconds = config_entry.options.get(CONF_SCAN_INTERVAL)
-    debug_mode = config_entry.options.get(ATTR_SONNEN_DEBUG)
-
-    def _internal_setup(_username, _password, _ip_address):
-        return sonnenbatterie(_username, _password, _ip_address)
-
-    sonnenInst = await hass.async_add_executor_job(
-        _internal_setup, username, password, ip_address
-    )
-    update_interval_seconds = update_interval_seconds or 1
-    LOGGER.info("{0} - UPDATEINTERVAL: {1}".format(DOMAIN, update_interval_seconds))
-
-    """ The Coordinator is called from HA for updates from API """
-    coordinator = SonnenBatterieCoordinator(
-        hass,
-        sonnenInst,
-        async_add_entities,
-        update_interval_seconds,
-        ip_address,
-        debug_mode,
-        config_entry.entry_id,
-    )
-
-    await coordinator.async_config_entry_first_refresh()
-
-    LOGGER.info("Init done")
-    return True
-
-
-def generate_device_info(configentry_id, system_data, ip_address):
-    return DeviceInfo(
-        configuration_url=f"http://{ip_address}/",
-        identifiers={(DOMAIN, configentry_id)},
-        manufacturer="Sonnen",
-        model=system_data.get("ERP_ArticleName", "unknown"),
-        name=f"{DOMAIN}_{system_data.get('DE_Ticket_Number', 'unknown')}",
-        sw_version=system_data.get("software_version", "unknown"),
-    )
-
-
-class SonnenBatterieSensor(CoordinatorEntity, SensorEntity):
-    """Represent an Sonnen sensor."""
-
-    _attr_should_poll = False
-
-    def __init__(self, entity_id, device_info, coordinator, name=None) -> None:
-        super().__init__(coordinator)
-        self._attr_unique_id = entity_id
-        self._attr_device_info = device_info
-        self._attributes = {}
-        self._state = None
-        self.coordinator = coordinator
-        self.entity_id = entity_id
-        if name is None:
-            name = entity_id
-        self._name = name
-
-        LOGGER.info("Create Sensor {0}".format(entity_id))
-
-    def set_state(self, state):
-        """Set the state."""
-        if self._state == state:
-            return
-        self._state = state
-        if self.hass is None:
-            # LOGGER.warning("hass not set, sensor: {} ".format(self.name))
-            return
-        self.schedule_update_ha_state()
-        # try:
-        # self.schedule_update_ha_state()
-        # except:
-        #    LOGGER.error("Failing sensor: {} ".format(self.name))
-
-    def set_attributes(self, attributes):
-        """Set the state attributes."""
-        self._attributes = attributes
-
-    @property
-    def device_state_attributes(self):
-        """Return the state attributes."""
-        return self._attributes
-
-    @property
-    def state(self):
-        """Return the state of the device."""
-        return self._state
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
-
-    def update(self):
-        LOGGER.info("update " + self.entity_id)
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        return self._attributes.get("unit_of_measurement", None)
-
-    @property
-    def device_class(self):
-        """Return the device_class."""
-        return self._attributes.get("device_class", None)
-
-    @property
-    def state_class(self):
-        """Return the unit of measurement."""
-        return self._attributes.get("state_class", None)
-
-
 class SonnenBatterieCoordinator(DataUpdateCoordinator):
     """My custom coordinator."""
 
     def __init__(
         self,
-        hass,
-        sb_inst,
+        hass: HomeAssistant,
+        sb_inst: sonnenbatterie,
         async_add_entities,
-        update_interval_seconds,
+        update_interval_seconds: int,
         ip_address,
         debug_mode,
         device_id,
@@ -174,7 +50,7 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             # Name of the data. For logging purposes.
-            name="SonnenBatterieCoordinator",
+            name=f"sonnenbatterie-{device_id}",
             # Polling interval. Will only be polled if there are subscribers.
             update_interval=timedelta(seconds=update_interval_seconds),
         )
@@ -204,7 +80,25 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
         self.allSensorsPrefix = ""
         self.deviceName = "to be set"
 
-    async def update_data(self):
+    @property
+    def device_info(self) -> DeviceInfo:
+        system_data = self.latestData["system_data"]
+
+        return DeviceInfo(
+            identifiers={(DOMAIN, self.device_id)},
+            configuration_url=f"http://{self.ip_address}/",
+            manufacturer="Sonnen",
+            model=system_data.get("ERP_ArticleName", "unknown"),
+            name=f"{DOMAIN}_{system_data.get('DE_Ticket_Number', 'unknown')}",
+            sw_version=system_data.get("software_version", "unknown"),
+        )
+
+    async def _async_update_data(self):
+        """Fetch data from API endpoint.
+
+        This is the place to pre-process the data to lookup tables
+        so entities can quickly look up their data.
+        """
         try:  ##ignore errors here, may be transient
             self.latestData["battery"] = await self.hass.async_add_executor_job(
                 self.sbInst.get_battery
@@ -231,25 +125,15 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
         if self.debug:
             self.send_all_data_to_log()
 
-    async def _async_update_data(self):
-        """Fetch data from API endpoint.
-
-        This is the place to pre-process the data to lookup tables
-        so entities can quickly look up their data.
-        """
-        await self.update_data()
         self.parse()
 
         # Create/Update the Main Sensor, named after the battery serial
         system_data = self.latestData["system_data"]
-        device_info = generate_device_info(self.device_id, system_data, self.ip_address)
         serial = system_data["DE_Ticket_Number"]
         if self.sensor is None:
             self.sensor = SonnenBatterieSensor(
-                entity_id="sensor.{0}_{1}".format(DOMAIN, serial),
-                device_info=device_info,
                 coordinator=self,
-                name=serial,
+                entity_id=f"sensor.{DOMAIN}_{serial}",
             )
             self.async_add_entities([self.sensor])
 
@@ -412,15 +296,9 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
             sensor = self.meterSensors[entity_id]
             sensor.set_state(value)
         else:
-            device_info = generate_device_info(
-                self.device_id, self.latestData["system_data"], self.ip_address
-            )
-
             sensor = SonnenBatterieSensor(
-                entity_id=entity_id,
-                device_info=device_info,
                 coordinator=self,
-                name=friendly_name,
+                entity_id=entity_id,
             )
             sensor.set_attributes(
                 {
@@ -565,3 +443,122 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
             LOGGER.warning("Battery:")
             LOGGER.warning(self.latestData["battery"])
             self.fullLogsAlreadySent = True
+
+
+
+async def async_unload_entry(hass, entry):
+    """Unload a config entry."""
+    ## we dont have anything special going on.. unload should just work, right?
+    ##bridge = hass.data[DOMAIN].pop(entry.data['host'])
+    return
+
+
+async def async_setup_entry(hass, config_entry, async_add_entities):
+    """Set up the sensor platform."""
+    LOGGER.info("SETUP_ENTRY")
+    # await async_setup_reload_service(hass, DOMAIN, PLATFORMS)
+    username = config_entry.data.get(CONF_USERNAME)
+    password = config_entry.data.get(CONF_PASSWORD)
+    ip_address = config_entry.data.get(CONF_IP_ADDRESS)
+    update_interval_seconds = config_entry.options.get(CONF_SCAN_INTERVAL)
+    debug_mode = config_entry.options.get(ATTR_SONNEN_DEBUG)
+
+    def _internal_setup(_username, _password, _ip_address):
+        return sonnenbatterie(_username, _password, _ip_address)
+
+    sonnenInst = await hass.async_add_executor_job(
+        _internal_setup, username, password, ip_address
+    )
+    update_interval_seconds = update_interval_seconds or 1
+    LOGGER.info("{0} - UPDATEINTERVAL: {1}".format(DOMAIN, update_interval_seconds))
+
+    """ The Coordinator is called from HA for updates from API """
+    coordinator = SonnenBatterieCoordinator(
+        hass,
+        sonnenInst,
+        async_add_entities,
+        update_interval_seconds,
+        ip_address,
+        debug_mode,
+        config_entry.entry_id,
+    )
+
+    await coordinator.async_config_entry_first_refresh()
+
+    LOGGER.info("Init done")
+    return True
+
+
+class SonnenBatterieSensorBase(
+    CoordinatorEntity[SonnenBatterieCoordinator], SensorEntity
+):
+    _attr_should_poll = False
+
+    def __init__(self, coordinator: SonnenBatterieCoordinator, entity_id: str) -> None:
+        super().__init__(coordinator)
+        self._entity_id = entity_id
+        self._attr_unique_id = entity_id
+        self._attr_device_info = coordinator.device_info
+
+
+class SonnenBatterieSensor(SonnenBatterieSensorBase):
+    """Represent an Sonnen sensor."""
+
+    _attr_icon = "mdi:thermometer"
+
+    def __init__(self, coordinator: SonnenBatterieCoordinator, entity_id: str) -> None:
+        super().__init__(coordinator, entity_id)
+
+        self._state = None
+        self.coordinator = coordinator
+        self.entity_id = entity_id
+
+        # LOGGER.info("Create Sensor {0}".format(entity_id))
+
+    def set_state(self, state):
+        """Set the state."""
+        if self._state == state:
+            return
+        self._state = state
+        if self.hass is None:
+            # LOGGER.warning("hass not set, sensor: {} ".format(self.name))
+            return
+        self.schedule_update_ha_state()
+        # try:
+        # self.schedule_update_ha_state()
+        # except:
+        #    LOGGER.error("Failing sensor: {} ".format(self.name))
+
+    def set_attributes(self, attributes):
+        """Set the state attributes."""
+        self._attributes = attributes
+
+    @property
+    def device_state_attributes(self):
+        """Return the state attributes."""
+        return self._attributes
+
+    @property
+    def state(self):
+        """Return the state of the device."""
+        return self._state
+
+    def update(self):
+        LOGGER.info("update " + self.entity_id)
+
+    @property
+    def unit_of_measurement(self):
+        """Return the unit of measurement."""
+        return self._attributes.get("unit_of_measurement", None)
+
+    @property
+    def device_class(self):
+        """Return the device_class."""
+        return self._attributes.get("device_class", None)
+
+    @property
+    def state_class(self):
+        """Return the unit of measurement."""
+        return self._attributes.get("state_class", None)
+
+
