@@ -17,7 +17,11 @@ from sonnenbatterie import sonnenbatterie
 
 # pylint: enable=no-name-in-module
 
-from .sensor_list import SonnenbatterieSensorEntityDescription, SENSORS
+from .sensor_list import (
+    SonnenbatterieSensorEntityDescription,
+    SENSORS,
+    generate_powermeter_sensors,
+)
 
 from .const import (
     CONF_PASSWORD,
@@ -73,6 +77,11 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         if description.exists_fn(coordinator=coordinator)
     )
 
+    async_add_entities(
+        SonnenbatterieSensor(coordinator=coordinator, entity_description=description)
+        for description
+        in generate_powermeter_sensors(_coordinator=coordinator))
+
     LOGGER.info("Init done")
     return True
 
@@ -92,6 +101,7 @@ class SonnenbatterieSensor(CoordinatorEntity[SonnenBatterieCoordinator], SensorE
         self.coordinator = coordinator
         self.entity_description = entity_description
         self._attr_device_info = coordinator.device_info
+        self._attr_translation_key = tkey if (tkey := entity_description.translation_key) else entity_description.key
 
     @property
     def unique_id(self) -> str:

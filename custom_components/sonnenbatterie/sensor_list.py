@@ -17,6 +17,61 @@ class SonnenbatterieSensorEntityDescription(SensorEntityDescription):
     value_fn: Callable[[SonnenBatterieCoordinator], StateType]
 
 
+def generate_powermeter_sensors(_coordinator):
+    powermeter_sensors: list[SonnenbatterieSensorEntityDescription] = []
+
+    generate_sensors_for = {
+        "a_l1",
+        "a_l2",
+        "a_l3",
+        "v_l1_l2",
+        "v_l1_n",
+        "v_l2_l3",
+        "v_l2_n",
+        "v_l3_l1",
+        "v_l3_n",
+        "w_l1",
+        "w_l2",
+        "w_l3",
+        "w_total",
+    }
+
+    """powermeter values"""
+    for index, meter in enumerate(_coordinator.latestData["powermeter"]):
+        sensor_prefix_key = (
+            f"meter_{meter['direction']}_{meter['deviceid']}_{meter['channel']}".lower()
+        )
+
+        for sensor_meter in generate_sensors_for:
+            sensor_key = f"{sensor_prefix_key}_{sensor_meter}"
+            sensor_name = f"meter {meter['direction']} {sensor_meter}"
+            unit = (sensor_meter[0] + "").upper()
+            match unit:
+                case "V":
+                    device_class = SensorDeviceClass.VOLTAGE
+                case "A":
+                    device_class = SensorDeviceClass.CURRENT
+                case "W":
+                    device_class = SensorDeviceClass.POWER
+                case _:
+                    device_class = None
+            powermeter_sensors.append(
+                SonnenbatterieSensorEntityDescription(
+                    key=sensor_key,
+                    name=sensor_name,
+                    state_class=SensorStateClass.MEASUREMENT,
+                    native_unit_of_measurement=unit,
+                    device_class=device_class,
+                    suggested_display_precision=2,  # FIXME not working
+                    value_fn=lambda coordinator, _index=index, _sensor_meter=sensor_meter: round(
+                        coordinator.latestData["powermeter"][_index][_sensor_meter], 2
+                    ),
+                    entity_registry_enabled_default=False,
+                )
+            )
+    return powermeter_sensors
+
+
 SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     #####################
     ### basic sensors ###
@@ -24,7 +79,6 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     # consumption
     SonnenbatterieSensorEntityDescription(
         key="status_consumption_current",
-        translation_key="status_consumption_current",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="W",
         device_class=SensorDeviceClass.POWER,
@@ -35,7 +89,6 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     ),
     SonnenbatterieSensorEntityDescription(
         key="status_consumption_avg",
-        translation_key="status_consumption_avg",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="W",
         device_class=SensorDeviceClass.POWER,
@@ -52,7 +105,6 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     # production
     SonnenbatterieSensorEntityDescription(
         key="status_production_w",
-        translation_key="status_production_w",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="W",
         device_class=SensorDeviceClass.POWER,
@@ -70,7 +122,6 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     # grid
     SonnenbatterieSensorEntityDescription(
         key="status_grid_inout",
-        translation_key="status_grid_inout",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="W",
         device_class=SensorDeviceClass.POWER,
@@ -81,7 +132,6 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     ),
     SonnenbatterieSensorEntityDescription(
         key="status_grid_in",
-        translation_key="status_grid_in",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="W",
         device_class=SensorDeviceClass.POWER,
@@ -97,7 +147,6 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     ),
     SonnenbatterieSensorEntityDescription(
         key="status_grid_out",
-        translation_key="status_grid_out",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="W",
         device_class=SensorDeviceClass.POWER,
@@ -115,7 +164,6 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     # battery
     SonnenbatterieSensorEntityDescription(
         key="status_battery_inout",
-        translation_key="status_battery_inout",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="W",
         device_class=SensorDeviceClass.POWER,
@@ -126,7 +174,6 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     ),
     SonnenbatterieSensorEntityDescription(
         key="status_battery_in",
-        translation_key="status_battery_in",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="W",
         device_class=SensorDeviceClass.POWER,
@@ -142,7 +189,6 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     ),
     SonnenbatterieSensorEntityDescription(
         key="status_battery_out",
-        translation_key="status_battery_out",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="W",
         device_class=SensorDeviceClass.POWER,
@@ -158,7 +204,6 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     ),
     SonnenbatterieSensorEntityDescription(
         key="status_battery_percentage_real",
-        translation_key="status_battery_percentage_real",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="%",
         device_class=SensorDeviceClass.BATTERY,
@@ -168,7 +213,6 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     ),
     SonnenbatterieSensorEntityDescription(
         key="status_battery_percentage_user",
-        translation_key="status_battery_percentage_user",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="%",
         device_class=SensorDeviceClass.BATTERY,
@@ -179,7 +223,6 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     # system
     SonnenbatterieSensorEntityDescription(
         key="status_system_status",
-        translation_key="status_system_status",
         device_class=SensorDeviceClass.ENUM,
         # TODO if known, the possible states should be added (e.g. options=["OnGrid", "AnotherState"],).
         #       However, if defined, it will throw an error if the current state is not in the list
@@ -193,7 +236,6 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     ),
     SonnenbatterieSensorEntityDescription(
         key="status_operating_mode",
-        translation_key="status_operating_mode",
         options=["1", "2", "6", "10"],
         device_class=SensorDeviceClass.ENUM,
         value_fn=lambda coordinator: coordinator.latestData["status"]["OperatingMode"],

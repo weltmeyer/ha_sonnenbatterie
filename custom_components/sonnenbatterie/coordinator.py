@@ -183,20 +183,6 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
     #                     )
     #                     return
     #
-    #             # when we get here 'lookup' already is the value we're looking for
-    #             # first, calculate the actual value
-    #             if "convert" in entities:
-    #                 try:
-    #                     real_val = entities["convert"](lookup)
-    #                 except:
-    #                     LOGGER.critical(
-    #                         "Wrong conversion info for '{}' in {} -> sending raw value".format(
-    #                             key, "/".join(parents)
-    #                         )
-    #                     )
-    #                     real_val = lookup
-    #             else:
-    #                 real_val = lookup
     #
     #             self._add_or_update_entity(
     #                 "{}{}".format(self.allSensorsPrefix, entities["sensor"]),
@@ -297,44 +283,7 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
     #         SensorDeviceClass.ENERGY,
     #     )
     #
-    #     """powermeter values"""
-    #     for meter in self.latestData["powermeter"]:
-    #         sensor_name_prefix = "{}meter_{}_{}_{}".format(
-    #             self.allSensorsPrefix,
-    #             meter["direction"],
-    #             meter["deviceid"],
-    #             meter["channel"],
-    #         )
-    #         sensor_name_prefix = sensor_name_prefix.lower()
-    #         generate_sensors_for = {
-    #             "a_l1",
-    #             "a_l2",
-    #             "a_l3",
-    #             "v_l1_l2",
-    #             "v_l1_n",
-    #             "v_l2_l3",
-    #             "v_l2_n",
-    #             "v_l3_l1",
-    #             "v_l3_n",
-    #             "w_l1",
-    #             "w_l2",
-    #             "w_l3",
-    #             "w_total",
-    #         }
-    #
-    #         for sensor_meter in generate_sensors_for:
-    #             sensor_name = "{}_{}".format(sensor_name_prefix, sensor_meter)
-    #             val = round(meter[sensor_meter], 2)
-    #             unit_name = (sensor_meter[0] + "").upper()
-    #             device_class = SensorDeviceClass.POWER
-    #             if unit_name == "V":
-    #                 device_class = SensorDeviceClass.VOLTAGE
-    #             elif unit_name == "A":
-    #                 device_class = SensorDeviceClass.CURRENT
-    #             friendly_name = "{0} {1}".format(meter["direction"], sensor_meter)
-    #             self._add_or_update_entity(
-    #                 sensor_name, friendly_name, val, unit_name, device_class
-    #             )
+
 
     def send_all_data_to_log(self):
         """
@@ -342,16 +291,10 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
         variable we're looking for if it's not where we expect it to be
         """
         if not self.fullLogsAlreadySent:
-            LOGGER.warning("Powermeter data:")
-            LOGGER.warning(self.latestData["powermeter"])
-            LOGGER.warning("Battery system data:")
-            LOGGER.warning(self.latestData["battery_system"])
-            LOGGER.warning("Inverter:")
-            LOGGER.warning(self.latestData["inverter"])
-            LOGGER.warning("System data:")
-            LOGGER.warning(self.latestData["system_data"])
-            LOGGER.warning("Status:")
-            LOGGER.warning(self.latestData["status"])
-            LOGGER.warning("Battery:")
-            LOGGER.warning(self.latestData["battery"])
+            LOGGER.warning(f"Powermeter data:\n{self.latestData['powermeter']}")
+            LOGGER.warning(f"Battery system data:\n{self.latestData['battery_system']}")
+            LOGGER.warning(f"Inverted:\n{self.latestData['inverter']}")
+            LOGGER.warning(f"System data:\n{self.latestData['system_data']}")
+            LOGGER.warning(f"Status:\n{self.latestData['status']}")
+            LOGGER.warning(f"Battery:\n{self.latestData['battery']}")
             self.fullLogsAlreadySent = True
