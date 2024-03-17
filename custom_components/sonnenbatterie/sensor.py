@@ -40,16 +40,106 @@ class SonnenbatterieSensorEntityDescription(SensorEntityDescription):
 
 
 SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
+    # TODO use translations instead of hard-coded name
+    # translation_key="total_cleaned_area",
+    # status
     SonnenbatterieSensorEntityDescription(
-        key="status_consumption_w",
-        # translation_key="total_cleaned_area",  # TODO use translations instead of hard-coded name
-        name="Current grid consumption",
+        key="status_consumption_avg",
+        translation_key="status_consumption_avg",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="W",
+        device_class=SensorDeviceClass.POWER,
+        suggested_display_precision=0,
+        value_fn=lambda coordinator: coordinator.latestData["status"][
+            "Consumption_Avg"
+        ],
+        exists_fn=lambda coordinator: bool(
+            coordinator.latestData["status"]["Consumption_Avg"]
+        ),
+        entity_registry_enabled_default=False,
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="status_consumption_current",
+        translation_key="status_consumption_current",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="W",
         device_class=SensorDeviceClass.POWER,
         value_fn=lambda coordinator: coordinator.latestData["status"]["Consumption_W"],
         exists_fn=lambda coordinator: bool(
             coordinator.latestData["status"]["Consumption_W"]
+        ),
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="status_production_w",
+        translation_key="status_production_w",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="W",
+        device_class=SensorDeviceClass.POWER,
+        value_fn=lambda coordinator: coordinator.latestData["status"]["Production_W"],
+        exists_fn=lambda coordinator: bool(
+            coordinator.latestData["status"]["Production_W"]
+        ),
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="status_grid_inout",
+        translation_key="status_grid_inout",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="W",
+        device_class=SensorDeviceClass.POWER,
+        value_fn=lambda coordinator: coordinator.latestData["status"]["GridFeedIn_W"],
+        exists_fn=lambda coordinator: bool(
+            coordinator.latestData["status"]["GridFeedIn_W"]
+        ),
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="status_battery_inout",
+        translation_key="status_battery_inout",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="W",
+        device_class=SensorDeviceClass.POWER,
+        value_fn=lambda coordinator: coordinator.latestData["status"]["Pac_total_W"],
+        exists_fn=lambda coordinator: bool(
+            coordinator.latestData["status"]["Pac_total_W"]
+        ),
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="status_battery_percentage_real",
+        translation_key="status_battery_percentage_real",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="%",
+        device_class=SensorDeviceClass.BATTERY,
+        value_fn=lambda coordinator: coordinator.latestData["status"]["RSOC"],
+        exists_fn=lambda coordinator: bool(coordinator.latestData["status"]["RSOC"]),
+        entity_registry_enabled_default=False,
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="status_battery_percentage_user",
+        translation_key="status_battery_percentage_user",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="%",
+        device_class=SensorDeviceClass.BATTERY,
+        value_fn=lambda coordinator: coordinator.latestData["status"]["USOC"],
+        exists_fn=lambda coordinator: bool(coordinator.latestData["status"]["USOC"]),
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="status_system_status",
+        translation_key="status_system_status",
+        device_class=SensorDeviceClass.ENUM,
+        # TODO if known, possible states should be added (e.g. options=["OnGrid", "AnotherState"],).
+        #       However, if defined, it will throw an error if the current state is not in the list
+        value_fn=lambda coordinator: coordinator.latestData["status"]["SystemStatus"],
+        exists_fn=lambda coordinator: bool(
+            coordinator.latestData["status"]["SystemStatus"]
+        ),
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="status_operating_mode",
+        translation_key="status_operating_mode",
+        options=["1", "2", "6", "10"],
+        device_class=SensorDeviceClass.ENUM,
+        value_fn=lambda coordinator: coordinator.latestData["status"]["OperatingMode"],
+        exists_fn=lambda coordinator: bool(
+            coordinator.latestData["status"]["OperatingMode"]
         ),
     ),
 )
@@ -105,6 +195,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
 class SonnenbatterieSensor(CoordinatorEntity[SonnenBatterieCoordinator], SensorEntity):
     _attr_should_poll = False
+    _attr_has_entity_name = True
+    _attr_suggested_display_precision = 0
     entity_description: SonnenbatterieSensorEntityDescription
 
     def __init__(
@@ -116,16 +208,12 @@ class SonnenbatterieSensor(CoordinatorEntity[SonnenBatterieCoordinator], SensorE
         self.coordinator = coordinator
         self.entity_description = entity_description
         self._attr_device_info = coordinator.device_info
-        # FIXME find a way to automatically prefix name with device name
-        self._attr_name = f"{DOMAIN}_{self.coordinator.serial} {self.entity_description.name}"
 
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        # return f"{self.coordinator.device_id}-{self.entity_description.key}"  # FIXME should be converted to this, but HA will create new entities after entity change
-        return (
-            f"sensor.{DOMAIN}_{self.coordinator.serial}_{self.entity_description.key}"
-        )
+        # return f"{self.coordinator.device_id}-{self.entity_description.key}"
+        return f"{self.coordinator.serial}_{self.entity_description.key}"
 
     @property
     def native_value(self) -> StateType:

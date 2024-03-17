@@ -12,22 +12,63 @@
             "user": {
                 "data": {
                     "password": "Password",
-                    "username": "Username(user/installer)",
+                    "username": "User",
                     "ip_address": "IP-Address",
-                    "scan_interval": "Updateinterval(seconds)"
+                    "scan_interval": "Update interval (seconds)"
                 },
-                "title": "Enter your Sonnenbatterie-login information"
+                "title": "Enter your Sonnenbatterie-login information",
+                "description": "Normally you find your password on the side of your sonnenbatterie near the main switch."
             }
 
         },
         "title": "Sonnenbatterie"
     },
-    "options":{
-        "step":{
-            "init":{
-                "data":{
-                    "scan_interval": "Updateinterval(seconds)",
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "scan_interval": "Update interval (seconds)",
                     "sonnenbatterie_debug": "Debug mode (more log entries)"
+                }
+            }
+        }
+    },
+    "entity": {
+        "sensor": {
+            "status_consumption_avg": {
+                "name": "Average consumption"
+            },
+            "status_consumption_current": {
+                "name": "Current consumption"
+            },
+            "status_production_w": {
+                "name": "Current production"
+            },
+            "status_grid_inout": {
+                "name": "Grid in/out power"
+            },
+            "status_battery_inout": {
+                "name": "Battery in/out power"
+            },
+            "status_battery_percentage_real": {
+                "name": "Battery percentage (real)"
+            },
+            "status_battery_percentage_user": {
+                "name": "Battery percentage (user)"
+            },
+            "status_system_status": {
+                "name": "System Status",
+                "state": {
+                    "OnGrid": "On Grid"
+                }
+            },
+            "status_operating_mode": {
+                "name": "Operating Mode",
+                "state": {
+                    "1": "Manual",
+                    "2": "Automatic",
+                    "6": "Extension module",
+                    "10": "Time of Use"
                 }
             }
         }

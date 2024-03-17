@@ -12,22 +12,63 @@
             "user": {
                 "data": {
                     "password": "Passwort",
-                    "username": "Nutzername(user/installer)",
+                    "username": "Benutzer",
                     "ip_address": "IP-Adresse",
-                    "scan_interval": "Aktualisierungsinterval(Sekunden)"
+                    "scan_interval": "Aktualisierungsinterval (Sekunden)"
                 },
-                "title": "Gib deine Sonnenbatterie-Anmeldeinformationen ein"
+                "title": "Gib deine Sonnenbatterie-Anmeldeinformationen ein",
+                "description": "Dein Passwort findest du normalerweise an der Seite deiner Sonnenbatterie in der Nähe des Hauptschalters."
             }
 
         },
         "title": "Sonnenbatterie"
     },
-    "options":{
+    "options": {
         "step":{
             "init":{
                 "data":{
-                    "scan_interval": "Aktualisierungsinterval(Sekunden)",
+                    "scan_interval": "Aktualisierungsinterval (Sekunden)",
                     "sonnenbatterie_debug": "Debug-Modus (mehr Logs)"
+                }
+            }
+        }
+    },
+    "entity": {
+        "sensor": {
+            "status_consumption_avg": {
+                "name": "Durchschnittlicher Verbrauch"
+            },
+            "status_consumption_current": {
+                "name": "Aktueller Verbrauch"
+            },
+            "status_production_w": {
+                "name": "Aktuelle Produktion"
+            },
+            "status_grid_inout": {
+                "name": "Netz import/export"
+            },
+            "status_battery_inout": {
+                "name": "Akku aufladen/entladen"
+            },
+            "status_battery_percentage_real": {
+                "name": "Akku Ladestand (echt)"
+            },
+            "status_battery_percentage_user": {
+                "name": "Akku Ladestand (Benutzer)"
+            },
+            "status_system_status": {
+                "name": "Systemstatus",
+                "state": {
+                    "OnGrid": "Am Netz"
+                }
+            },
+            "status_operating_mode": {
+                "name": "Betriebsmodus",
+                "state": {
+                    "1": "Manuell",
+                    "2": "Automatisch",
+                    "6": "Erweiterungsmodul",
+                    "10": "Zeitgesteuert"
                 }
             }
         }

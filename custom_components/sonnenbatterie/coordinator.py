@@ -76,7 +76,7 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
             configuration_url=f"http://{self.ip_address}/",
             manufacturer="Sonnen",
             model=system_data.get("ERP_ArticleName", "unknown"),
-            name=f"{DOMAIN}_{system_data.get('DE_Ticket_Number', 'unknown')}",
+            name=f"{DOMAIN} {system_data.get('DE_Ticket_Number', 'unknown')}",
             sw_version=system_data.get("software_version", "unknown"),
         )
 

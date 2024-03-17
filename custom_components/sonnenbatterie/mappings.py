@@ -165,68 +165,6 @@ SBmap = {
             },
         },
     },
-    "status": {
-        "Consumption_Avg": {
-            "sensor": "consumption_avg",
-            "friendly_name": "Average grid consumption",
-            "unit": "W",
-            "class": SensorDeviceClass.POWER,
-        },
-        "Consumption_W": {
-            "sensor": "consumption_w",
-            "friendly_name": "Current grid consumption",
-            "unit": "W",
-            "class": SensorDeviceClass.POWER,
-        },
-        "GridFeedIn_W": {
-            "sensor": "state_grid_inout",
-            "friendly_name": "Grid in/out power",
-            "unit": "W",
-            "class": SensorDeviceClass.POWER,
-            "inout": True,
-        },
-        "Production_W": {
-            "sensor": "production_w",
-            "friendly_name": "Current production",
-            "unit": "W",
-            "class": SensorDeviceClass.POWER,
-            "inout": False,
-        },
-        "Pac_total_W": {
-            "sensor": "state_battery_inout",
-            "friendly_name": "Battery in/out power",
-            "unit": "W",
-            "class": SensorDeviceClass.POWER,
-            "inout": True,
-        },
-        "RSOC": {
-            "sensor": "state_charge_real",
-            "friendly_name": "Charge percentage (real)",
-            "unit": "%",
-            "class": SensorDeviceClass.BATTERY,
-        },
-        "USOC": {
-            "sensor": "state_charge_user",
-            "friendly_name": "Charge percentage (user)",
-            "unit": "%",
-            "class": SensorDeviceClass.BATTERY,
-        },
-        "SystemStatus": {
-            "sensor": "systemstatus",
-            "friendly_name": "System Status",
-            "unit": None,
-            "class": None,
-            "state_class": None,
-        },
-        "OperatingMode": {
-            "sensor": "operating_mode",
-            "friendly_name": "Operating Mode",
-            "unit": None,
-            "class": None,
-            "convert": int,
-            "textmap": "{1:'Manual', 2:'Auto', 6:'Extension module', 10:'Time of Use'}",
-        },
-    },
 }
 """ Copy/Paste template ;)
         "sensor":         "",
