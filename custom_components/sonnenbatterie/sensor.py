@@ -127,7 +127,10 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.ENUM,
         # TODO if known, possible states should be added (e.g. options=["OnGrid", "AnotherState"],).
         #       However, if defined, it will throw an error if the current state is not in the list
-        value_fn=lambda coordinator: coordinator.latestData["status"]["SystemStatus"],
+        value_fn=lambda coordinator: (
+            # for some reason translation throws an error when using uppercase chars (even tough it is working)
+            coordinator.latestData["status"]["SystemStatus"].lower()
+        ),
         exists_fn=lambda coordinator: bool(
             coordinator.latestData["status"]["SystemStatus"]
         ),
@@ -186,7 +189,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     async_add_entities(
         SonnenbatterieSensor(coordinator=coordinator, entity_description=description)
         for description in SENSORS
-        # if description.exists_fn(coordinator=coordinator)
+        if description.exists_fn(coordinator=coordinator)
     )
 
     LOGGER.info("Init done")

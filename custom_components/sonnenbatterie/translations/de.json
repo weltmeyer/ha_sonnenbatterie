@@ -20,8 +20,7 @@
                 "description": "Dein Passwort findest du normalerweise an der Seite deiner Sonnenbatterie in der Nähe des Hauptschalters."
             }
 
-        },
-        "title": "Sonnenbatterie"
+        }
     },
     "options": {
         "step":{
@@ -59,7 +58,7 @@
             "status_system_status": {
                 "name": "Systemstatus",
                 "state": {
-                    "OnGrid": "Am Netz"
+                    "ongrid": "Am Netz"
                 }
             },
             "status_operating_mode": {

@@ -20,8 +20,7 @@
                 "description": "Normally you find your password on the side of your sonnenbatterie near the main switch."
             }
 
-        },
-        "title": "Sonnenbatterie"
+        }
     },
     "options": {
         "step": {
@@ -59,7 +58,7 @@
             "status_system_status": {
                 "name": "System Status",
                 "state": {
-                    "OnGrid": "On Grid"
+                    "ongrid": "On Grid"
                 }
             },
             "status_operating_mode": {
