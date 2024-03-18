@@ -1,33 +1,27 @@
-from .const import *
-from .coordinator import SonnenBatterieCoordinator
-
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
     DataUpdateCoordinator,
 )
-
 from homeassistant.components.sensor import (
     SensorEntity,
 )
 from homeassistant.helpers.typing import StateType
 
-# pylint: disable=no-name-in-module
+from .coordinator import SonnenBatterieCoordinator
 from sonnenbatterie import sonnenbatterie
-
-
-# pylint: enable=no-name-in-module
-
-from .sensor_list import (
-    SonnenbatterieSensorEntityDescription,
-    SENSORS,
-    generate_powermeter_sensors,
-)
-
 from .const import (
     CONF_PASSWORD,
     CONF_USERNAME,
     CONF_IP_ADDRESS,
     CONF_SCAN_INTERVAL,
+    DOMAIN,
+    LOGGER,
+    logging
+)
+from .sensor_list import (
+    SonnenbatterieSensorEntityDescription,
+    SENSORS,
+    generate_powermeter_sensors,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -74,7 +68,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     async_add_entities(
         SonnenbatterieSensor(coordinator=coordinator, entity_description=description)
         for description in SENSORS
-        if description.exists_fn(coordinator=coordinator)
+        if description.value_fn(coordinator=coordinator) is not None
     )
 
     async_add_entities(
