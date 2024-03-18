@@ -14,6 +14,7 @@ from .const import (
     CONF_USERNAME,
     CONF_IP_ADDRESS,
     CONF_SCAN_INTERVAL,
+    ATTR_SONNEN_DEBUG,
     DOMAIN,
     LOGGER,
     logging
