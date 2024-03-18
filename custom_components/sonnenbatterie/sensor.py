@@ -17,7 +17,7 @@ from .const import (
     ATTR_SONNEN_DEBUG,
     DOMAIN,
     LOGGER,
-    logging
+    logging,
 )
 from .sensor_list import (
     SonnenbatterieSensorEntityDescription,
@@ -74,8 +74,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
     async_add_entities(
         SonnenbatterieSensor(coordinator=coordinator, entity_description=description)
-        for description
-        in generate_powermeter_sensors(_coordinator=coordinator))
+        for description in generate_powermeter_sensors(_coordinator=coordinator)
+    )
 
     LOGGER.info("Init done")
     return True
@@ -96,7 +96,11 @@ class SonnenbatterieSensor(CoordinatorEntity[SonnenBatterieCoordinator], SensorE
         self.coordinator = coordinator
         self.entity_description = entity_description
         self._attr_device_info = coordinator.device_info
-        self._attr_translation_key = tkey if (tkey := entity_description.translation_key) else entity_description.key
+        self._attr_translation_key = (
+            tkey
+            if (tkey := entity_description.translation_key)
+            else entity_description.key
+        )
 
     @property
     def unique_id(self) -> str:

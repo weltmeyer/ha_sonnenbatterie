@@ -109,17 +109,22 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
             self.send_all_data_to_log()
 
         if self.serial == "":
-            if serial := self.latestData.get("system_data", {}).get('DE_Ticket_Number') is not None:
+            if (
+                serial := self.latestData.get("system_data", {}).get("DE_Ticket_Number")
+                is not None
+            ):
                 self.serial = serial
             else:
                 LOGGER.warning("Unable to retrieve sonnenbatterie serial number.")
                 self.serial = "UNKNOWN"
 
         """ some manually calculated values """
-        batt_module_capacity = int(self.latestData["battery_system"]["battery_system"]["system"]["storage_capacity_per_module"])
+        batt_module_capacity = int(
+            self.latestData["battery_system"]["battery_system"]["system"][
+                "storage_capacity_per_module"
+            ]
+        )
         batt_module_count = int(self.latestData["battery_system"]["modules"])
-
-
 
         if self.latestData["status"]["BatteryCharging"]:
             battery_current_state = "charging"
@@ -130,11 +135,18 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
 
         self.latestData["battery_info"] = {}
         self.latestData["battery_info"]["current_state"] = battery_current_state
-        self.latestData["battery_info"]["total_installed_capacity"] = total_installed_capacity = int(batt_module_count * batt_module_capacity)
-        self.latestData["battery_info"]["reserved_capacity"] = reserved_capacity = int(total_installed_capacity * (self.batt_reserved_factor / 100.0))
-        self.latestData["battery_info"]["remaining_capacity"] = remaining_capacity = (int(total_installed_capacity * self.latestData["status"]["RSOC"]) / 100.0)
-        self.latestData["battery_info"]["remaining_capacity_usable"] = max(0, int(remaining_capacity - reserved_capacity))
-
+        self.latestData["battery_info"][
+            "total_installed_capacity"
+        ] = total_installed_capacity = int(batt_module_count * batt_module_capacity)
+        self.latestData["battery_info"]["reserved_capacity"] = reserved_capacity = int(
+            total_installed_capacity * (self.batt_reserved_factor / 100.0)
+        )
+        self.latestData["battery_info"]["remaining_capacity"] = remaining_capacity = (
+            int(total_installed_capacity * self.latestData["status"]["RSOC"]) / 100.0
+        )
+        self.latestData["battery_info"]["remaining_capacity_usable"] = max(
+            0, int(remaining_capacity - reserved_capacity)
+        )
 
     # def parse(self):
     #     meters = self.latestData["powermeter"]
@@ -152,7 +164,6 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
     #     bat_sys_dict = flatten_obj("battery_system", "-", battery_system)
     #     attr.update(bat_sys_dict)
 
-
     # disable not existing sensors
     #                     LOGGER.warning(
     #                         "'{}' not in {} -> disabled".format(
@@ -169,7 +180,6 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
     #             self.walk_entities(entities[elem], parents, elem)
     #             # pop path from stack to prevent ever growing path array
     #             parents.remove(elem)
-
 
     def send_all_data_to_log(self):
         """

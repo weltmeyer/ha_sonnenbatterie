@@ -201,15 +201,11 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         native_unit_of_measurement="Hz",
         device_class=SensorDeviceClass.FREQUENCY,
         value_fn=lambda coordinator: (
-            coordinator.latestData.get("inverter", {})
-            .get("status", {})
-            .get("fac")
-            or
-            coordinator.latestData.get("battery_system", {})
+            coordinator.latestData.get("inverter", {}).get("status", {}).get("fac")
+            or coordinator.latestData.get("battery_system", {})
             .get("grid_information", {})
             .get("fac")
-            or
-            coordinator.latestData.get("inverter", {})
+            or coordinator.latestData.get("inverter", {})
             .get("status", {})
             .get("status", {})
             .get("fac")
