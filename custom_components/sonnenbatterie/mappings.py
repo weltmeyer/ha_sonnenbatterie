@@ -95,24 +95,6 @@ SBmap = {
     },
     "inverter": {
         "status": {
-            "status": {
-                "fac": {
-                    "sensor": "inverter_status_fac",
-                    "friendly_name": "Inverter (Status) - Net frequency",
-                    "unit": "Hz",
-                    "class": SensorDeviceClass.FREQUENCY,
-                    "aka": ["state_netfrequency"],
-                    "convert": float,
-                },
-            },
-            "fac": {
-                "sensor": "inverter_fac",
-                "friendly_name": "Inverter - Net frequency",
-                "unit": "Hz",
-                "class": SensorDeviceClass.FREQUENCY,
-                "aka": ["state_netfrequency"],
-                "convert": float,
-            },
             "ipv": {
                 "sensor": "inverter_ipv",
                 "friendly_name": "Inverter IPV - Current IPV",

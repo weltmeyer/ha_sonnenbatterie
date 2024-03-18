@@ -60,6 +60,9 @@
             "status_grid_out": {
                 "name": "Netz export"
             },
+            "status_net_frequency": {
+                "name": "Netzfrequenz"
+            },
             "status_battery_inout": {
                 "name": "Akku Lade-/Entladestrom"
             },
@@ -74,9 +77,6 @@
             },
             "status_battery_percentage_user": {
                 "name": "Akku Ladestand (Benutzer)"
-            },
-            "battery_system_frequency": {
-                "name": "Batteriesystem Frequenz"
             },
             "status_system_status": {
                 "name": "Systemstatus",

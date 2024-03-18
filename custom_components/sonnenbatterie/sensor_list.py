@@ -195,6 +195,26 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         ),
         entity_registry_enabled_default=False,
     ),
+    SonnenbatterieSensorEntityDescription(
+        key="status_net_frequency",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="Hz",
+        device_class=SensorDeviceClass.FREQUENCY,
+        value_fn=lambda coordinator: (
+            coordinator.latestData.get("inverter", {})
+            .get("status", {})
+            .get("fac")
+            or
+            coordinator.latestData.get("battery_system", {})
+            .get("grid_information", {})
+            .get("fac")
+            or
+            coordinator.latestData.get("inverter", {})
+            .get("status", {})
+            .get("status", {})
+            .get("fac")
+        ),
+    ),
     ###
     # battery
     SonnenbatterieSensorEntityDescription(
@@ -242,17 +262,6 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         native_unit_of_measurement="%",
         device_class=SensorDeviceClass.BATTERY,
         value_fn=lambda coordinator: coordinator.latestData["status"]["USOC"],
-    ),
-    SonnenbatterieSensorEntityDescription(
-        key="battery_system_frequency",
-        state_class=SensorStateClass.MEASUREMENT,
-        native_unit_of_measurement="Hz",
-        device_class=SensorDeviceClass.FREQUENCY,
-        value_fn=lambda coordinator: (
-            coordinator.latestData.get("battery_system", {})
-            .get("grid_information", {})
-            .get("fac")
-        ),
     ),
     ###
     # system

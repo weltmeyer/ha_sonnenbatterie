@@ -60,6 +60,9 @@
             "status_grid_out": {
                 "name": "Grid out power"
             },
+             "status_net_frequency": {
+                "name": "Net frequency"
+            },
             "status_battery_inout": {
                 "name": "Battery charge/discharge power"
             },
@@ -74,9 +77,6 @@
             },
             "status_battery_percentage_user": {
                 "name": "Battery percentage (user)"
-            },
-            "battery_system_frequency": {
-                "name": "Battery system - Net frequency"
             },
             "status_system_status": {
                 "name": "System Status",
