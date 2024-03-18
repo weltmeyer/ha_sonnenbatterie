@@ -5,6 +5,7 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
+from homeassistant.const import EntityCategory
 from homeassistant.helpers.typing import StateType
 from custom_components.sonnenbatterie.coordinator import SonnenBatterieCoordinator
 
@@ -62,6 +63,7 @@ def generate_powermeter_sensors(_coordinator):
                     state_class=SensorStateClass.MEASUREMENT,
                     native_unit_of_measurement=unit,
                     device_class=device_class,
+                    entity_category=EntityCategory.DIAGNOSTIC,
                     suggested_display_precision=2,  # FIXME not working
                     value_fn=lambda coordinator, _index=index, _sensor_meter=sensor_meter: round(
                         coordinator.latestData["powermeter"][_index][_sensor_meter], 2
@@ -115,8 +117,18 @@ def generate_powermeter_sensors(_coordinator):
 # self.sensor.set_attributes(self.latestData["system_data"])
 
 SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
-    #####################
-    ### basic sensors ###
+    ################################
+    ### basic sensors ("status") ###
+    ###
+    # main sensor
+    SonnenbatterieSensorEntityDescription(
+        key="status_sonnenbatterie",
+        options=["standby", "charging", "discharging"],
+        device_class=SensorDeviceClass.ENUM,
+        value_fn=lambda coordinator: coordinator.latestData["battery_info"][
+            "current_state"
+        ],
+    ),
     ###
     # consumption
     SonnenbatterieSensorEntityDescription(
@@ -231,6 +243,17 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.BATTERY,
         value_fn=lambda coordinator: coordinator.latestData["status"]["USOC"],
     ),
+    SonnenbatterieSensorEntityDescription(
+        key="battery_system_frequency",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="Hz",
+        device_class=SensorDeviceClass.FREQUENCY,
+        value_fn=lambda coordinator: (
+            coordinator.latestData.get("battery_system", {})
+            .get("grid_information", {})
+            .get("fac")
+        ),
+    ),
     ###
     # system
     SonnenbatterieSensorEntityDescription(
@@ -249,6 +272,35 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.ENUM,
         value_fn=lambda coordinator: coordinator.latestData["status"]["OperatingMode"],
     ),
+    ###########################
+    ### -- advanced sensors ###
     ###
-    ### -- advanced sensors
+    # grid
+    ###
+    # battery system
+    SonnenbatterieSensorEntityDescription(
+        key="battery_system_cycles",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda coordinator: (
+            coordinator.latestData.get("battery", {})
+            .get("measurements", {})
+            .get("battery_status", {})
+            .get("cyclecount")
+        ),
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="battery_system_health",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="%",
+        device_class=SensorDeviceClass.BATTERY,
+        icon="mdi:battery-heart-variant",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda coordinator: (
+            coordinator.latestData.get("battery", {})
+            .get("measurements", {})
+            .get("battery_status", {})
+            .get("stateofhealth")
+        ),
+    ),
 )

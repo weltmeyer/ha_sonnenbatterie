@@ -34,6 +34,14 @@
     },
     "entity": {
         "sensor": {
+            "status_sonnenbatterie": {
+                "name": "Sonnenbatterie",
+                 "state": {
+                    "standby": "Standby",
+                    "charging": "Lädt",
+                    "discharging": "Entlädt"
+                }
+            },
             "status_consumption_avg": {
                 "name": "Durchschnittlicher Verbrauch"
             },
@@ -53,7 +61,7 @@
                 "name": "Netz export"
             },
             "status_battery_inout": {
-                "name": "Akku aufladen/entladen"
+                "name": "Akku Lade-/Entladestrom"
             },
             "status_battery_in": {
                 "name": "Akku Ladestrom"
@@ -66,6 +74,9 @@
             },
             "status_battery_percentage_user": {
                 "name": "Akku Ladestand (Benutzer)"
+            },
+            "battery_system_frequency": {
+                "name": "Batteriesystem Frequenz"
             },
             "status_system_status": {
                 "name": "Systemstatus",
@@ -81,6 +92,12 @@
                     "6": "Erweiterungsmodul",
                     "10": "Zeitgesteuert"
                 }
+            },
+            "battery_system_cycles": {
+                "name": "Akku Ladezyklen"
+            },
+            "battery_system_health": {
+                "name": "Akkuzustand"
             }
         }
     }

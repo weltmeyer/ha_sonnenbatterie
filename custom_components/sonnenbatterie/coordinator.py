@@ -119,6 +119,17 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
         batt_module_capacity = int(self.latestData["battery_system"]["battery_system"]["system"]["storage_capacity_per_module"])
         batt_module_count = int(self.latestData["battery_system"]["modules"])
 
+
+
+        if self.latestData["status"]["BatteryCharging"]:
+            battery_current_state = "charging"
+        elif self.latestData["status"]["BatteryDischarging"]:
+            battery_current_state = "discharging"
+        else:
+            battery_current_state = "standby"
+
+        self.latestData["battery_info"] = {}
+        self.latestData["battery_info"]["current_state"] = battery_current_state
         self.latestData["battery_info"]["total_installed_capacity"] = total_installed_capacity = int(batt_module_count * batt_module_capacity)
         self.latestData["battery_info"]["reserved_capacity"] = reserved_capacity = int(total_installed_capacity * (self.batt_reserved_factor / 100.0))
         self.latestData["battery_info"]["remaining_capacity"] = remaining_capacity = (int(total_installed_capacity * self.latestData["status"]["RSOC"]) / 100.0)

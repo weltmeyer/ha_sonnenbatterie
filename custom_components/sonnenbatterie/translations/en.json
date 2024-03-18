@@ -34,6 +34,14 @@
     },
     "entity": {
         "sensor": {
+            "status_sonnenbatterie": {
+                "name": "Sonnenbatterie",
+                 "state": {
+                    "standby": "Standby",
+                    "charging": "Charging",
+                    "discharging": "Discharging"
+                }
+            },
             "status_consumption_avg": {
                 "name": "Average consumption"
             },
@@ -67,6 +75,9 @@
             "status_battery_percentage_user": {
                 "name": "Battery percentage (user)"
             },
+            "battery_system_frequency": {
+                "name": "Battery system - Net frequency"
+            },
             "status_system_status": {
                 "name": "System Status",
                 "state": {
@@ -81,6 +92,12 @@
                     "6": "Extension module",
                     "10": "Time of Use"
                 }
+            },
+            "battery_system_cycles": {
+                "name": "Battery cycles"
+            },
+            "battery_system_health": {
+                "name": "Battery health"
             }
         }
     }

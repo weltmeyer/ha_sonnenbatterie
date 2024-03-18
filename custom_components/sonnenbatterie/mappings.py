@@ -56,14 +56,6 @@ SBmap = {
             },
         },
         "grid_information": {
-            "fac": {
-                "sensor": "battery_system_fac",
-                "friendly_name": "Battery system - Net frequency",
-                "unit": "Hz",
-                "class": SensorDeviceClass.FREQUENCY,
-                "aka": ["state_netfrequency"],
-                "convert": float,
-            },
             "ipv": {
                 "sensor": "battery_system_ipv",
                 "friendly_name": "Battery system IPV - Current",
