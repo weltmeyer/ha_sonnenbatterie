@@ -3,7 +3,6 @@
 from .const import *
 import json
 
-# from homeassistant.helpers import config_validation as cv
 # from homeassistant.helpers.entity import Entity
 from homeassistant.const import (
     CONF_PASSWORD,
