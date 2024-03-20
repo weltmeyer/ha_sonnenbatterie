@@ -65,8 +65,14 @@ def generate_powermeter_sensors(_coordinator):
                     device_class=device_class,
                     entity_category=EntityCategory.DIAGNOSTIC,
                     suggested_display_precision=2,
-                    value_fn=lambda coordinator, _index=index, _sensor_meter=sensor_meter: round(
-                        coordinator.latestData["powermeter"][_index][_sensor_meter], 2
+                    value_fn=lambda coordinator, _index=index, _sensor_meter=sensor_meter: (
+                        round(val, 2)
+                        if (
+                            val := coordinator.latestData.get("powermeter", {})
+                            .get(_index, {})
+                            .get(_sensor_meter)
+                        )
+                        else None
                     ),
                     entity_registry_enabled_default=False,
                 )
@@ -83,9 +89,9 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         key="status_sonnenbatterie",
         options=["standby", "charging", "discharging"],
         device_class=SensorDeviceClass.ENUM,
-        value_fn=lambda coordinator: coordinator.latestData["battery_info"][
+        value_fn=lambda coordinator: coordinator.latestData.get("battery_info", {}).get(
             "current_state"
-        ],
+        ),
     ),
     ###
     # consumption
@@ -95,7 +101,9 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="W",
         device_class=SensorDeviceClass.POWER,
-        value_fn=lambda coordinator: coordinator.latestData["status"]["Consumption_W"],
+        value_fn=lambda coordinator: coordinator.latestData.get("status", {}).get(
+            "Consumption_W"
+        ),
     ),
     SonnenbatterieSensorEntityDescription(
         key="status_consumption_avg",
@@ -103,9 +111,9 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="W",
         device_class=SensorDeviceClass.POWER,
-        value_fn=lambda coordinator: coordinator.latestData["status"][
+        value_fn=lambda coordinator: coordinator.latestData.get("status", {}).get(
             "Consumption_Avg"
-        ],
+        ),
         entity_registry_enabled_default=False,
     ),
     ###
@@ -119,7 +127,12 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         value_fn=lambda coordinator: (
             # Prevent having small negative values in production at night
             0
-            if (production := coordinator.latestData["status"]["Production_W"]) < 0
+            if (
+                production := coordinator.latestData.get("status").get(
+                    "Production_W", 0
+                )
+            )
+            < 0
             else production
         ),
     ),
@@ -130,7 +143,9 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="W",
         device_class=SensorDeviceClass.POWER,
-        value_fn=lambda coordinator: coordinator.latestData["status"]["GridFeedIn_W"],
+        value_fn=lambda coordinator: coordinator.latestData.get("status", {}).get(
+            "GridFeedIn_W"
+        ),
     ),
     SonnenbatterieSensorEntityDescription(
         key="status_grid_in",
@@ -139,7 +154,10 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         value_fn=lambda coordinator: (
             0
-            if (power := coordinator.latestData["status"]["GridFeedIn_W"]) >= 0
+            if (
+                power := coordinator.latestData.get("status", {}).get("GridFeedIn_W", 0)
+            )
+            >= 0
             else abs(power)
         ),
         entity_registry_enabled_default=False,
@@ -151,7 +169,10 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         value_fn=lambda coordinator: (
             0
-            if (power := coordinator.latestData["status"]["GridFeedIn_W"]) <= 0
+            if (
+                power := coordinator.latestData.get("status", {}).get("GridFeedIn_W", 0)
+            )
+            <= 0
             else power
         ),
         entity_registry_enabled_default=False,
@@ -180,7 +201,9 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="W",
         device_class=SensorDeviceClass.POWER,
-        value_fn=lambda coordinator: coordinator.latestData["status"]["Pac_total_W"],
+        value_fn=lambda coordinator: coordinator.latestData.get("status", {}).get(
+            "Pac_total_W"
+        ),
     ),
     SonnenbatterieSensorEntityDescription(
         key="status_battery_in",
@@ -189,7 +212,8 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         value_fn=lambda coordinator: (
             0
-            if (power := coordinator.latestData["status"]["Pac_total_W"]) >= 0
+            if (power := coordinator.latestData.get("status", {}).get("Pac_total_W", 0))
+            >= 0
             else abs(power)
         ),
         entity_registry_enabled_default=False,
@@ -201,7 +225,8 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         value_fn=lambda coordinator: (
             0
-            if (power := coordinator.latestData["status"]["Pac_total_W"]) <= 0
+            if (power := coordinator.latestData.get("status", {}).get("Pac_total_W", 0))
+            <= 0
             else power
         ),
         entity_registry_enabled_default=False,
@@ -211,7 +236,9 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="%",
         device_class=SensorDeviceClass.BATTERY,
-        value_fn=lambda coordinator: coordinator.latestData["status"]["RSOC"],
+        value_fn=lambda coordinator: coordinator.latestData.get("status", {}).get(
+            "RSOC"
+        ),
         entity_registry_enabled_default=False,
     ),
     SonnenbatterieSensorEntityDescription(
@@ -219,7 +246,9 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="%",
         device_class=SensorDeviceClass.BATTERY,
-        value_fn=lambda coordinator: coordinator.latestData["status"]["USOC"],
+        value_fn=lambda coordinator: coordinator.latestData.get("status", {}).get(
+            "USOC"
+        ),
     ),
     ###
     # system
@@ -230,14 +259,18 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         #       However, if defined, it will throw an error if the current state is not in the list
         value_fn=lambda coordinator: (
             # for some reason translation throws an error when using uppercase chars (even tough it is working)
-            coordinator.latestData["status"]["SystemStatus"].lower()
+            val.lower()
+            if (val := coordinator.latestData.get("status", {}).get("SystemStatus"))
+            else None
         ),
     ),
     SonnenbatterieSensorEntityDescription(
         key="status_operating_mode",
         options=["1", "2", "6", "10"],
         device_class=SensorDeviceClass.ENUM,
-        value_fn=lambda coordinator: coordinator.latestData["status"]["OperatingMode"],
+        value_fn=lambda coordinator: coordinator.latestData.get("status", {}).get(
+            "OperatingMode"
+        ),
     ),
     ###########################
     ### -- advanced sensors ###
@@ -338,9 +371,9 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         native_unit_of_measurement="Wh",
         device_class=SensorDeviceClass.ENERGY_STORAGE,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda coordinator: coordinator.latestData["battery_info"][
+        value_fn=lambda coordinator: coordinator.latestData.get("battery_info").get(
             "total_installed_capacity"
-        ],
+        ),
         entity_registry_enabled_default=False,
     ),
     SonnenbatterieSensorEntityDescription(
@@ -351,8 +384,10 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.ENERGY_STORAGE,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda coordinator: (
-            coordinator.latestData["battery_info"]["total_installed_capacity"]
-            - coordinator.latestData["battery_info"]["reserved_capacity"]
+            coordinator.latestData.get("battery_info", {}).get(
+                "total_installed_capacity", 0
+            )
+            - coordinator.latestData.get("battery_info", {}).get("reserved_capacity", 0)
         ),
         entity_registry_enabled_default=False,
     ),
@@ -363,9 +398,9 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         native_unit_of_measurement="Wh",
         device_class=SensorDeviceClass.ENERGY_STORAGE,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda coordinator: coordinator.latestData["battery_info"][
+        value_fn=lambda coordinator: coordinator.latestData.get("battery_info", {}).get(
             "remaining_capacity"
-        ],
+        ),
         entity_registry_enabled_default=False,
     ),
     SonnenbatterieSensorEntityDescription(
@@ -375,9 +410,9 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         native_unit_of_measurement="Wh",
         device_class=SensorDeviceClass.ENERGY_STORAGE,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda coordinator: coordinator.latestData["battery_info"][
+        value_fn=lambda coordinator: coordinator.latestData.get("battery_info", {}).get(
             "remaining_capacity_usable"
-        ],
+        ),
         entity_registry_enabled_default=False,
     ),
     SonnenbatterieSensorEntityDescription(
@@ -387,9 +422,10 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         native_unit_of_measurement="Wh",
         device_class=SensorDeviceClass.ENERGY_STORAGE,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda coordinator: coordinator.latestData["battery_system"][
-            "battery_system"
-        ]["system"]["storage_capacity_per_module"],
+        value_fn=lambda coordinator: coordinator.latestData.get("battery_system", {})
+        .get("battery_system", {})
+        .get("system", {})
+        .get("storage_capacity_per_module"),
         entity_registry_enabled_default=False,
     ),
     SonnenbatterieSensorEntityDescription(
@@ -397,9 +433,9 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         icon="mdi:battery",
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda coordinator: coordinator.latestData["battery_system"][
-            "modules"
-        ],
+        value_fn=lambda coordinator: coordinator.latestData.get(
+            "battery_system", {}
+        ).get("modules"),
         entity_registry_enabled_default=False,
     ),
     SonnenbatterieSensorEntityDescription(
