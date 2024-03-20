@@ -98,6 +98,54 @@
             },
             "battery_system_health": {
                 "name": "Akkuzustand"
+            },
+            "battery_installed_capacity_total": {
+                "name": "Akku installierte Gesamtkapazität"
+            },
+            "battery_installed_capacity_usable": {
+                "name": "Akku installierte nutzbare Kapazität"
+            },
+            "battery_remaining_capacity_total": {
+                "name": "Akku verbleibende Gesamtkapazität"
+            },
+            "battery_remaining_capacity_usable": {
+                "name": "Akku verbleibende nutzbare Kapazität"
+            },
+            "battery_storage_capacity_per_module": {
+                "name": "Akku Kapazität pro Modul"
+            },
+            "battery_module_count": {
+                "name": "Anzahl Batteriemodule"
+            },
+            "battery_grid_ipv": {
+                "name": "Akkusystem IPV"
+            },
+            "battery_grid_ppv": {
+                "name": "Akkusystem PPV"
+            },
+            "battery_grid_upv": {
+                "name": "Akkusystem UPV"
+            },
+            "battery_grid_tmax": {
+                "name": "Akkusystem maximale Temperatur"
+            },
+            "inverter_status_ipv": {
+                "name": "Spannungswandler IPV 1"
+            },
+            "inverter_status_ipv2": {
+                "name": "Spannungswandler IPV 2"
+            },
+            "inverter_status_ppv": {
+                "name": "Spannungswandler Hybrid-Solarenergie 1"
+            },
+            "inverter_status_ppv2": {
+                "name": "Spannungswandler Hybrid-Solarenergie 2"
+            },
+            "inverter_status_upv": {
+                "name": "Spannungswandler UPV 1"
+            },
+            "inverter_status_upv2": {
+                "name": "Spannungswandler UPV 2"
             }
         }
     }

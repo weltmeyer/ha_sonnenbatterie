@@ -64,7 +64,7 @@ def generate_powermeter_sensors(_coordinator):
                     native_unit_of_measurement=unit,
                     device_class=device_class,
                     entity_category=EntityCategory.DIAGNOSTIC,
-                    suggested_display_precision=2,  # FIXME not working
+                    suggested_display_precision=2,
                     value_fn=lambda coordinator, _index=index, _sensor_meter=sensor_meter: round(
                         coordinator.latestData["powermeter"][_index][_sensor_meter], 2
                     ),
@@ -73,48 +73,6 @@ def generate_powermeter_sensors(_coordinator):
             )
     return powermeter_sensors
 
-
-# TODO add these sensors:
-# self._add_or_update_entity(
-#     "state_total_capacity_real",
-#     "Total Capacity Real",
-#     latestData["battery_info"]["total_installed_capacity"],
-#     "Wh,
-#     SensorDeviceClass.ENERGY,
-# )
-
-# self._add_or_update_entity(
-#     "state_total_capacity_usable",
-#     "Total Capacity Usable",
-#     latestData["battery_info"]["total_installed_capacity"] - latestData["battery_info"]["reserved_capacity"],
-#     "Wh",
-#     SensorDeviceClass.ENERGY,
-# )
-
-# self._add_or_update_entity(
-#     "state_remaining_capacity_real",
-#     "Remaining Capacity Real",
-#     latestData["battery_info"]["remaining_capacity"],
-#     "Wh",
-#     SensorDeviceClass.ENERGY,
-# )
-
-# self._add_or_update_entity(
-#     "state_remaining_capacity_usable",
-#     "Remaining Capacity Usable",
-#     latestData["battery_info"]["remaining_capacity_usable"],
-#     "Wh",
-#     SensorDeviceClass.ENERGY,
-# )
-
-# Main Sensor, named after the battery serial
-# States:
-# - standby (default)
-# - charging (if self.latestData["status"]["BatteryCharging"])
-# - discharging (if self.latestData["status"]["BatteryDischarging"])
-#
-# Attributes:
-# self.sensor.set_attributes(self.latestData["system_data"])
 
 SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     ################################
@@ -133,6 +91,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     # consumption
     SonnenbatterieSensorEntityDescription(
         key="status_consumption_current",
+        icon="mdi:home-lightning-bolt",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="W",
         device_class=SensorDeviceClass.POWER,
@@ -140,6 +99,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     ),
     SonnenbatterieSensorEntityDescription(
         key="status_consumption_avg",
+        icon="mdi:home-lightning-bolt",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="W",
         device_class=SensorDeviceClass.POWER,
@@ -152,6 +112,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     # production
     SonnenbatterieSensorEntityDescription(
         key="status_production_w",
+        icon="mdi:solar-power",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="W",
         device_class=SensorDeviceClass.POWER,
@@ -200,6 +161,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="Hz",
         device_class=SensorDeviceClass.FREQUENCY,
+        suggested_display_precision=2,
         value_fn=lambda coordinator: (
             coordinator.latestData.get("inverter", {}).get("status", {}).get("fac")
             or coordinator.latestData.get("battery_system", {})
@@ -281,10 +243,71 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     ### -- advanced sensors ###
     ###
     # grid
+    SonnenbatterieSensorEntityDescription(
+        key="inverter_status_ipv",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="A",
+        device_class=SensorDeviceClass.CURRENT,
+        value_fn=lambda coordinator: coordinator.latestData.get("inverter", {})
+        .get("status", {})
+        .get("ipv"),
+        entity_registry_enabled_default=False,
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="inverter_status_ipv2",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="A",
+        device_class=SensorDeviceClass.CURRENT,
+        value_fn=lambda coordinator: coordinator.latestData.get("inverter", {})
+        .get("status", {})
+        .get("ipv2"),
+        entity_registry_enabled_default=False,
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="inverter_status_ppv",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="W",
+        device_class=SensorDeviceClass.POWER,
+        value_fn=lambda coordinator: coordinator.latestData.get("inverter", {})
+        .get("status", {})
+        .get("ppv"),
+        entity_registry_enabled_default=False,
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="inverter_status_ppv2",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="W",
+        device_class=SensorDeviceClass.POWER,
+        value_fn=lambda coordinator: coordinator.latestData.get("inverter", {})
+        .get("status", {})
+        .get("ppv2"),
+        entity_registry_enabled_default=False,
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="inverter_status_upv",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="V",
+        device_class=SensorDeviceClass.VOLTAGE,
+        value_fn=lambda coordinator: coordinator.latestData.get("inverter", {})
+        .get("status", {})
+        .get("upv"),
+        entity_registry_enabled_default=False,
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="inverter_status_upv2",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="V",
+        device_class=SensorDeviceClass.VOLTAGE,
+        value_fn=lambda coordinator: coordinator.latestData.get("inverter", {})
+        .get("status", {})
+        .get("upv2"),
+        entity_registry_enabled_default=False,
+    ),
     ###
     # battery system
     SonnenbatterieSensorEntityDescription(
         key="battery_system_cycles",
+        icon="mdi:battery-sync",
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda coordinator: (
@@ -296,10 +319,10 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     ),
     SonnenbatterieSensorEntityDescription(
         key="battery_system_health",
+        icon="mdi:battery-heart-variant",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="%",
         device_class=SensorDeviceClass.BATTERY,
-        icon="mdi:battery-heart-variant",
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda coordinator: (
             coordinator.latestData.get("battery", {})
@@ -307,5 +330,117 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
             .get("battery_status", {})
             .get("stateofhealth")
         ),
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="battery_installed_capacity_total",
+        icon="mdi:battery-charging",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="Wh",
+        device_class=SensorDeviceClass.ENERGY_STORAGE,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda coordinator: coordinator.latestData["battery_info"][
+            "total_installed_capacity"
+        ],
+        entity_registry_enabled_default=False,
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="battery_installed_capacity_usable",
+        icon="mdi:battery-charging",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="Wh",
+        device_class=SensorDeviceClass.ENERGY_STORAGE,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda coordinator: (
+            coordinator.latestData["battery_info"]["total_installed_capacity"]
+            - coordinator.latestData["battery_info"]["reserved_capacity"]
+        ),
+        entity_registry_enabled_default=False,
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="battery_remaining_capacity_total",
+        icon="mdi:battery-charging",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="Wh",
+        device_class=SensorDeviceClass.ENERGY_STORAGE,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda coordinator: coordinator.latestData["battery_info"][
+            "remaining_capacity"
+        ],
+        entity_registry_enabled_default=False,
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="battery_remaining_capacity_usable",
+        icon="mdi:battery-charging",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="Wh",
+        device_class=SensorDeviceClass.ENERGY_STORAGE,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda coordinator: coordinator.latestData["battery_info"][
+            "remaining_capacity_usable"
+        ],
+        entity_registry_enabled_default=False,
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="battery_storage_capacity_per_module",
+        icon="mdi:battery-charging",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="Wh",
+        device_class=SensorDeviceClass.ENERGY_STORAGE,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda coordinator: coordinator.latestData["battery_system"][
+            "battery_system"
+        ]["system"]["storage_capacity_per_module"],
+        entity_registry_enabled_default=False,
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="battery_module_count",
+        icon="mdi:battery",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda coordinator: coordinator.latestData["battery_system"][
+            "modules"
+        ],
+        entity_registry_enabled_default=False,
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="battery_grid_ipv",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="A",
+        device_class=SensorDeviceClass.CURRENT,
+        value_fn=lambda coordinator: coordinator.latestData.get("battery_system", {})
+        .get("grid_information", {})
+        .get("ipv"),
+        entity_registry_enabled_default=False,
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="battery_grid_ppv",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="W",
+        device_class=SensorDeviceClass.POWER,
+        value_fn=lambda coordinator: coordinator.latestData.get("battery_system", {})
+        .get("grid_information", {})
+        .get("ppv"),
+        entity_registry_enabled_default=False,
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="battery_grid_upv",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="V",
+        device_class=SensorDeviceClass.VOLTAGE,
+        value_fn=lambda coordinator: coordinator.latestData.get("battery_system", {})
+        .get("grid_information", {})
+        .get("upv"),
+        entity_registry_enabled_default=False,
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="battery_grid_tmax",
+        icon="mdi:thermometer-alert",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="°C",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        value_fn=lambda coordinator: coordinator.latestData.get("battery_system", {})
+        .get("grid_information", {})
+        .get("tmax"),
+        entity_registry_enabled_default=False,
     ),
 )

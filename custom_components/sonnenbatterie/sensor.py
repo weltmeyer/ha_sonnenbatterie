@@ -87,6 +87,8 @@ class SonnenbatterieSensor(CoordinatorEntity[SonnenBatterieCoordinator], SensorE
     _attr_suggested_display_precision = 0
     entity_description: SonnenbatterieSensorEntityDescription
 
+    # FIXME suggested_display_precision overwrite from entity description not working
+
     def __init__(
         self,
         coordinator: SonnenBatterieCoordinator,

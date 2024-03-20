@@ -98,6 +98,54 @@
             },
             "battery_system_health": {
                 "name": "Battery health"
+            },
+            "battery_installed_capacity_total": {
+                "name": "Battery total installed capacity"
+            },
+            "battery_installed_capacity_usable": {
+                "name": "Battery usable installed capacity"
+            },
+            "battery_remaining_capacity_total": {
+                "name": "Battery total remaining capacity"
+            },
+            "battery_remaining_capacity_usable": {
+                "name": "Battery usable remaining capacity"
+            },
+            "battery_storage_capacity_per_module": {
+                "name": "Battery capacity per module"
+            },
+            "battery_module_count": {
+                "name": "Battery module count"
+            },
+            "battery_grid_ipv": {
+                "name": "Battery system IPV"
+            },
+            "battery_grid_ppv": {
+                "name": "Battery system PPV"
+            },
+            "battery_grid_upv": {
+                "name": "Battery system UPV"
+            },
+            "battery_grid_tmax": {
+                "name": "Battery system max temperature"
+            },
+            "inverter_status_ipv": {
+                "name": "Inverter IPV 1"
+            },
+            "inverter_status_ipv2": {
+                "name": "Inverter IPV 2"
+            },
+            "inverter_status_ppv": {
+                "name": "Inverter hybrid solar power 1"
+            },
+            "inverter_status_ppv2": {
+                "name": "Inverter hybrid solar power 2"
+            },
+            "inverter_status_upv": {
+                "name": "Inverter UPV 1"
+            },
+            "inverter_status_upv2": {
+                "name": "Inverter UPV 2"
             }
         }
     }
