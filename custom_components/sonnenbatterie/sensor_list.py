@@ -68,9 +68,9 @@ def generate_powermeter_sensors(_coordinator):
                     value_fn=lambda coordinator, _index=index, _sensor_meter=sensor_meter: (
                         round(val, 2)
                         if (
-                            val := coordinator.latestData.get("powermeter", {})
-                            .get(_index, {})
-                            .get(_sensor_meter)
+                            val := coordinator.latestData.get("powermeter", {})[
+                                _index
+                            ].get(_sensor_meter)
                         )
                         else None
                     ),
