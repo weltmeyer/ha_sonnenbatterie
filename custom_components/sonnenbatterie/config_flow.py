@@ -8,6 +8,7 @@ import traceback
 # import voluptuous as vol
 from homeassistant import config_entries, core
 from homeassistant.core import callback
+from homeassistant.helpers import config_validation as cv
 
 # pylint: disable=unused-wildcard-import
 from .const import *  #

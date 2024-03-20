@@ -1,8 +1,6 @@
 import logging
 import voluptuous as vol
 
-from datetime import timedelta
-from homeassistant.helpers import config_validation as cv
 from homeassistant.const import (
     CONF_PASSWORD,
     CONF_USERNAME,
