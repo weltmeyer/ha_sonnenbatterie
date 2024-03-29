@@ -97,15 +97,18 @@ class SonnenbatterieSensor(CoordinatorEntity[SonnenBatterieCoordinator], SensorE
         super().__init__(coordinator=coordinator)
         self.coordinator = coordinator
         self.entity_description = entity_description
+
         self._attr_device_info = coordinator.device_info
         self._attr_translation_key = (
             tkey
             if (tkey := entity_description.translation_key)
             else entity_description.key
         )
-
         if precision := entity_description.suggested_display_precision:
             self._attr_suggested_display_precision = precision
+        self._attr_entity_id = (
+            f"sensor.sonnenbatterie_{self.coordinator.serial}_{self.entity_description.key}"
+        )
 
     @property
     def unique_id(self) -> str:
