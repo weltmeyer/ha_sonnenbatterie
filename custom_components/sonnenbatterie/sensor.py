@@ -82,12 +82,12 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
 
 class SonnenbatterieSensor(CoordinatorEntity[SonnenBatterieCoordinator], SensorEntity):
+    """Represent an SonnenBatterie sensor."""
+
+    entity_description: SonnenbatterieSensorEntityDescription
     _attr_should_poll = False
     _attr_has_entity_name = True
     _attr_suggested_display_precision = 0
-    entity_description: SonnenbatterieSensorEntityDescription
-
-    # FIXME suggested_display_precision overwrite from entity description not working
 
     def __init__(
         self,
@@ -104,11 +104,16 @@ class SonnenbatterieSensor(CoordinatorEntity[SonnenBatterieCoordinator], SensorE
             else entity_description.key
         )
 
+        if precision := entity_description.suggested_display_precision:
+            self._attr_suggested_display_precision = precision
+
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        # return f"{self.coordinator.device_id}-{self.entity_description.key}"
-        return f"{self.coordinator.serial}_{self.entity_description.key}"
+        return f"{self.coordinator.serial}-{self.entity_description.key}"
+
+        # legacy support / prevent breaking changes (will not directly work this way because keys changed)
+        # return f"sensor.sonnenbatterie_{self.coordinator.serial}_{self.entity_description.key}"
 
     @property
     def native_value(self) -> StateType:
