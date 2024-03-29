@@ -111,8 +111,7 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
         if self.serial == "":
             if (
                 serial := self.latestData.get("system_data", {}).get("DE_Ticket_Number")
-                is not None
-            ):
+            ) is not None:
                 self.serial = serial
             else:
                 LOGGER.warning("Unable to retrieve sonnenbatterie serial number.")
