@@ -34,7 +34,7 @@
     },
     "entity": {
         "sensor": {
-            "status_sonnenbatterie": {
+            "state_sonnenbatterie": {
                 "name": "Sonnenbatterie",
                  "state": {
                     "standby": "Standby",
@@ -42,49 +42,49 @@
                     "discharging": "Discharging"
                 }
             },
-            "status_consumption_avg": {
+            "state_consumption_avg": {
                 "name": "Average consumption"
             },
-            "status_consumption_current": {
+            "state_consumption_current": {
                 "name": "Current consumption"
             },
-            "status_production_w": {
+            "state_production_w": {
                 "name": "Current production"
             },
-            "status_grid_inout": {
+            "state_grid_inout": {
                 "name": "Grid in/out power"
             },
-            "status_grid_in": {
+            "state_grid_in": {
                 "name": "Grid in power"
             },
-            "status_grid_out": {
+            "state_grid_out": {
                 "name": "Grid out power"
             },
-             "status_net_frequency": {
+             "state_net_frequency": {
                 "name": "Net frequency"
             },
-            "status_battery_inout": {
+            "state_battery_inout": {
                 "name": "Battery charge/discharge power"
             },
-            "status_battery_in": {
+            "state_battery_in": {
                 "name": "Battery charge power"
             },
-            "status_battery_out": {
+            "state_battery_out": {
                 "name": "Battery discharge power"
             },
-            "status_battery_percentage_real": {
+            "state_battery_percentage_real": {
                 "name": "Battery percentage (real)"
             },
-            "status_battery_percentage_user": {
+            "state_battery_percentage_user": {
                 "name": "Battery percentage (user)"
             },
-            "status_system_status": {
+            "state_system_status": {
                 "name": "System Status",
                 "state": {
                     "ongrid": "On Grid"
                 }
             },
-            "status_operating_mode": {
+            "state_operating_mode": {
                 "name": "Operating Mode",
                 "state": {
                     "1": "Manual",
@@ -129,22 +129,22 @@
             "battery_grid_tmax": {
                 "name": "Battery system max temperature"
             },
-            "inverter_status_ipv": {
+            "inverter_state_ipv": {
                 "name": "Inverter IPV 1"
             },
-            "inverter_status_ipv2": {
+            "inverter_state_ipv2": {
                 "name": "Inverter IPV 2"
             },
-            "inverter_status_ppv": {
+            "inverter_state_ppv": {
                 "name": "Inverter hybrid solar power 1"
             },
-            "inverter_status_ppv2": {
+            "inverter_state_ppv2": {
                 "name": "Inverter hybrid solar power 2"
             },
-            "inverter_status_upv": {
+            "inverter_state_upv": {
                 "name": "Inverter UPV 1"
             },
-            "inverter_status_upv2": {
+            "inverter_state_upv2": {
                 "name": "Inverter UPV 2"
             }
         }

@@ -34,7 +34,7 @@
     },
     "entity": {
         "sensor": {
-            "status_sonnenbatterie": {
+            "state_sonnenbatterie": {
                 "name": "Sonnenbatterie",
                  "state": {
                     "standby": "Standby",
@@ -42,49 +42,49 @@
                     "discharging": "Entlädt"
                 }
             },
-            "status_consumption_avg": {
+            "state_consumption_avg": {
                 "name": "Durchschnittlicher Verbrauch"
             },
-            "status_consumption_current": {
+            "state_consumption_current": {
                 "name": "Aktueller Verbrauch"
             },
-            "status_production_w": {
+            "state_production_w": {
                 "name": "Aktuelle Produktion"
             },
-            "status_grid_inout": {
+            "state_grid_inout": {
                 "name": "Netz import/export"
             },
-            "status_grid_in": {
+            "state_grid_in": {
                 "name": "Netz import"
             },
-            "status_grid_out": {
+            "state_grid_out": {
                 "name": "Netz export"
             },
-            "status_net_frequency": {
+            "state_net_frequency": {
                 "name": "Netzfrequenz"
             },
-            "status_battery_inout": {
+            "state_battery_inout": {
                 "name": "Akku Lade-/Entladestrom"
             },
-            "status_battery_in": {
+            "state_battery_in": {
                 "name": "Akku Ladestrom"
             },
-            "status_battery_out": {
+            "state_battery_out": {
                 "name": "Akku Entladestrom"
             },
-            "status_battery_percentage_real": {
+            "state_battery_percentage_real": {
                 "name": "Akku Ladestand (echt)"
             },
-            "status_battery_percentage_user": {
+            "state_battery_percentage_user": {
                 "name": "Akku Ladestand (Benutzer)"
             },
-            "status_system_status": {
+            "state_system_status": {
                 "name": "Systemstatus",
                 "state": {
                     "ongrid": "Am Netz"
                 }
             },
-            "status_operating_mode": {
+            "state_operating_mode": {
                 "name": "Betriebsmodus",
                 "state": {
                     "1": "Manuell",
@@ -129,22 +129,22 @@
             "battery_grid_tmax": {
                 "name": "Akkusystem maximale Temperatur"
             },
-            "inverter_status_ipv": {
+            "inverter_state_ipv": {
                 "name": "Spannungswandler IPV 1"
             },
-            "inverter_status_ipv2": {
+            "inverter_state_ipv2": {
                 "name": "Spannungswandler IPV 2"
             },
-            "inverter_status_ppv": {
+            "inverter_state_ppv": {
                 "name": "Spannungswandler Hybrid-Solarenergie 1"
             },
-            "inverter_status_ppv2": {
+            "inverter_state_ppv2": {
                 "name": "Spannungswandler Hybrid-Solarenergie 2"
             },
-            "inverter_status_upv": {
+            "inverter_state_upv": {
                 "name": "Spannungswandler UPV 1"
             },
-            "inverter_status_upv2": {
+            "inverter_state_upv2": {
                 "name": "Spannungswandler UPV 2"
             }
         }
