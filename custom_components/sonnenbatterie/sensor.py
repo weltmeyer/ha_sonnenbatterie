@@ -106,9 +106,6 @@ class SonnenbatterieSensor(CoordinatorEntity[SonnenBatterieCoordinator], SensorE
         )
         if precision := entity_description.suggested_display_precision:
             self._attr_suggested_display_precision = precision
-        self._attr_entity_id = (
-            f"sensor.sonnenbatterie_{self.coordinator.serial}_{self.entity_description.key}"
-        )
 
         self.entity_id = (
             f"sensor.sonnenbatterie_{self.coordinator.serial}_{self.entity_description.key}"
