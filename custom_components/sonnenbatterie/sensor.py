@@ -110,6 +110,10 @@ class SonnenbatterieSensor(CoordinatorEntity[SonnenBatterieCoordinator], SensorE
             f"sensor.sonnenbatterie_{self.coordinator.serial}_{self.entity_description.key}"
         )
 
+        self.entity_id = (
+            f"sensor.sonnenbatterie_{self.coordinator.serial}_{self.entity_description.key}"
+        )
+
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
