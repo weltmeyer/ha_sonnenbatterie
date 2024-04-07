@@ -59,8 +59,6 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
 
         # placeholders, will be filled later
         self.serial = ""
-        # self.allSensorsPrefix = ""
-        # self.deviceName = "to be set"
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -146,39 +144,6 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
         self.latestData["battery_info"]["remaining_capacity_usable"] = max(
             0, int(remaining_capacity - reserved_capacity)
         )
-
-    # def parse(self):
-    #     meters = self.latestData["powermeter"]
-    #     battery_system = self.latestData["battery_system"]
-    #
-    #     attr = {}
-    #     for meter in meters:
-    #         prefix = "{0}_{1}_{2}-".format(
-    #             meter["direction"], meter["deviceid"], meter["channel"]
-    #         )
-    #         for name in meter:
-    #             parm_name = prefix + name
-    #             attr[parm_name] = meter[name]
-    #
-    #     bat_sys_dict = flatten_obj("battery_system", "-", battery_system)
-    #     attr.update(bat_sys_dict)
-
-    # disable not existing sensors
-    #                     LOGGER.warning(
-    #                         "'{}' not in {} -> disabled".format(
-    #                             entities["sensor"], "/".join(parents)
-    #                         )
-    #                     )
-    #
-    #     else:
-    #         # recursively check deeper down
-    #         for elem in entities:
-    #             LOGGER.info("Descending into '{}'".format(elem))
-    #             # push current path to "stack"
-    #             parents.append(elem)
-    #             self.walk_entities(entities[elem], parents, elem)
-    #             # pop path from stack to prevent ever growing path array
-    #             parents.remove(elem)
 
     def send_all_data_to_log(self):
         """
