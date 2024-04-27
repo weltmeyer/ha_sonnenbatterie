@@ -107,17 +107,16 @@ class SonnenbatterieSensor(CoordinatorEntity[SonnenBatterieCoordinator], SensorE
         if precision := entity_description.suggested_display_precision:
             self._attr_suggested_display_precision = precision
 
-        self.entity_id = (
-            f"sensor.sonnenbatterie_{self.coordinator.serial}_{self.entity_description.key}"
-        )
+        self.entity_id = f"sensor.sonnenbatterie_{self.coordinator.serial}_{self.entity_description.key}"
 
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return f"{self.coordinator.serial}-{self.entity_description.key}"
+        # return f"{self.coordinator.serial}-{self.entity_description.key}"
 
-        # legacy support / prevent breaking changes (will not directly work this way because keys changed)
-        # return f"sensor.sonnenbatterie_{self.coordinator.serial}_{self.entity_description.key}"
+        # legacy support / prevent breaking changes
+        key = self.entity_description.legacy_key or self.entity_description.key
+        return f"sensor.sonnenbatterie_{self.coordinator.serial}_{key}"
 
     @property
     def native_value(self) -> StateType:
