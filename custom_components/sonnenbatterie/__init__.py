@@ -3,7 +3,6 @@
 from .const import *
 import json
 
-# from homeassistant.helpers import config_validation as cv
 # from homeassistant.helpers.entity import Entity
 from homeassistant.const import (
     CONF_PASSWORD,
@@ -27,7 +26,7 @@ async def async_setup(hass, config):
 async def async_setup_entry(hass, config_entry):
     LOGGER.info("setup_entry: " + json.dumps(dict(config_entry.data)))
 
-    hass.async_add_job(
+    await hass.async_create_task(
         hass.config_entries.async_forward_entry_setup(config_entry, "sensor")
     )
     config_entry.add_update_listener(update_listener)

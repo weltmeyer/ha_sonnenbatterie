@@ -12,23 +12,140 @@
             "user": {
                 "data": {
                     "password": "Password",
-                    "username": "Username(user/installer)",
+                    "username": "User",
                     "ip_address": "IP-Address",
-                    "scan_interval": "Updateinterval(seconds)"
+                    "scan_interval": "Update interval (seconds)"
                 },
-                "title": "Enter your Sonnenbatterie-login information"
+                "title": "Enter your Sonnenbatterie-login information",
+                "description": "Normally you find your password on the side of your sonnenbatterie near the main switch."
             }
 
-        },
-        "title": "Sonnenbatterie"
+        }
     },
-    "options":{
-        "step":{
-            "init":{
-                "data":{
-                    "scan_interval": "Updateinterval(seconds)",
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "scan_interval": "Update interval (seconds)",
                     "sonnenbatterie_debug": "Debug mode (more log entries)"
                 }
+            }
+        }
+    },
+    "entity": {
+        "sensor": {
+            "state_sonnenbatterie": {
+                "name": "Sonnenbatterie",
+                 "state": {
+                    "standby": "Standby",
+                    "charging": "Charging",
+                    "discharging": "Discharging"
+                }
+            },
+            "state_consumption_avg": {
+                "name": "Average consumption"
+            },
+            "state_consumption_current": {
+                "name": "Current consumption"
+            },
+            "state_production_w": {
+                "name": "Current production"
+            },
+            "state_grid_inout": {
+                "name": "Grid in/out power"
+            },
+            "state_grid_in": {
+                "name": "Grid in power"
+            },
+            "state_grid_out": {
+                "name": "Grid out power"
+            },
+             "state_net_frequency": {
+                "name": "Net frequency"
+            },
+            "state_battery_inout": {
+                "name": "Battery charge/discharge power"
+            },
+            "state_battery_in": {
+                "name": "Battery charge power"
+            },
+            "state_battery_out": {
+                "name": "Battery discharge power"
+            },
+            "state_battery_percentage_real": {
+                "name": "Battery percentage (real)"
+            },
+            "state_battery_percentage_user": {
+                "name": "Battery percentage (user)"
+            },
+            "state_system_status": {
+                "name": "System Status",
+                "state": {
+                    "ongrid": "On Grid"
+                }
+            },
+            "state_operating_mode": {
+                "name": "Operating Mode",
+                "state": {
+                    "1": "Manual",
+                    "2": "Automatic",
+                    "6": "Extension module",
+                    "10": "Time of Use"
+                }
+            },
+            "battery_system_cycles": {
+                "name": "Battery cycles"
+            },
+            "battery_system_health": {
+                "name": "Battery health"
+            },
+            "battery_installed_capacity_total": {
+                "name": "Battery total installed capacity"
+            },
+            "battery_installed_capacity_usable": {
+                "name": "Battery usable installed capacity"
+            },
+            "battery_remaining_capacity_total": {
+                "name": "Battery total remaining capacity"
+            },
+            "battery_remaining_capacity_usable": {
+                "name": "Battery usable remaining capacity"
+            },
+            "battery_storage_capacity_per_module": {
+                "name": "Battery capacity per module"
+            },
+            "battery_module_count": {
+                "name": "Battery module count"
+            },
+            "battery_grid_ipv": {
+                "name": "Battery system IPV"
+            },
+            "battery_grid_ppv": {
+                "name": "Battery system PPV"
+            },
+            "battery_grid_upv": {
+                "name": "Battery system UPV"
+            },
+            "battery_grid_tmax": {
+                "name": "Battery system max temperature"
+            },
+            "inverter_state_ipv": {
+                "name": "Inverter IPV 1"
+            },
+            "inverter_state_ipv2": {
+                "name": "Inverter IPV 2"
+            },
+            "inverter_state_ppv": {
+                "name": "Inverter hybrid solar power 1"
+            },
+            "inverter_state_ppv2": {
+                "name": "Inverter hybrid solar power 2"
+            },
+            "inverter_state_upv": {
+                "name": "Inverter UPV 1"
+            },
+            "inverter_state_upv2": {
+                "name": "Inverter UPV 2"
             }
         }
     }

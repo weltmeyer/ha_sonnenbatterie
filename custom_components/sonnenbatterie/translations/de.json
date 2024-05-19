@@ -12,23 +12,140 @@
             "user": {
                 "data": {
                     "password": "Passwort",
-                    "username": "Nutzername(user/installer)",
+                    "username": "Benutzer",
                     "ip_address": "IP-Adresse",
-                    "scan_interval": "Aktualisierungsinterval(Sekunden)"
+                    "scan_interval": "Aktualisierungsinterval (Sekunden)"
                 },
-                "title": "Gib deine Sonnenbatterie-Anmeldeinformationen ein"
+                "title": "Gib deine Sonnenbatterie-Anmeldeinformationen ein",
+                "description": "Dein Passwort findest du normalerweise an der Seite deiner Sonnenbatterie in der Nähe des Hauptschalters."
             }
 
-        },
-        "title": "Sonnenbatterie"
+        }
     },
-    "options":{
+    "options": {
         "step":{
             "init":{
                 "data":{
-                    "scan_interval": "Aktualisierungsinterval(Sekunden)",
+                    "scan_interval": "Aktualisierungsinterval (Sekunden)",
                     "sonnenbatterie_debug": "Debug-Modus (mehr Logs)"
                 }
+            }
+        }
+    },
+    "entity": {
+        "sensor": {
+            "state_sonnenbatterie": {
+                "name": "Sonnenbatterie",
+                 "state": {
+                    "standby": "Standby",
+                    "charging": "Lädt",
+                    "discharging": "Entlädt"
+                }
+            },
+            "state_consumption_avg": {
+                "name": "Durchschnittlicher Verbrauch"
+            },
+            "state_consumption_current": {
+                "name": "Aktueller Verbrauch"
+            },
+            "state_production_w": {
+                "name": "Aktuelle Produktion"
+            },
+            "state_grid_inout": {
+                "name": "Netz import/export"
+            },
+            "state_grid_in": {
+                "name": "Netz import"
+            },
+            "state_grid_out": {
+                "name": "Netz export"
+            },
+            "state_net_frequency": {
+                "name": "Netzfrequenz"
+            },
+            "state_battery_inout": {
+                "name": "Akku Lade-/Entladestrom"
+            },
+            "state_battery_in": {
+                "name": "Akku Ladestrom"
+            },
+            "state_battery_out": {
+                "name": "Akku Entladestrom"
+            },
+            "state_battery_percentage_real": {
+                "name": "Akku Ladestand (echt)"
+            },
+            "state_battery_percentage_user": {
+                "name": "Akku Ladestand (Benutzer)"
+            },
+            "state_system_status": {
+                "name": "Systemstatus",
+                "state": {
+                    "ongrid": "Am Netz"
+                }
+            },
+            "state_operating_mode": {
+                "name": "Betriebsmodus",
+                "state": {
+                    "1": "Manuell",
+                    "2": "Automatisch",
+                    "6": "Erweiterungsmodul",
+                    "10": "Zeitgesteuert"
+                }
+            },
+            "battery_system_cycles": {
+                "name": "Akku Ladezyklen"
+            },
+            "battery_system_health": {
+                "name": "Akkuzustand"
+            },
+            "battery_installed_capacity_total": {
+                "name": "Akku installierte Gesamtkapazität"
+            },
+            "battery_installed_capacity_usable": {
+                "name": "Akku installierte nutzbare Kapazität"
+            },
+            "battery_remaining_capacity_total": {
+                "name": "Akku verbleibende Gesamtkapazität"
+            },
+            "battery_remaining_capacity_usable": {
+                "name": "Akku verbleibende nutzbare Kapazität"
+            },
+            "battery_storage_capacity_per_module": {
+                "name": "Akku Kapazität pro Modul"
+            },
+            "battery_module_count": {
+                "name": "Anzahl Batteriemodule"
+            },
+            "battery_grid_ipv": {
+                "name": "Akkusystem IPV"
+            },
+            "battery_grid_ppv": {
+                "name": "Akkusystem PPV"
+            },
+            "battery_grid_upv": {
+                "name": "Akkusystem UPV"
+            },
+            "battery_grid_tmax": {
+                "name": "Akkusystem maximale Temperatur"
+            },
+            "inverter_state_ipv": {
+                "name": "Spannungswandler IPV 1"
+            },
+            "inverter_state_ipv2": {
+                "name": "Spannungswandler IPV 2"
+            },
+            "inverter_state_ppv": {
+                "name": "Spannungswandler Hybrid-Solarenergie 1"
+            },
+            "inverter_state_ppv2": {
+                "name": "Spannungswandler Hybrid-Solarenergie 2"
+            },
+            "inverter_state_upv": {
+                "name": "Spannungswandler UPV 1"
+            },
+            "inverter_state_upv2": {
+                "name": "Spannungswandler UPV 2"
             }
         }
     }
