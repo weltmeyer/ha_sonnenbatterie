@@ -72,7 +72,7 @@ def generate_powermeter_sensors(_coordinator):
                                 _index
                             ].get(_sensor_meter)
                         )
-                        else None
+                        is not None else None
                     ),
                     entity_registry_enabled_default=False,
                 )
