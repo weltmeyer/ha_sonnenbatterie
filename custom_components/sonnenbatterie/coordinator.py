@@ -98,7 +98,18 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
             self.latestData["system_data"] = await self.hass.async_add_executor_job(
                 self.sbInst.get_systemdata
             )
-
+            
+            if(isinstance(self.latestData["powermeter"],dict)):
+                try:
+                    #some new firmware of sonnenbatterie seems to send a dictionary, but we work with a list, so reformat :)
+                    newPowerMeters=[]
+                    for index,dictIndex in enumerate(self.latestData["powermeter"]):
+                        newPowerMeters.append(self.latestData["powermeter"][dictIndex])
+                    self.latestData["powermeter"]=newPowerMeters
+                    #LOGGER.warning("ReRead powermeter as it returned wrong from battery.")
+                except:
+                    e = traceback.format_exc()
+                    LOGGER.error(e)
         except:
             e = traceback.format_exc()
             LOGGER.error(e)
