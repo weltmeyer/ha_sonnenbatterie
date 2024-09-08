@@ -5,10 +5,8 @@ import json
 
 # from homeassistant.helpers.entity import Entity
 from homeassistant.const import (
-    CONF_PASSWORD,
-    CONF_USERNAME,
-    CONF_IP_ADDRESS,
     CONF_SCAN_INTERVAL,
+    Platform
 )
 
 
@@ -26,9 +24,7 @@ async def async_setup(hass, config):
 async def async_setup_entry(hass, config_entry):
     LOGGER.info("setup_entry: " + json.dumps(dict(config_entry.data)))
 
-    await hass.async_create_task(
-        hass.config_entries.async_forward_entry_setup(config_entry, "sensor")
-    )
+    await hass.config_entries.async_forward_entry_setups(config_entry, [ Platform.SENSOR ])
     config_entry.add_update_listener(update_listener)
     config_entry.async_on_unload(config_entry.add_update_listener(async_reload_entry))
     return True
