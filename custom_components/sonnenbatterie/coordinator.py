@@ -66,6 +66,7 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
     def device_info(self) -> DeviceInfo:
         system_data = self.latestData["system_data"]
 
+        # noinspection HttpUrlsUsage
         return DeviceInfo(
             identifiers={(DOMAIN, self.device_id)},
             configuration_url=f"http://{self.ip_address}/",
@@ -122,7 +123,6 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
                 for index, dictIndex in enumerate(self.latestData["powermeter"]):
                     new_powermeters.append(self.latestData["powermeter"][dictIndex])
                 self.latestData["powermeter"] = new_powermeters
-                # LOGGER.warning("ReRead powermeter as it returned wrong from battery.")
             except:
                 e = traceback.format_exc()
                 LOGGER.error(e)

@@ -14,21 +14,22 @@
                     "password": "Password",
                     "username": "User",
                     "ip_address": "IP-Address",
-                    "scan_interval": "Update interval (seconds)"
-                },
-                "title": "Enter your Sonnenbatterie-login information",
-                "description": "Normally you find your password on the side of your sonnenbatterie near the main switch."
-            }
-
-        }
-    },
-    "options": {
-        "step": {
-            "init": {
-                "data": {
                     "scan_interval": "Update interval (seconds)",
                     "sonnenbatterie_debug": "Debug mode (more log entries)"
-                }
+                },
+                "title": "Configure your Sonnenbatterie",
+                "description": "Normally you find your password on the side of your sonnenbatterie near the main switch."
+            },
+            "reconfigure": {
+                "data": {
+                    "password": "Password",
+                    "username": "User",
+                    "ip_address": "IP-Address",
+                    "scan_interval": "Update interval (seconds)",
+                    "sonnenbatterie_debug": "Debug mode (more log entries)"
+                },
+                "title": "Configure your Sonnenbatterie",
+                "description": "Normally you find your password on the side of your sonnenbatterie near the main switch."
             }
         }
     },
