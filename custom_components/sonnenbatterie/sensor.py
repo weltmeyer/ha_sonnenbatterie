@@ -10,11 +10,12 @@ from homeassistant.helpers.typing import StateType
 from .coordinator import SonnenBatterieCoordinator
 from sonnenbatterie import sonnenbatterie
 from .const import (
-    CONF_PASSWORD,
-    CONF_USERNAME,
-    CONF_IP_ADDRESS,
-    CONF_SCAN_INTERVAL,
     ATTR_SONNEN_DEBUG,
+    CONF_IP_ADDRESS,
+    CONF_PASSWORD,
+    CONF_SCAN_INTERVAL,
+    CONF_USERNAME,
+    DEFAULT_SCAN_INTERVAL,
     DOMAIN,
     LOGGER,
     logging,
@@ -51,7 +52,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     sonnenInst = await hass.async_add_executor_job(
         _internal_setup, username, password, ip_address
     )
-    update_interval_seconds = update_interval_seconds or 1
+    update_interval_seconds = update_interval_seconds or DEFAULT_SCAN_INTERVAL
     LOGGER.info("{0} - UPDATEINTERVAL: {1}".format(DOMAIN, update_interval_seconds))
 
     """ The Coordinator is called from HA for updates from API """
@@ -69,7 +70,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     async_add_entities(
         SonnenbatterieSensor(coordinator=coordinator, entity_description=description)
         for description in SENSORS
-        if description.value_fn(coordinator=coordinator) is not None
+        if description.value_fn(coordinator) is not None
     )
 
     async_add_entities(

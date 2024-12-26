@@ -131,7 +131,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
             # Prevent having small negative values in production at night
             0
             if (
-                production := coordinator.latestData.get("status").get(
+                production := coordinator.latestData.get("status", {}).get(
                     "Production_W", 0
                 )
             )

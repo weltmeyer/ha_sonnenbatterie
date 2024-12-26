@@ -11,7 +11,7 @@ from homeassistant.const import (
 LOGGER = logging.getLogger(__package__)
 
 DOMAIN = "sonnenbatterie"
-DEFAULT_SCAN_INTERVAL = 10
+DEFAULT_SCAN_INTERVAL = 30
 
 CONFIG_SCHEMA_A = vol.Schema(
     {
