@@ -4,125 +4,188 @@ from sonnenbatterie import sonnenbatterie
 # pylint: enable=no-name-in-module
 import traceback
 
-# import logging
-# import voluptuous as vol
-from homeassistant import config_entries, core
+from homeassistant import config_entries
+from homeassistant.const import (
+    CONF_IP_ADDRESS,
+    CONF_PASSWORD,
+    CONF_SCAN_INTERVAL,
+    CONF_USERNAME,
+)
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
 
 # pylint: disable=unused-wildcard-import
-from .const import *  #
+from .const import *
 
 # pylint: enable=unused-wildcard-import
 import voluptuous as vol
-from homeassistant.const import (
-    CONF_PASSWORD,
-    CONF_USERNAME,
-    CONF_IP_ADDRESS,
-    CONF_SCAN_INTERVAL,
-)
 
 
 class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
-    def __init__(self):
-        """Initialize."""
-        self.data_schema = CONFIG_SCHEMA_A
+
+    CONFIG_SCHEMA_USER = vol.Schema(
+        {
+            vol.Required(CONF_IP_ADDRESS, default="127.0.0.1"): str,
+            vol.Required(CONF_USERNAME): vol.In(["User", "Installer"]),
+            vol.Required(CONF_PASSWORD, default="sonnenUser3552"): str,
+            vol.Required(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): cv.positive_int,
+            vol.Optional(ATTR_SONNEN_DEBUG, default=DEFAULT_SONNEN_DEBUG): cv.boolean,
+        }
+    )
 
     async def async_step_user(self, user_input=None):
         """Handle a flow initialized by the user."""
-        # if self._async_current_entries():
-        #    return self.async_abort(reason="single_instance_allowed")
+        if user_input is not None:
 
-        if not user_input:
-            return self._show_form()
+            username = user_input[CONF_USERNAME]
+            password = user_input[CONF_PASSWORD]
+            ipaddress = user_input[CONF_IP_ADDRESS]
 
-        username = user_input[CONF_USERNAME]
-        password = user_input[CONF_PASSWORD]
-        ipaddress = user_input[CONF_IP_ADDRESS]
+            # noinspection PyBroadException
+            try:
+                my_serial = await self.hass.async_add_executor_job(
+                    self._internal_setup, username, password, ipaddress
+                )
 
-        try:
+            except:
+                e = traceback.format_exc()
+                LOGGER.error(f"Unable to connect to sonnenbatterie: {e}")
+                return self._show_form({"base": "connection_error"})
 
-            def _internal_setup(_username, _password, _ipaddress):
-                return sonnenbatterie(_username, _password, _ipaddress)
-
-            sonnen_inst = await self.hass.async_add_executor_job(
-                _internal_setup, username, password, ipaddress
+            return self.async_create_entry(
+                title=f"{user_input[CONF_IP_ADDRESS]} ({my_serial})",
+                data={
+                    CONF_USERNAME: username,
+                    CONF_PASSWORD: password,
+                    CONF_IP_ADDRESS: ipaddress,
+                    CONF_SCAN_INTERVAL: user_input[CONF_SCAN_INTERVAL],
+                    ATTR_SONNEN_DEBUG: user_input[ATTR_SONNEN_DEBUG],
+                    CONF_SERIAL_NUMBER: my_serial,
+                },
             )
-            # sonnenbatterie(username,password,ipaddress)
-            # await self.hass.async_add_executor_job(
-            #    Abode, username, password, True, True, True, cache
-            # )
 
-        except:
-            e = traceback.format_exc()
-            LOGGER.error("Unable to connect to sonnenbatterie: %s", e)
-            # if ex.errcode == 400:
-            #    return self._show_form({"base": "invalid_credentials"})
-            return self._show_form({"base": "connection_error"})
-
-        return self.async_create_entry(
-            title=user_input[CONF_IP_ADDRESS],
-            data={
-                CONF_USERNAME: username,
-                CONF_PASSWORD: password,
-                CONF_IP_ADDRESS: ipaddress,
-            },
+        return self.async_show_form(
+            step_id="user",
+            data_schema=self.CONFIG_SCHEMA_USER,
+            last_step=True,
         )
+
+    async def async_step_reconfigure(self, user_input):
+        entry = self._get_reconfigure_entry()
+        schema_reconf = vol.Schema(
+            {
+                vol.Required(
+                    CONF_IP_ADDRESS,
+                    default = entry.data[CONF_IP_ADDRESS] or None
+                ): str,
+                vol.Required(
+                    CONF_USERNAME,
+                    default = entry.data[CONF_USERNAME] or "User"
+                ): vol.In(["User", "Installer"]),
+                vol.Required(
+                    CONF_PASSWORD,
+                    default = entry.data[CONF_PASSWORD] or ""
+                ): str,
+                vol.Required(
+                    CONF_SCAN_INTERVAL,
+                    default=entry.data[CONF_SCAN_INTERVAL] or DEFAULT_SCAN_INTERVAL
+                ): cv.positive_int,
+                vol.Optional(
+                    ATTR_SONNEN_DEBUG,
+                    default=entry.data[ATTR_SONNEN_DEBUG] or DEFAULT_SONNEN_DEBUG)
+                : cv.boolean,
+            }
+        )
+
+        if user_input is not None:
+            await self.async_set_unique_id(entry.data[CONF_SERIAL_NUMBER])
+            self._abort_if_unique_id_configured()
+            # noinspection PyBroadException
+            try:
+                my_serial = await self.hass.async_add_executor_job(
+                    self._internal_setup,
+                    user_input[CONF_USERNAME],
+                    user_input[CONF_PASSWORD],
+                    user_input[CONF_IP_ADDRESS]
+                )
+
+            except:
+                e = traceback.format_exc()
+                LOGGER.error(f"Unable to connect to sonnenbatterie: {e}")
+                return self.async_show_form(
+                    step_id="reconfigure",
+                    data_schema=schema_reconf,
+                    errors={"base": "connection_error"},
+                )
+
+            return self.async_update_reload_and_abort(
+                self._get_reconfigure_entry(),
+                data_updates=user_input,
+                title=f"{user_input[CONF_IP_ADDRESS]} ({my_serial})",
+            )
+
+
+        return self.async_show_form(
+            step_id = "reconfigure",
+            data_schema = schema_reconf,
+        )
+
+
+    @staticmethod
+    def _internal_setup(_username, _password, _ipaddress):
+        sb_test = sonnenbatterie(_username, _password, _ipaddress)
+        return sb_test.get_systemdata().get("DE_Ticket_Number", "Unknown")
 
     @callback
     def _show_form(self, errors=None):
         """Show the form to the user."""
         return self.async_show_form(
             step_id="user",
-            data_schema=self.data_schema,
+            data_schema=self.CONFIG_SCHEMA_USER,
             errors=errors if errors else {},
         )
 
-    async def async_step_import(self, import_config):
-        """Import a config entry from configuration.yaml."""
-        # if self._async_current_entries():
-        #    LOGGER.warning("Only one configuration of abode is allowed.")
-        #    return self.async_abort(reason="single_instance_allowed")
-
-        return await self.async_step_user(import_config)
-
-    @staticmethod
-    @callback
-    def async_get_options_flow(config_entry):
-        return OptionsFlowHandler(config_entry)
-
-
-class OptionsFlowHandler(config_entries.OptionsFlow):
-    def __init__(self, config_entry):
-        """Initialize options flow."""
-        self.config_entry = config_entry
-        self.options = dict(config_entry.options)
-
-    async def async_step_init(self, user_input=None):
-        """Manage the options."""
-        if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
-
-        return self.async_show_form(
-            step_id="init",
-            data_schema=vol.Schema(
-                {
-                    vol.Optional(
-                        CONF_SCAN_INTERVAL,
-                        default=self.config_entry.options.get(
-                            CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
-                        ),
-                    ): cv.positive_int,
-                    vol.Optional(
-                        ATTR_SONNEN_DEBUG,
-                        default=self.config_entry.options.get(
-                            ATTR_SONNEN_DEBUG, DEFAULT_SONNEN_DEBUG
-                        ),
-                    ): bool,
-                }
-            ),
-        )
-
-    async def _update_options(self):
-        """Update config entry options."""
-        return self.async_create_entry(title="", data=self.options)
+"""" rustydust_241226: disabled since all the options have now been moved
+to the main data of the Sonnebatterie entry. The code below is kept in place
+just in case we want to add in options again.
+"""
+#     @staticmethod
+#     @callback
+#     def async_get_options_flow(config_entry):
+#         return OptionsFlowHandler(config_entry)
+#
+#
+# class OptionsFlowHandler(config_entries.OptionsFlow):
+#     def __init__(self, config_entry):
+#         """Initialize options flow."""
+#         self._config_entry = config_entry
+#         self.options = dict(config_entry.options)
+#
+#     async def async_step_init(self, user_input=None):
+#         """Manage the options."""
+#         if user_input is not None:
+#             return self.async_create_entry(title="", data=user_input)
+#
+#         return self.async_show_form(
+#             step_id="init",
+#             data_schema=vol.Schema(
+#                 {
+#                     vol.Optional(
+#                         CONF_SCAN_INTERVAL,
+#                         default=self._config_entry.data.get(
+#                             CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
+#                         ),
+#                     ): cv.positive_int,
+#                     vol.Optional(
+#                         ATTR_SONNEN_DEBUG,
+#                         default=self._config_entry.data.get(
+#                             ATTR_SONNEN_DEBUG, DEFAULT_SONNEN_DEBUG
+#                         ),
+#                     ): bool,
+#                 }
+#             ),
+#         )
+#
+#     async def _update_options(self):
+#         """Update config entry options."""
+#         return self.async_create_entry(title="", data=self.options)
