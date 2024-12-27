@@ -76,30 +76,31 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             {
                 vol.Required(
                     CONF_IP_ADDRESS,
-                    default = entry.data[CONF_IP_ADDRESS] or None
+                    default = entry.data.get(CONF_IP_ADDRESS) or None
                 ): str,
                 vol.Required(
                     CONF_USERNAME,
-                    default = entry.data[CONF_USERNAME] or "User"
+                    default = entry.data.get(CONF_USERNAME) or "User"
                 ): vol.In(["User", "Installer"]),
                 vol.Required(
                     CONF_PASSWORD,
-                    default = entry.data[CONF_PASSWORD] or ""
+                    default = entry.data.get(CONF_PASSWORD) or ""
                 ): str,
                 vol.Required(
                     CONF_SCAN_INTERVAL,
-                    default=entry.data[CONF_SCAN_INTERVAL] or DEFAULT_SCAN_INTERVAL
+                    default=entry.data.get(CONF_SCAN_INTERVAL) or DEFAULT_SCAN_INTERVAL
                 ): cv.positive_int,
                 vol.Optional(
                     ATTR_SONNEN_DEBUG,
-                    default=entry.data[ATTR_SONNEN_DEBUG] or DEFAULT_SONNEN_DEBUG)
+                    default=entry.data.get(ATTR_SONNEN_DEBUG) or DEFAULT_SONNEN_DEBUG)
                 : cv.boolean,
             }
         )
 
         if user_input is not None:
-            await self.async_set_unique_id(entry.data[CONF_SERIAL_NUMBER])
-            self._abort_if_unique_id_configured()
+            if entry.data.get(CONF_SERIAL_NUMBER):
+                await self.async_set_unique_id(entry.data[CONF_SERIAL_NUMBER])
+                self._abort_if_unique_id_configured()
             # noinspection PyBroadException
             try:
                 my_serial = await self.hass.async_add_executor_job(
