@@ -14,21 +14,22 @@
                     "password": "Passwort",
                     "username": "Benutzer",
                     "ip_address": "IP-Adresse",
-                    "scan_interval": "Aktualisierungsinterval (Sekunden)"
-                },
-                "title": "Gib deine Sonnenbatterie-Anmeldeinformationen ein",
-                "description": "Dein Passwort findest du normalerweise an der Seite deiner Sonnenbatterie in der Nähe des Hauptschalters."
-            }
-
-        }
-    },
-    "options": {
-        "step":{
-            "init":{
-                "data":{
                     "scan_interval": "Aktualisierungsinterval (Sekunden)",
                     "sonnenbatterie_debug": "Debug-Modus (mehr Logs)"
-                }
+                },
+                "title": "Sonnenbatterie-Konfiguration",
+                "description": "Dein Passwort findest du normalerweise an der Seite deiner Sonnenbatterie in der Nähe des Hauptschalters."
+            },
+            "reconfigure": {
+                "data": {
+                    "password": "Passwort",
+                    "username": "Benutzer",
+                    "ip_address": "IP-Adresse",
+                    "scan_interval": "Aktualisierungsinterval (Sekunden)",
+                    "sonnenbatterie_debug": "Debug-Modus (mehr Logs)"
+                },
+                "title": "Sonnenbatterie-Konfiguration",
+                "description": "Dein Passwort findest du normalerweise an der Seite deiner Sonnenbatterie in der Nähe des Hauptschalters."
             }
         }
     },

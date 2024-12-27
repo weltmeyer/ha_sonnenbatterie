@@ -1,18 +1,17 @@
 """The data update coordinator for OctoPrint."""
 
+from time import time
 import traceback
-
-from .const import DOMAIN, LOGGER, logging
 from datetime import timedelta
 
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
     DataUpdateCoordinator,
 )
-
 from sonnenbatterie import sonnenbatterie
-from homeassistant.core import HomeAssistant
+
+from .const import DOMAIN, LOGGER, logging
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -60,10 +59,14 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
         # placeholders, will be filled later
         self.serial = ""
 
+        # error tracking
+        self._last_error = None
+
     @property
     def device_info(self) -> DeviceInfo:
         system_data = self.latestData["system_data"]
 
+        # noinspection HttpUrlsUsage
         return DeviceInfo(
             identifiers={(DOMAIN, self.device_id)},
             configuration_url=f"http://{self.ip_address}/",
@@ -73,46 +76,56 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
             sw_version=system_data.get("software_version", "unknown"),
         )
 
+    # noinspection PyTypeChecker
     async def _async_update_data(self):
         """Fetch data from API endpoint.
-
         This is the place to pre-process the data to lookup tables
         so entities can quickly look up their data.
         """
+
         try:  # ignore errors here, may be transient
-            self.latestData["battery"] = await self.hass.async_add_executor_job(
-                self.sbInst.get_battery
-            )
-            self.latestData["battery_system"] = await self.hass.async_add_executor_job(
-                self.sbInst.get_batterysystem
-            )
-            self.latestData["inverter"] = await self.hass.async_add_executor_job(
-                self.sbInst.get_inverter
-            )
-            self.latestData["powermeter"] = await self.hass.async_add_executor_job(
-                self.sbInst.get_powermeter
-            )
-            self.latestData["status"] = await self.hass.async_add_executor_job(
-                self.sbInst.get_status
-            )
-            self.latestData["system_data"] = await self.hass.async_add_executor_job(
-                self.sbInst.get_systemdata
-            )
-            
-            if(isinstance(self.latestData["powermeter"],dict)):
-                try:
-                    #some new firmware of sonnenbatterie seems to send a dictionary, but we work with a list, so reformat :)
-                    newPowerMeters=[]
-                    for index,dictIndex in enumerate(self.latestData["powermeter"]):
-                        newPowerMeters.append(self.latestData["powermeter"][dictIndex])
-                    self.latestData["powermeter"]=newPowerMeters
-                    #LOGGER.warning("ReRead powermeter as it returned wrong from battery.")
-                except:
-                    e = traceback.format_exc()
-                    LOGGER.error(e)
-        except:
-            e = traceback.format_exc()
-            LOGGER.error(e)
+            result = await self.hass.async_add_executor_job(self.sbInst.get_battery)
+            self.latestData["battery"] = result
+
+            result = await self.hass.async_add_executor_job(self.sbInst.get_batterysystem)
+            self.latestData["battery_system"] = result
+
+            result = await self.hass.async_add_executor_job(self.sbInst.get_inverter)
+            self.latestData["inverter"] = result
+
+            result = await self.hass.async_add_executor_job(self.sbInst.get_powermeter)
+            self.latestData["powermeter"] = result
+
+            result = await self.hass.async_add_executor_job(self.sbInst.get_status)
+            self.latestData["status"] = result
+
+            result = await self.hass.async_add_executor_job(self.sbInst.get_systemdata)
+            self.latestData["system_data"] = result
+
+        except Exception as ex:
+            if self.debug:
+                e = traceback.format_exc()
+                LOGGER.error(e)
+            if self._last_error is not None:
+                elapsed = time() - self._last_error
+                if elapsed > timedelta(seconds=180).total_seconds():
+                    LOGGER.warning(f"Unable to connecto to Sonnenbatteries at {self.ip_address} for {elapsed} seconds. Please check! [{ex}]")
+            else:
+                self._last_error = time()
+
+        self._last_error = None
+
+        if isinstance(self.latestData.get("powermeter"), dict):
+            # noinspection PyBroadException
+            try:
+                # some new firmware of sonnenbatterie seems to send a dictionary, but we work with a list, so reformat :)
+                new_powermeters = []
+                for index, dictIndex in enumerate(self.latestData["powermeter"]):
+                    new_powermeters.append(self.latestData["powermeter"][dictIndex])
+                self.latestData["powermeter"] = new_powermeters
+            except:
+                e = traceback.format_exc()
+                LOGGER.error(e)
 
         if self.debug:
             self.send_all_data_to_log()

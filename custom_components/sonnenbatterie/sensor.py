@@ -1,20 +1,24 @@
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
-    DataUpdateCoordinator,
 )
 from homeassistant.components.sensor import (
     SensorEntity,
 )
+from homeassistant.const import (
+    CONF_IP_ADDRESS,
+    CONF_PASSWORD,
+    CONF_SCAN_INTERVAL,
+    CONF_USERNAME,
+)
+
 from homeassistant.helpers.typing import StateType
 
 from .coordinator import SonnenBatterieCoordinator
 from sonnenbatterie import sonnenbatterie
 from .const import (
-    CONF_PASSWORD,
-    CONF_USERNAME,
-    CONF_IP_ADDRESS,
-    CONF_SCAN_INTERVAL,
     ATTR_SONNEN_DEBUG,
+    DEFAULT_SCAN_INTERVAL,
     DOMAIN,
     LOGGER,
     logging,
@@ -28,48 +32,49 @@ from .sensor_list import (
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_unload_entry(hass, entry):
-    """Unload a config entry."""
-    ## we dont have anything special going on.. unload should just work, right?
-    ##bridge = hass.data[DOMAIN].pop(entry.data['host'])
-    return
+# rustydust_241227: this doesn't seem to be used anywhere
+# async def async_unload_entry(hass, entry):
+#     """Unload a config entry."""
+#     ## we dont have anything special going on.. unload should just work, right?
+#     ##bridge = hass.data[DOMAIN].pop(entry.data['host'])
+#     return
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the sensor platform."""
     LOGGER.info("SETUP_ENTRY")
-    # await async_setup_reload_service(hass, DOMAIN, PLATFORMS)
     username = config_entry.data.get(CONF_USERNAME)
     password = config_entry.data.get(CONF_PASSWORD)
     ip_address = config_entry.data.get(CONF_IP_ADDRESS)
-    update_interval_seconds = config_entry.options.get(CONF_SCAN_INTERVAL)
-    debug_mode = config_entry.options.get(ATTR_SONNEN_DEBUG)
+    update_interval_seconds = config_entry.data.get(CONF_SCAN_INTERVAL)
+    debug_mode = config_entry.data.get(ATTR_SONNEN_DEBUG)
 
-    def _internal_setup(_username, _password, _ip_address):
-        return sonnenbatterie(_username, _password, _ip_address)
-
-    sonnenInst = await hass.async_add_executor_job(
-        _internal_setup, username, password, ip_address
+    sonnen_inst = await hass.async_add_executor_job(
+        sonnenbatterie, username, password, ip_address
     )
-    update_interval_seconds = update_interval_seconds or 1
+
+    update_interval_seconds = update_interval_seconds or DEFAULT_SCAN_INTERVAL
     LOGGER.info("{0} - UPDATEINTERVAL: {1}".format(DOMAIN, update_interval_seconds))
 
     """ The Coordinator is called from HA for updates from API """
     coordinator = SonnenBatterieCoordinator(
         hass,
-        sonnenInst,
+        sonnen_inst,
         update_interval_seconds,
         ip_address,
         debug_mode,
         config_entry.entry_id,
     )
 
-    await coordinator.async_config_entry_first_refresh()
+    if config_entry.state == ConfigEntryState.SETUP_IN_PROGRESS:
+        await coordinator.async_config_entry_first_refresh()
+    else:
+        await coordinator.async_refresh()
 
     async_add_entities(
         SonnenbatterieSensor(coordinator=coordinator, entity_description=description)
         for description in SENSORS
-        if description.value_fn(coordinator=coordinator) is not None
+        if description.value_fn(coordinator) is not None
     )
 
     async_add_entities(
