@@ -3,7 +3,7 @@ Homeassistant integration to show many stats of Sonnenbatterie
 that should work with current versions of Sonnenbatterie.
 
 [![Validate with hassfest](https://github.com/weltmeyer/ha_sonnenbatterie/actions/workflows/hassfest.yaml/badge.svg)](https://github.com/weltmeyer/ha_sonnenbatterie/actions/workflows/hassfest.yaml)
-[![Validate with HACS](https://github.com/weltmeyer/ha_sonnenbatterie/actions/workflows/validate.yaml/badge.svg)](https://github.com/weltmeyer/ha_sonnenbatterie/actions/workflows/hassfest.yaml)
+[![Validate with HACS](https://github.com/weltmeyer/ha_sonnenbatterie/actions/workflows/validate.yaml/badge.svg)](https://github.com/weltmeyer/ha_sonnenbatterie/actions/workflows/validate.yaml)
 
 ## Tested working with
 * eco 8.03 9010 ND
@@ -13,7 +13,7 @@ that should work with current versions of Sonnenbatterie.
 ## Won't work with older Batteries
 * ex. model 9.2 eco from 2014 not working
 
-## Important: ###
+## Important:
 Set the update interval in the Integration Settings. Default is 30 seconds, don't
 go below 10 seconds otherwise you might encounter an exploding recorder database.
 
