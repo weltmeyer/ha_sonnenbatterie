@@ -5,6 +5,7 @@
     "config_flow": true,
     "dependencies": [],
     "documentation": "https://github.com/weltmeyer/ha_sonnenbatterie",
+    "issue_tracker": "https://github.com/weltmeyer/ha_sonnenbatterie/issues",
     "iot_class": "local_polling",
     "requirements": ["requests","sonnenbatterie>=0.3.0"],
     "version": "2024.12.01"
