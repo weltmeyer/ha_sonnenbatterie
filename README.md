@@ -32,7 +32,7 @@ You'll get the full data that's returned by your Sonnenbatterie in the logs.
 Please put those logs along with the setting you want monitored into a new issue.
 
 ## Install
-Easiest way to add this repository is to use [HACS](https://hacs.xyz).
+Easiest way to install is to add this repository via [HACS](https://hacs.xyz).
 
 ## Screenshots :)
 ![image](https://user-images.githubusercontent.com/1668465/78452159-ed2d7d80-7689-11ea-9e30-3a66ecc2372a.png)
