@@ -13,7 +13,6 @@ charge_battery:
       example: "1000"
       selector:
         number:
-          min: 0
 discharge_battery:
   fields:
     power:
@@ -21,7 +20,6 @@ discharge_battery:
       example: "1000"
       selector:
         number:
-          min: 0
 set_battery_reserve:
   fields:
     value:
