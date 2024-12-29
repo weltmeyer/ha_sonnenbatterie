@@ -9,7 +9,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
 )
-from sonnenbatterie import sonnenbatterie
+from sonnenbatterie import AsyncSonnenBatterie
 
 from .const import DOMAIN, LOGGER, logging
 
@@ -22,7 +22,7 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
     def __init__(
         self,
         hass: HomeAssistant,
-        sb_inst: sonnenbatterie,
+        sb_inst: AsyncSonnenBatterie,
         update_interval_seconds: int,
         ip_address,
         debug_mode,
@@ -45,7 +45,7 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
 
         self.stopped = False
 
-        self.sbInst: sonnenbatterie = sb_inst
+        self.sbInst: AsyncSonnenBatterie = sb_inst
         self.meterSensors = {}
         self.update_interval_seconds = update_interval_seconds
         self.ip_address = ip_address
@@ -85,22 +85,22 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
 
         try:  # ignore errors here, may be transient
             result = await self.hass.async_add_executor_job(self.sbInst.get_battery)
-            self.latestData["battery"] = result
+            self.latestData["battery"] = await result
 
             result = await self.hass.async_add_executor_job(self.sbInst.get_batterysystem)
-            self.latestData["battery_system"] = result
+            self.latestData["battery_system"] = await result
 
             result = await self.hass.async_add_executor_job(self.sbInst.get_inverter)
-            self.latestData["inverter"] = result
+            self.latestData["inverter"] = await result
 
             result = await self.hass.async_add_executor_job(self.sbInst.get_powermeter)
-            self.latestData["powermeter"] = result
+            self.latestData["powermeter"] = await result
 
             result = await self.hass.async_add_executor_job(self.sbInst.get_status)
-            self.latestData["status"] = result
+            self.latestData["status"] = await result
 
             result = await self.hass.async_add_executor_job(self.sbInst.get_systemdata)
-            self.latestData["system_data"] = result
+            self.latestData["system_data"] = await result
 
         except Exception as ex:
             if self.debug:
@@ -141,9 +141,7 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
 
         """ some manually calculated values """
         batt_module_capacity = int(
-            self.latestData["battery_system"]["battery_system"]["system"][
-                "storage_capacity_per_module"
-            ]
+            self.latestData["battery_system"]["battery_system"]["system"]["storage_capacity_per_module"]
         )
         batt_module_count = int(self.latestData["battery_system"]["modules"])
 

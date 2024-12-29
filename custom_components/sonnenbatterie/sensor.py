@@ -15,7 +15,7 @@ from homeassistant.const import (
 from homeassistant.helpers.typing import StateType
 
 from .coordinator import SonnenBatterieCoordinator
-from sonnenbatterie import sonnenbatterie
+from sonnenbatterie import AsyncSonnenBatterie
 from .const import (
     ATTR_SONNEN_DEBUG,
     DEFAULT_SCAN_INTERVAL,
@@ -50,7 +50,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     debug_mode = config_entry.data.get(ATTR_SONNEN_DEBUG)
 
     sonnen_inst = await hass.async_add_executor_job(
-        sonnenbatterie, username, password, ip_address
+        AsyncSonnenBatterie, username, password, ip_address
     )
 
     update_interval_seconds = update_interval_seconds or DEFAULT_SCAN_INTERVAL

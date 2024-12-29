@@ -1,5 +1,5 @@
 # pylint: disable=no-name-in-module
-from sonnenbatterie import sonnenbatterie
+from sonnenbatterie import AsyncSonnenBatterie
 
 # pylint: enable=no-name-in-module
 import traceback
@@ -28,7 +28,7 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required(CONF_IP_ADDRESS, default="127.0.0.1"): str,
             vol.Required(CONF_USERNAME): vol.In(["User", "Installer"]),
             vol.Required(CONF_PASSWORD, default="sonnenUser3552"): str,
-            vol.Required(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): cv.positive_int,
+            vol.Required(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): vol.Range(min=10, max=3600),
             vol.Optional(ATTR_SONNEN_DEBUG, default=DEFAULT_SONNEN_DEBUG): cv.boolean,
         }
     )
@@ -133,9 +133,9 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
 
     @staticmethod
-    def _internal_setup(_username, _password, _ipaddress):
-        sb_test = sonnenbatterie(_username, _password, _ipaddress)
-        return sb_test.get_systemdata().get("DE_Ticket_Number", "Unknown")
+    async def _internal_setup(_username, _password, _ipaddress):
+        sb_test = AsyncSonnenBatterie(_username, _password, _ipaddress)
+        return await sb_test.get_systemdata().get("DE_Ticket_Number", "Unknown")
 
     @callback
     def _show_form(self, errors=None):
