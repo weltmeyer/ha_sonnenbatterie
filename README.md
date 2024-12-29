@@ -17,7 +17,7 @@ Easiest way to install is to add this repository via [HACS](https://hacs.xyz).
 * ex. model 9.2 eco from 2014 not working
 
 ## Sensors
-The main foxus of the integration is to provide a comprehensive set of sensors
+The main focus of the integration is to provide a comprehensive set of sensors
 for your SonnenBatterie. Right after installation the most relevant sensors 
 are already activated.
 
