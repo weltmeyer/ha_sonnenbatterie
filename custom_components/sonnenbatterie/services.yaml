@@ -50,4 +50,3 @@ set_tou_schedule:
       selector:
         text:
 get_tou_schedule:
-  fields:
