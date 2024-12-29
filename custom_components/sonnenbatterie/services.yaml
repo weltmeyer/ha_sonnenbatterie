@@ -1,0 +1,53 @@
+set_operating_mode:
+  fields:
+    mode:
+      required: true
+      example: "timeofuse"
+      default: "automatic"
+      selector:
+        text:
+charge_battery:
+  fields:
+    power:
+      required: true
+      example: "1000"
+      selector:
+        number:
+          min: 0
+discharge_battery:
+  fields:
+    power:
+      required: true
+      example: "1000"
+      selector:
+        number:
+          min: 0
+set_battery_reserve:
+  fields:
+    value:
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 100
+set_config_item:
+  fields:
+    item:
+      required: true
+      example: "EM_USOC"
+      selector:
+        text:
+    value:
+      required: true
+      example: "15"
+      selector:
+        text:
+set_tou_schedule:
+  fields:
+    schedule:
+      required: true
+      example: "[{\"start\":\"10:00\", \"stop\":\"11:00\", \"threshold_p_max\": 20000 }]"
+      selector:
+        text:
+get_tou_schedule:
+  fields:
