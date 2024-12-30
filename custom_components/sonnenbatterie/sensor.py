@@ -29,9 +29,6 @@ from .sensor_list import (
     generate_powermeter_sensors,
 )
 
-_LOGGER = logging.getLogger(__name__)
-
-
 # rustydust_241227: this doesn't seem to be used anywhere
 # async def async_unload_entry(hass, entry):
 #     """Unload a config entry."""

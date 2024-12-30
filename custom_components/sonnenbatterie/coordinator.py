@@ -103,13 +103,11 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
             self.latestData["system_data"] = await result
 
         except Exception as ex:
-            if self.debug:
-                e = traceback.format_exc()
-                LOGGER.error(e)
+            LOGGER.info(traceback.format_exc())
             if self._last_error is not None:
                 elapsed = time() - self._last_error
                 if elapsed > timedelta(seconds=180).total_seconds():
-                    LOGGER.warning(f"Unable to connecto to Sonnenbatteries at {self.ip_address} for {elapsed} seconds. Please check! [{ex}]")
+                    LOGGER.error(f"Unable to connecto to Sonnenbatteries at {self.ip_address} for {elapsed} seconds. Please check! [{ex}]")
             else:
                 self._last_error = time()
 

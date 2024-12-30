@@ -25,10 +25,10 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
     CONFIG_SCHEMA_USER = vol.Schema(
         {
-            vol.Required(CONF_IP_ADDRESS, default="127.0.0.1"): str,
+            vol.Required(CONF_IP_ADDRESS, default="192.168.0.1"): str,
             vol.Required(CONF_USERNAME): vol.In(["User", "Installer"]),
             vol.Required(CONF_PASSWORD, default="sonnenUser3552"): str,
-            vol.Required(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): vol.Range(min=10, max=3600),
+            vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): int,
             vol.Optional(ATTR_SONNEN_DEBUG, default=DEFAULT_SONNEN_DEBUG): cv.boolean,
         }
     )
@@ -52,15 +52,21 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 LOGGER.error(f"Unable to connect to sonnenbatterie: {e}")
                 return self._show_form({"base": "connection_error"})
 
+            # async is a fickly beast ...
+            sb_serial = await my_serial
+            unique_id = f"{DOMAIN}-{sb_serial}"
+            await self.async_set_unique_id(unique_id)
+            self._abort_if_unique_id_configured()
+
             return self.async_create_entry(
-                title=f"{user_input[CONF_IP_ADDRESS]} ({my_serial})",
+                title=f"{user_input[CONF_IP_ADDRESS]} ({sb_serial})",
                 data={
                     CONF_USERNAME: username,
                     CONF_PASSWORD: password,
                     CONF_IP_ADDRESS: ipaddress,
                     CONF_SCAN_INTERVAL: user_input[CONF_SCAN_INTERVAL],
                     ATTR_SONNEN_DEBUG: user_input[ATTR_SONNEN_DEBUG],
-                    CONF_SERIAL_NUMBER: my_serial,
+                    CONF_SERIAL_NUMBER: sb_serial,
                 },
             )
 
@@ -98,6 +104,7 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
         if user_input is not None:
+            LOGGER.info(f"Reconfiguring {entry}")
             if entry.data.get(CONF_SERIAL_NUMBER):
                 await self.async_set_unique_id(entry.data[CONF_SERIAL_NUMBER])
                 self._abort_if_unique_id_configured()
@@ -119,10 +126,12 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     errors={"base": "connection_error"},
                 )
 
+            # async is a fickly beast ...
+            sb_serial = await my_serial
             return self.async_update_reload_and_abort(
                 self._get_reconfigure_entry(),
                 data_updates=user_input,
-                title=f"{user_input[CONF_IP_ADDRESS]} ({my_serial})",
+                title=f"{user_input[CONF_IP_ADDRESS]} ({sb_serial})",
             )
 
 
@@ -135,7 +144,10 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     async def _internal_setup(_username, _password, _ipaddress):
         sb_test = AsyncSonnenBatterie(_username, _password, _ipaddress)
-        return await sb_test.get_systemdata().get("DE_Ticket_Number", "Unknown")
+        await sb_test.login()
+        result = (await sb_test.get_systemdata()).get("DE_Ticket_Number", "Unknown")
+        await sb_test.logout()
+        return result
 
     @callback
     def _show_form(self, errors=None):

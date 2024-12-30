@@ -65,7 +65,7 @@ SCHEMA_SET_TOU_SCHEDULE_STRING = vol.Schema(
 )
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
-    LOGGER.info(f"setup_entry: {json.dumps(dict(config_entry.data))}\n{json.dumps(dict(config_entry.options))}")
+    LOGGER.info(f"setup_entry: {config_entry.data}\n{config_entry.options}")
     ip_address = config_entry.data["ip_address"]
     password = config_entry.data["password"]
     username = config_entry.data["username"]
@@ -73,6 +73,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     sb = AsyncSonnenBatterie(username, password, ip_address)
     await sb.login()
     inverter_power = int((await sb.get_batterysystem())['battery_system']['system']['inverter_capacity'])
+    await sb.logout()
 
     # noinspection PyPep8Naming
     SCHEMA_CHARGE_BATTERY = vol.Schema(
@@ -85,7 +86,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     await hass.config_entries.async_forward_entry_setups(config_entry, [ Platform.SENSOR ])
     # rustydust_241227: this doesn't seem to be needed
     # config_entry.add_update_listener(update_listener)
-    config_entry.async_on_unload(config_entry.add_update_listener(async_reload_entry))
+    # config_entry.async_on_unload(config_entry.add_update_listener(async_reload_entry))
 
 
     # service definitions
@@ -152,6 +153,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             "schedule": response["EM_ToU_Schedule"],
         }
 
+    # noinspection PyUnusedLocal
     async def get_tou_schedule(call: ServiceCall) -> ServiceResponse:
         await sb.login()
         response = await sb.sb2.get_tou_schedule_string()
@@ -218,10 +220,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     # Done setting up the entry
     return True
 
-async def async_reload_entry(hass, entry):
-     """Reload config entry."""
-     await async_unload_entry(hass, entry)
-     await async_setup_entry(hass, entry)
+# rustydust_241230: no longer needed
+# async def async_reload_entry(hass, entry):
+#      """Reload config entry."""
+#      await async_unload_entry(hass, entry)
+#      await async_setup_entry(hass, entry)
 
 # rustydust_241227: this doesn't seem to be needed
 # async def update_listener(hass, entry):
@@ -233,4 +236,5 @@ async def async_reload_entry(hass, entry):
 
 async def async_unload_entry(hass, entry):
     """Handle removal of an entry."""
+    LOGGER.info(f"Unloading config entry: {entry}")
     return await hass.config_entries.async_forward_entry_unload(entry, Platform.SENSOR)
