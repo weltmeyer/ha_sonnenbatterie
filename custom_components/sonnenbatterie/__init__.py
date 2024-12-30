@@ -127,7 +127,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         mode = SB_OPERATING_MODES.get(call.data.get('mode'))
         await sb.login()
         response = await sb.set_operating_mode(mode)
-        LOGGER.info("set_operating_mode: " + json.dumps(response))
         return {
             "mode": response,
         }
@@ -156,7 +155,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     async def get_tou_schedule(call: ServiceCall) -> ServiceResponse:
         await sb.login()
         response = await sb.sb2.get_tou_schedule_string()
-        LOGGER.info("get_tou_schedule_string: " + response)
         return {
             "schedule": response,
         }
