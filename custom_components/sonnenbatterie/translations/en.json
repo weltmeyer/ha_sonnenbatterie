@@ -149,5 +149,82 @@
                 "name": "Inverter UPV 2"
             }
         }
+    },
+        "services": {
+        "set_operating_mode": {
+            "name": "Set operating mode",
+            "description": "Sets the operating mode of the Sonnenbatterie",
+            "fields": {
+                "mode": {
+                    "description": "Operating mode to set ('manual', 'automatic', 'timeofuse')",
+                    "name": "Operating mode",
+                    "example": "automatic"
+                }
+            }
+        },
+        "charge_battery": {
+            "name": "Charge battery",
+            "description": "Forces the charging of the Sonnenbatterie with the specified power in W",
+            "fields": {
+                "power": {
+                    "name": "Charging power",
+                    "description": "Power to charge the Sonnenbatterie with",
+                    "example": "1000"
+                }
+            }
+        },
+        "discharge_battery": {
+            "name": "Discharge battery",
+            "description": "Forces the discharge of specified power from the Sonnenbatterie",
+            "fields": {
+                "power": {
+                    "name": "Discharging power",
+                    "description": "Power to discharge the Sonnenbatterie with",
+                    "example": "1234"
+                }
+            }
+        },
+        "set_battery_reserve": {
+            "name": "Set backup capacity",
+            "description": "Sets the backup capacity the Sonnenbatterie keeps back in percent of the total",
+            "fields": {
+                "value": {
+                    "name": "Kept back capacity",
+                    "description": "Precentage of the total capacity that should be kept back",
+                    "example": "10"
+                }
+            }
+        },
+        "set_config_item": {
+            "name": "Set a config parameter",
+            "description": "Allows changing of some of the Sonnenbatterie's operating paramters",
+            "fields": {
+                "item": {
+                    "name": "Parameter name",
+                    "description": "Name of the parameter that should be set",
+                    "example": "EM_USOC"
+                },
+                "value": {
+                    "name": "Parameter value",
+                    "description": "The value the parameter should be set to. Can be an integer or a string, depending on the parameter",
+                    "example": "10 (int) or \"[]\" (empty JSON string)"
+                }
+            }
+        },
+        "set_tou_schedule": {
+            "name": "Set charging schedule(s)",
+            "description": "Allows to set charging schedules that are honored when the Sonnenbattery is in Time-of-Use mode",
+            "fields": {
+                "schedule": {
+                    "name": "Charging window(s)",
+                    "description": "One or more charging windows as string containing a JSON array",
+                    "example": "\"[{\"start\":\"10:00\", \"stop\":\"11:00\", \"threshold_p_max\": 20000}]\""
+                }
+            }
+        },
+        "get_tou_schedule": {
+            "name": "Get charging schedule",
+            "description": "Returns the charging schedules currently stored in the Sonnenbatterie's configuration"
+        }
     }
 }
