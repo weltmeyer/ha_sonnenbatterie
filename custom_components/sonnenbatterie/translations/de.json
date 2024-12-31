@@ -155,6 +155,11 @@
             "name": "Setze Sonnenbatterie-Betriebsmodus",
             "description": "Setzt den Betriebsmodus der Sonnenbatterie ('manual', 'automatic', 'timeofuse')",
             "fields": {
+                "device_id": {
+                    "description": "HomeAssistant ID des Geräts",
+                    "name": "Device ID",
+                    "example": "1234567890"
+                },
                 "mode": {
                     "description": "Der zu setzende Betriebsmodus",
                     "name": "Betriebsmodus",
@@ -166,6 +171,11 @@
             "name": "Sonnenbatterie laden",
             "description": "Erzwingt das Laden der Sonnenbatterie mit der angegebenen Leistung",
             "fields": {
+                "device_id": {
+                    "description": "HomeAssistant ID des Geräts",
+                    "name": "Device ID",
+                    "example": "1234567890"
+                },
                 "power": {
                     "name": "Lade-Leistung in Watt",
                     "description": "Leistung, mit der die Sonnenbatterie geladen werden soll",
@@ -177,6 +187,11 @@
             "name": "Sonnenbatterie entladen",
             "description": "Erzwingt die Abgabe von Leistung der Sonnenbatterie an Verbraucher",
             "fields": {
+                "device_id": {
+                    "description": "HomeAssistant ID des Geräts",
+                    "name": "Device ID",
+                    "example": "1234567890"
+                },
                 "power": {
                     "name": "Entlade-Leistung in Watt",
                     "description": "Leistung, die aus der Sonnebatterie an Verbraucher abgegehen wird",
@@ -188,6 +203,11 @@
             "name": "Reservekapazität setzen",
             "description": "Setzt die von der Sonnebatterie zurückgehaltenene Kapazität in Prozent",
             "fields": {
+                "device_id": {
+                    "description": "HomeAssistant ID des Geräts",
+                    "name": "Device ID",
+                    "example": "1234567890"
+                },
                 "value": {
                     "name": "Zurückgehaltene Kapazität",
                     "description": "Kapazität in Prozent, die die Sonnenbatterie auf jeden Fall reservieren soll",
@@ -199,6 +219,11 @@
             "name": "Setzen eines Konfigurationswerts der Sonnenbatterie",
             "description": "Erlaubt das Setzen einzelner Konfigurationswerte und Betriebsparameter der Sonnenbatterie",
             "fields": {
+                "device_id": {
+                    "description": "HomeAssistant ID des Geräts",
+                    "name": "Device ID",
+                    "example": "1234567890"
+                },
                 "item": {
                     "name": "Zu setzender Parameter",
                     "description": "Der Name des zu setzenden Parameters der Sonnenbatterie",
@@ -215,6 +240,11 @@
             "name": "Ladefenster festlegen",
             "description": "Erlaubt das Setzen von Ladenfenstern im zeitgesteuerten Betriebsmodus",
             "fields": {
+                "device_id": {
+                    "description": "HomeAssistant ID des Geräts",
+                    "name": "Device ID",
+                    "example": "1234567890"
+                },
                 "schedule": {
                     "name": "Zeitfenster (JSON-Array)",
                     "description": "Ein oder mehrere Zeitfenster-Angaben als JSON-Array im String-Format",
@@ -224,7 +254,14 @@
         },
         "get_tou_schedule": {
             "name": "Auslesen der Lade-Zeitfenster",
-            "description": "Liefert die aktuell in der Sonnebatterie hinterlegten Zeitfenster für das Laden im zeitgesteuerten Modus"
+            "description": "Liefert die aktuell in der Sonnebatterie hinterlegten Zeitfenster für das Laden im zeitgesteuerten Modus",
+            "fields": {
+                "device_id": {
+                    "description": "HomeAssistant ID des Geräts",
+                    "name": "Device ID",
+                    "example": "1234567890"
+                }
+            }
         }
     }
 }
