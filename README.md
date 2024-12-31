@@ -27,7 +27,7 @@ are already activated.
 
 
 ## Actions
-Since version 2024.12.03 this integration also supports actions you can use to
+Since version 2025.01.01 this integration also supports actions you can use to
 set some variables that influence the behaviour of your SonnenBatterie.
 
 Currently supported actions are:
