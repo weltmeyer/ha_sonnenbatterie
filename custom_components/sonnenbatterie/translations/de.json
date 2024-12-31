@@ -262,6 +262,28 @@
                     "example": "1234567890"
                 }
             }
+        },
+        "get_battery_reserve": {
+            "name": "Auslesen der Batterie-Reserve",
+            "description": "Liefert die von der Sonnebatterie als Reserve zurückgehaltene Kapazität in Prozent",
+            "fields": {
+                "device_id": {
+                    "description": "HomeAssistant ID des Geräts",
+                    "name": "Device ID",
+                    "example": "1234567890"
+                }
+            }
+        },
+        "get_operating_mode": {
+            "name": "Betriebsmodus auslesen",
+            "description": "Liefert den aktuellen Betriebsmodus der Sonnebatterie in numerischer Form",
+            "fields": {
+                "device_id": {
+                    "description": "HomeAssistant ID des Geräts",
+                    "name": "Device ID",
+                    "example": "1234567890"
+                }
+            }
         }
     }
 }

@@ -84,3 +84,17 @@ get_tou_schedule:
       selector:
         device:
           integration: sonnenbatterie
+get_battery_reserve:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: sonnenbatterie
+get_operating_mode:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: sonnenbatterie

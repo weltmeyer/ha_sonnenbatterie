@@ -262,6 +262,28 @@
                     "example": "1234567890"
                 }
             }
+        },
+        "get_battery_reserve": {
+            "name": "Get battery reserve",
+            "description": "Returns the percentage of capacity the Sonnebatterie keeps back.",
+            "fields": {
+                "device_id": {
+                    "description": "HomeAssistant ID of the target device",
+                    "name": "Device ID",
+                    "example": "1234567890"
+                }
+            }
+        },
+        "get_operating_mode": {
+            "name": "Get operating mode",
+            "description": "Returns the current operating mode of the SonnenBatterie in numeric form",
+            "fields": {
+                "device_id": {
+                    "description": "HomeAssistant ID of the target device",
+                    "name": "Device ID",
+                    "example": "1234567890"
+                }
+            }
         }
-    }
+}
 }

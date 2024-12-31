@@ -206,6 +206,25 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             "schedule": response,
         }
 
+    # noinspection PyUnusedLocal
+    async def get_battery_reserve(call: ServiceCall) -> ServiceResponse:
+        sb_conn = _get_sb_connection(call.data)
+        await sb_conn.login()
+        response = await sb_conn.sb2.get_battery_reserve()
+        await sb_conn.logout()
+        return {
+            "backup_reserve": response,
+        }
+
+    async def get_operating_mode(call: ServiceCall) -> ServiceResponse:
+        sb_conn = _get_sb_connection(call.data)
+        await sb_conn.login()
+        response = await sb_conn.sb2.get_operating_mode()
+        await sb_conn.logout()
+        return {
+            "operating_mode": response,
+        }
+
     # service registration
     hass.services.async_register(
         DOMAIN,
@@ -259,6 +278,20 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         DOMAIN,
         "get_tou_schedule",
         get_tou_schedule,
+        supports_response=SupportsResponse.ONLY,
+    )
+
+    hass.services.async_register(
+        DOMAIN,
+        "get_battery_reserve",
+        get_battery_reserve,
+        supports_response=SupportsResponse.ONLY,
+    )
+
+    hass.services.async_register(
+        DOMAIN,
+        "get_operating_mode",
+        get_operating_mode,
         supports_response=SupportsResponse.ONLY,
     )
 
