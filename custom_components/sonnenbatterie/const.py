@@ -1,5 +1,7 @@
 import logging
 
+SONNENBATTERIE_ISSUE_URL = "https://github.com/weltmeyer/ha_sonnenbatterie/issues"
+
 CONF_SERIAL_NUMBER = "serial_number"
 
 ATTR_SONNEN_DEBUG = "sonnenbatterie_debug"

@@ -104,7 +104,7 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
         if user_input is not None:
-            LOGGER.info(f"Reconfiguring {entry}")
+            LOGGER.debug(f"Reconfiguring {entry}")
             if entry.data.get(CONF_SERIAL_NUMBER):
                 await self.async_set_unique_id(entry.data[CONF_SERIAL_NUMBER])
                 self._abort_if_unique_id_configured()

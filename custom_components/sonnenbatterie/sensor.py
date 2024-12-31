@@ -39,7 +39,7 @@ from .sensor_list import (
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the sensor platform."""
-    LOGGER.info("SETUP_ENTRY")
+    LOGGER.debug("SETUP_ENTRY")
     username = config_entry.data.get(CONF_USERNAME)
     password = config_entry.data.get(CONF_PASSWORD)
     ip_address = config_entry.data.get(CONF_IP_ADDRESS)
@@ -51,7 +51,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     )
 
     update_interval_seconds = update_interval_seconds or DEFAULT_SCAN_INTERVAL
-    LOGGER.info("{0} - UPDATEINTERVAL: {1}".format(DOMAIN, update_interval_seconds))
+    LOGGER.debug(f"{DOMAIN} - UPDATEINTERVAL: {update_interval_seconds}")
 
     """ The Coordinator is called from HA for updates from API """
     coordinator = SonnenBatterieCoordinator(
@@ -79,7 +79,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         for description in generate_powermeter_sensors(_coordinator=coordinator)
     )
 
-    LOGGER.info("Init done")
+    LOGGER.debug("Init done")
     return True
 
 

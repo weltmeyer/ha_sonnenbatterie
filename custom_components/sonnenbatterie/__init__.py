@@ -1,25 +1,31 @@
 """The Sonnenbatterie integration."""
 
 import json
-import voluptuous as vol
 
+import homeassistant.helpers.config_validation as cv
+import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
-    Platform
+    Platform,
+    ATTR_DEVICE_ID,
+    CONF_IP_ADDRESS,
+    CONF_PASSWORD,
+    CONF_USERNAME,
 )
 from homeassistant.core import (
     HomeAssistant,
     ServiceCall,
     ServiceResponse, SupportsResponse,
 )
-
-import homeassistant.helpers.config_validation as cv
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.device_registry import (
+    async_get as dr_async_get,
+)
+from homeassistant.util.read_only_dict import ReadOnlyDict
 from sonnenbatterie import AsyncSonnenBatterie
 from timeofuse import TimeofUseSchedule
 
 from .const import *
-
 
 # rustydust_241227: this doesn't seem to be needed - kept until we're sure ;)
 # async def async_setup(hass, config):
@@ -65,10 +71,10 @@ SCHEMA_SET_TOU_SCHEDULE_STRING = vol.Schema(
 )
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
-    LOGGER.info(f"setup_entry: {config_entry.data}\n{config_entry.options}")
-    ip_address = config_entry.data["ip_address"]
-    password = config_entry.data["password"]
-    username = config_entry.data["username"]
+    LOGGER.debug(f"setup_entry: {config_entry.data}\n{config_entry.entry_id}")
+    ip_address = config_entry.data[CONF_IP_ADDRESS]
+    password = config_entry.data[CONF_PASSWORD]
+    username = config_entry.data[CONF_USERNAME]
 
     sb = AsyncSonnenBatterie(username, password, ip_address)
     await sb.login()
@@ -83,34 +89,65 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         }
     )
 
+    # Set up base data in hass object
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN][config_entry.entry_id] = {}
+    hass.data[DOMAIN][config_entry.entry_id][CONF_IP_ADDRESS] = ip_address
+    hass.data[DOMAIN][config_entry.entry_id][CONF_USERNAME] = username
+    hass.data[DOMAIN][config_entry.entry_id][CONF_PASSWORD] = password
+
     await hass.config_entries.async_forward_entry_setups(config_entry, [ Platform.SENSOR ])
     # rustydust_241227: this doesn't seem to be needed
     # config_entry.add_update_listener(update_listener)
     # config_entry.async_on_unload(config_entry.add_update_listener(async_reload_entry))
 
+    def _get_sb_connection(call_data: ReadOnlyDict) -> AsyncSonnenBatterie:
+        LOGGER.debug(f"_get_sb_connection: {call_data}")
+        if ATTR_DEVICE_ID in call_data:
+            # no idea why, but sometimes it's a list and other times a str
+            if isinstance(call_data[ATTR_DEVICE_ID], list):
+                device_id = call_data[ATTR_DEVICE_ID][0]
+            else:
+                device_id = call_data[ATTR_DEVICE_ID]
+            device_registry = dr_async_get(hass)
+            if not (device_entry := device_registry.async_get(device_id)):
+                raise HomeAssistantError(f"No device found for device_id: {device_id}")
+            if not (sb_config := hass.data[DOMAIN][device_entry.primary_config_entry]):
+                raise HomeAssistantError(f"Unable to find config for device_id: {device_id} ({device_entry.name})")
+            if not (sb_config.get(CONF_USERNAME) and sb_config.get(CONF_PASSWORD) and sb_config.get(CONF_IP_ADDRESS)):
+                raise HomeAssistantError(f"Invalid config for device_id: {device_id} ({sb_config}). Please report an issue at {SONNENBATTERIE_ISSUE_URL}.")
+            return AsyncSonnenBatterie(sb_config.get(CONF_USERNAME), sb_config.get(CONF_PASSWORD), sb_config.get(CONF_IP_ADDRESS))
+        else:
+            return sb
 
     # service definitions
     async def charge_battery(call: ServiceCall) -> ServiceResponse:
         power = int(call.data.get(CONF_CHARGE_WATT))
         # Make sure we have an sb2 object
-        await sb.login()
-        response = await sb.sb2.charge_battery(power)
+        sb_conn = _get_sb_connection(call.data)
+        await sb_conn.login()
+        response = await sb_conn.sb2.charge_battery(power)
+        await sb_conn.logout()
         return {
             "charge": response,
         }
 
     async def discharge_battery(call: ServiceCall) -> ServiceResponse:
         power = int(call.data.get(CONF_CHARGE_WATT))
-        await sb.login()
-        response = await sb.sb2.discharge_battery(power)
+        sb_conn = _get_sb_connection(call.data)
+        await sb_conn.login()
+        response = await sb_conn.sb2.discharge_battery(power)
+        await sb_conn.logout()
         return {
             "discharge": response,
         }
 
     async def set_battery_reserve(call: ServiceCall) -> ServiceResponse:
         value = call.data.get(CONF_SERVICE_VALUE)
-        await sb.login()
-        response = int((await sb.sb2.set_battery_reserve(value))["EM_USOC"])
+        sb_conn = _get_sb_connection(call.data)
+        await sb_conn.login()
+        response = int((await sb_conn.sb2.set_battery_reserve(value))["EM_USOC"])
+        await sb_conn.logout()
         return {
             "battery_reserve": response,
         }
@@ -118,16 +155,20 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     async def set_config_item(call: ServiceCall) -> ServiceResponse:
         item = call.data.get(CONF_SERVICE_ITEM)
         value = call.data.get(CONF_SERVICE_VALUE)
-        await sb.login()
-        response = await sb.sb2.set_config_item(item, value)
+        sb_conn = _get_sb_connection(call.data)
+        await sb_conn.login()
+        response = await sb_conn.sb2.set_config_item(item, value)
+        await sb_conn.logout()
         return {
             "response": response,
         }
 
     async def set_operating_mode(call: ServiceCall) -> ServiceResponse:
         mode = SB_OPERATING_MODES.get(call.data.get('mode'))
-        await sb.login()
-        response = await sb.set_operating_mode(mode)
+        sb_conn = _get_sb_connection(call.data)
+        await sb_conn.login()
+        response = await sb_conn.set_operating_mode(mode)
+        await sb_conn.logout()
         return {
             "mode": response,
         }
@@ -147,16 +188,20 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         except TypeError as t:
             raise HomeAssistantError(f"Schedule is not a valid schedule: '{schedule}'") from t
 
-        await sb.login()
-        response = await sb.sb2.set_tou_schedule_string(schedule)
+        sb_conn = _get_sb_connection(call.data)
+        await sb_conn.login()
+        response = await sb_conn.sb2.set_tou_schedule_string(schedule)
+        await sb_conn.logout()
         return {
             "schedule": response["EM_ToU_Schedule"],
         }
 
     # noinspection PyUnusedLocal
     async def get_tou_schedule(call: ServiceCall) -> ServiceResponse:
-        await sb.login()
-        response = await sb.sb2.get_tou_schedule_string()
+        sb_conn = _get_sb_connection(call.data)
+        await sb_conn.login()
+        response = await sb_conn.sb2.get_tou_schedule_string()
+        await sb_conn.logout()
         return {
             "schedule": response,
         }
@@ -236,5 +281,5 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
 async def async_unload_entry(hass, entry):
     """Handle removal of an entry."""
-    LOGGER.info(f"Unloading config entry: {entry}")
+    LOGGER.debug(f"Unloading config entry: {entry}")
     return await hass.config_entries.async_forward_entry_unload(entry, Platform.SENSOR)

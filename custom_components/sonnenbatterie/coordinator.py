@@ -13,9 +13,6 @@ from sonnenbatterie import AsyncSonnenBatterie
 
 from .const import DOMAIN, LOGGER, logging
 
-_LOGGER = logging.getLogger(__name__)
-
-
 class SonnenBatterieCoordinator(DataUpdateCoordinator):
     """The SonnenBatterieCoordinator class."""
 
@@ -31,7 +28,7 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
         """Initialize my coordinator."""
         super().__init__(
             hass,
-            _LOGGER,
+            LOGGER,
             # Name of the data. For logging purposes.
             name=f"sonnenbatterie-{device_id}",
             # Polling interval. Will only be polled if there are subscribers.
@@ -103,10 +100,10 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
             self.latestData["system_data"] = await result
 
         except Exception as ex:
-            LOGGER.info(traceback.format_exc())
             if self._last_error is not None:
+                LOGGER.info(traceback.format_exc() + " ... might be maintenance window")
                 elapsed = time() - self._last_error
-                if elapsed > timedelta(seconds=180).total_seconds():
+                if elapsed > 180:
                     LOGGER.error(f"Unable to connecto to Sonnenbatteries at {self.ip_address} for {elapsed} seconds. Please check! [{ex}]")
             else:
                 self._last_error = time()

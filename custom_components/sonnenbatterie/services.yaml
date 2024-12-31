@@ -1,5 +1,10 @@
 set_operating_mode:
   fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: sonnenbatterie
     mode:
       required: true
       example: "timeofuse"
@@ -8,6 +13,11 @@ set_operating_mode:
         text:
 charge_battery:
   fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: sonnenbatterie
     power:
       required: true
       example: "1000"
@@ -15,6 +25,11 @@ charge_battery:
         number:
 discharge_battery:
   fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: sonnenbatterie
     power:
       required: true
       example: "1000"
@@ -22,6 +37,11 @@ discharge_battery:
         number:
 set_battery_reserve:
   fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: sonnenbatterie
     value:
       required: true
       selector:
@@ -30,6 +50,11 @@ set_battery_reserve:
           max: 100
 set_config_item:
   fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: sonnenbatterie
     item:
       required: true
       example: "EM_USOC"
@@ -42,9 +67,20 @@ set_config_item:
         text:
 set_tou_schedule:
   fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: sonnenbatterie
     schedule:
       required: true
       example: "[{\"start\":\"10:00\", \"stop\":\"11:00\", \"threshold_p_max\": 20000 }]"
       selector:
         text:
 get_tou_schedule:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: sonnenbatterie
