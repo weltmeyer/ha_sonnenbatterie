@@ -15,7 +15,7 @@ from homeassistant.const import (
 from homeassistant.helpers.typing import StateType
 
 from .coordinator import SonnenBatterieCoordinator
-from sonnenbatterie import sonnenbatterie
+from sonnenbatterie import AsyncSonnenBatterie
 from .const import (
     ATTR_SONNEN_DEBUG,
     DEFAULT_SCAN_INTERVAL,
@@ -29,9 +29,6 @@ from .sensor_list import (
     generate_powermeter_sensors,
 )
 
-_LOGGER = logging.getLogger(__name__)
-
-
 # rustydust_241227: this doesn't seem to be used anywhere
 # async def async_unload_entry(hass, entry):
 #     """Unload a config entry."""
@@ -42,7 +39,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the sensor platform."""
-    LOGGER.info("SETUP_ENTRY")
+    LOGGER.debug("SETUP_ENTRY")
     username = config_entry.data.get(CONF_USERNAME)
     password = config_entry.data.get(CONF_PASSWORD)
     ip_address = config_entry.data.get(CONF_IP_ADDRESS)
@@ -50,11 +47,11 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     debug_mode = config_entry.data.get(ATTR_SONNEN_DEBUG)
 
     sonnen_inst = await hass.async_add_executor_job(
-        sonnenbatterie, username, password, ip_address
+        AsyncSonnenBatterie, username, password, ip_address
     )
 
     update_interval_seconds = update_interval_seconds or DEFAULT_SCAN_INTERVAL
-    LOGGER.info("{0} - UPDATEINTERVAL: {1}".format(DOMAIN, update_interval_seconds))
+    LOGGER.debug(f"{DOMAIN} - UPDATEINTERVAL: {update_interval_seconds}")
 
     """ The Coordinator is called from HA for updates from API """
     coordinator = SonnenBatterieCoordinator(
@@ -82,7 +79,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         for description in generate_powermeter_sensors(_coordinator=coordinator)
     )
 
-    LOGGER.info("Init done")
+    LOGGER.debug("Init done")
     return True
 
 

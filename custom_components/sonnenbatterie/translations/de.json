@@ -149,5 +149,141 @@
                 "name": "Spannungswandler UPV 2"
             }
         }
+    },
+    "services": {
+        "set_operating_mode": {
+            "name": "Setze Sonnenbatterie-Betriebsmodus",
+            "description": "Setzt den Betriebsmodus der Sonnenbatterie ('manual', 'automatic', 'timeofuse')",
+            "fields": {
+                "device_id": {
+                    "description": "HomeAssistant ID des Geräts",
+                    "name": "Device ID",
+                    "example": "1234567890"
+                },
+                "mode": {
+                    "description": "Der zu setzende Betriebsmodus",
+                    "name": "Betriebsmodus",
+                    "example": "automatic"
+                }
+            }
+        },
+        "charge_battery": {
+            "name": "Sonnenbatterie laden",
+            "description": "Erzwingt das Laden der Sonnenbatterie mit der angegebenen Leistung",
+            "fields": {
+                "device_id": {
+                    "description": "HomeAssistant ID des Geräts",
+                    "name": "Device ID",
+                    "example": "1234567890"
+                },
+                "power": {
+                    "name": "Lade-Leistung in Watt",
+                    "description": "Leistung, mit der die Sonnenbatterie geladen werden soll",
+                    "example": "1000"
+                }
+            }
+        },
+        "discharge_battery": {
+            "name": "Sonnenbatterie entladen",
+            "description": "Erzwingt die Abgabe von Leistung der Sonnenbatterie an Verbraucher",
+            "fields": {
+                "device_id": {
+                    "description": "HomeAssistant ID des Geräts",
+                    "name": "Device ID",
+                    "example": "1234567890"
+                },
+                "power": {
+                    "name": "Entlade-Leistung in Watt",
+                    "description": "Leistung, die aus der Sonnebatterie an Verbraucher abgegehen wird",
+                    "example": "1234"
+                }
+            }
+        },
+        "set_battery_reserve": {
+            "name": "Reservekapazität setzen",
+            "description": "Setzt die von der Sonnebatterie zurückgehaltenene Kapazität in Prozent",
+            "fields": {
+                "device_id": {
+                    "description": "HomeAssistant ID des Geräts",
+                    "name": "Device ID",
+                    "example": "1234567890"
+                },
+                "value": {
+                    "name": "Zurückgehaltene Kapazität",
+                    "description": "Kapazität in Prozent, die die Sonnenbatterie auf jeden Fall reservieren soll",
+                    "example": "10"
+                }
+            }
+        },
+        "set_config_item": {
+            "name": "Setzen eines Konfigurationswerts der Sonnenbatterie",
+            "description": "Erlaubt das Setzen einzelner Konfigurationswerte und Betriebsparameter der Sonnenbatterie",
+            "fields": {
+                "device_id": {
+                    "description": "HomeAssistant ID des Geräts",
+                    "name": "Device ID",
+                    "example": "1234567890"
+                },
+                "item": {
+                    "name": "Zu setzender Parameter",
+                    "description": "Der Name des zu setzenden Parameters der Sonnenbatterie",
+                    "example": "EM_USOC"
+                },
+                "value": {
+                    "name": "Wert des zu setzenden Parameters",
+                    "description": "Der zu setzende Wert, kann je nach Parameter ein Text, eine Zahl oder ein JSON-String sein",
+                    "example": "10 (int) oder \"[]\" (leerer JSON-String)"
+                }
+            }
+        },
+        "set_tou_schedule": {
+            "name": "Ladefenster festlegen",
+            "description": "Erlaubt das Setzen von Ladenfenstern im zeitgesteuerten Betriebsmodus",
+            "fields": {
+                "device_id": {
+                    "description": "HomeAssistant ID des Geräts",
+                    "name": "Device ID",
+                    "example": "1234567890"
+                },
+                "schedule": {
+                    "name": "Zeitfenster (JSON-Array)",
+                    "description": "Ein oder mehrere Zeitfenster-Angaben als JSON-Array im String-Format",
+                    "example": "\"[{\"start\":\"10:00\", \"stop\":\"11:00\", \"threshold_p_max\": 20000}]\""
+                }
+            }
+        },
+        "get_tou_schedule": {
+            "name": "Auslesen der Lade-Zeitfenster",
+            "description": "Liefert die aktuell in der Sonnebatterie hinterlegten Zeitfenster für das Laden im zeitgesteuerten Modus",
+            "fields": {
+                "device_id": {
+                    "description": "HomeAssistant ID des Geräts",
+                    "name": "Device ID",
+                    "example": "1234567890"
+                }
+            }
+        },
+        "get_battery_reserve": {
+            "name": "Auslesen der Batterie-Reserve",
+            "description": "Liefert die von der Sonnebatterie als Reserve zurückgehaltene Kapazität in Prozent",
+            "fields": {
+                "device_id": {
+                    "description": "HomeAssistant ID des Geräts",
+                    "name": "Device ID",
+                    "example": "1234567890"
+                }
+            }
+        },
+        "get_operating_mode": {
+            "name": "Betriebsmodus auslesen",
+            "description": "Liefert den aktuellen Betriebsmodus der Sonnebatterie in numerischer Form",
+            "fields": {
+                "device_id": {
+                    "description": "HomeAssistant ID des Geräts",
+                    "name": "Device ID",
+                    "example": "1234567890"
+                }
+            }
+        }
     }
 }
