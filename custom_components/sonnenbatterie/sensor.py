@@ -1,33 +1,26 @@
-from homeassistant.config_entries import ConfigEntryState
-from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
-)
 from homeassistant.components.sensor import (
     SensorEntity,
 )
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import (
-    CONF_IP_ADDRESS,
-    CONF_PASSWORD,
     CONF_SCAN_INTERVAL,
-    CONF_USERNAME,
 )
-
 from homeassistant.helpers.typing import StateType
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .coordinator import SonnenBatterieCoordinator
-from sonnenbatterie import AsyncSonnenBatterie
+from . import CONF_COORDINATOR
 from .const import (
-    ATTR_SONNEN_DEBUG,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
     LOGGER,
-    logging,
 )
+from .coordinator import SonnenbatterieCoordinator
 from .sensor_list import (
     SonnenbatterieSensorEntityDescription,
     SENSORS,
     generate_powermeter_sensors,
 )
+
 
 # rustydust_241227: this doesn't seem to be used anywhere
 # async def async_unload_entry(hass, entry):
@@ -39,21 +32,15 @@ from .sensor_list import (
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the sensor platform."""
-    LOGGER.debug("SETUP_ENTRY")
-    username = config_entry.data.get(CONF_USERNAME)
-    password = config_entry.data.get(CONF_PASSWORD)
-    ip_address = config_entry.data.get(CONF_IP_ADDRESS)
-    update_interval_seconds = config_entry.data.get(CONF_SCAN_INTERVAL)
-    debug_mode = config_entry.data.get(ATTR_SONNEN_DEBUG)
+    LOGGER.debug(f"SENSOR async_setup_entry - {config_entry}\n{hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]}")
+    coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
 
-    sonnen_inst = await hass.async_add_executor_job(
-        AsyncSonnenBatterie, username, password, ip_address
-    )
+    update_interval_seconds = config_entry.data.get(CONF_SCAN_INTERVAL)
 
     update_interval_seconds = update_interval_seconds or DEFAULT_SCAN_INTERVAL
     LOGGER.debug(f"{DOMAIN} - UPDATEINTERVAL: {update_interval_seconds}")
 
-    """ The Coordinator is called from HA for updates from API """
+    """ The Coordinator is called from HA for updates from API
     coordinator = SonnenBatterieCoordinator(
         hass,
         sonnen_inst,
@@ -62,10 +49,13 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         debug_mode,
         config_entry.entry_id,
     )
+    """
 
     if config_entry.state == ConfigEntryState.SETUP_IN_PROGRESS:
+        LOGGER.debug(f"SENSOR {DOMAIN} - first refresh")
         await coordinator.async_config_entry_first_refresh()
     else:
+        LOGGER.debug(f"SENSOR {DOMAIN} - Async Refresh")
         await coordinator.async_refresh()
 
     async_add_entities(
@@ -83,8 +73,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     return True
 
 
-class SonnenbatterieSensor(CoordinatorEntity[SonnenBatterieCoordinator], SensorEntity):
-    """Represent an SonnenBatterie sensor."""
+class SonnenbatterieSensor(CoordinatorEntity[SonnenbatterieCoordinator], SensorEntity):
+    """Represent a SonnenBatterie sensor."""
 
     entity_description: SonnenbatterieSensorEntityDescription
     _attr_should_poll = False
@@ -93,7 +83,7 @@ class SonnenbatterieSensor(CoordinatorEntity[SonnenBatterieCoordinator], SensorE
 
     def __init__(
         self,
-        coordinator: SonnenBatterieCoordinator,
+        coordinator: SonnenbatterieCoordinator,
         entity_description: SonnenbatterieSensorEntityDescription,
     ) -> None:
         super().__init__(coordinator=coordinator)

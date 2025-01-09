@@ -1,63 +1,45 @@
-"""The data update coordinator for OctoPrint."""
-
-from time import time
 import traceback
 from datetime import timedelta
+from time import time
 
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_SCAN_INTERVAL, CONF_USERNAME, CONF_PASSWORD, CONF_IP_ADDRESS
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.update_coordinator import (
-    DataUpdateCoordinator,
-)
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from sonnenbatterie import AsyncSonnenBatterie
 
-from .const import DOMAIN, LOGGER, logging
+from custom_components.sonnenbatterie import LOGGER, DOMAIN, ATTR_SONNEN_DEBUG, CONF_SERIAL_NUMBER
 
-class SonnenBatterieCoordinator(DataUpdateCoordinator):
-    """The SonnenBatterieCoordinator class."""
 
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        sb_inst: AsyncSonnenBatterie,
-        update_interval_seconds: int,
-        ip_address,
-        debug_mode,
-        device_id,
-    ):
-        """Initialize my coordinator."""
-        super().__init__(
-            hass,
-            LOGGER,
-            # Name of the data. For logging purposes.
-            name=f"sonnenbatterie-{device_id}",
-            # Polling interval. Will only be polled if there are subscribers.
-            update_interval=timedelta(seconds=update_interval_seconds),
-        )
-        self.sensor = None
-        self.hass = hass
-        self.latestData = {}
-        self.disabledSensors = []
-        self.device_id = device_id
+class SonnenbatterieCoordinator(DataUpdateCoordinator):
+    """Class to manage fetching Sonnenbatteries data."""
 
-        self.stopped = False
+    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry):
+        LOGGER.debug(f"Initializing SonnenbatterieCoordinator: {config_entry.data}")
+        LOGGER.warning(f"config_entry: {config_entry.data}")
 
-        self.sbInst: AsyncSonnenBatterie = sb_inst
-        self.meterSensors = {}
-        self.update_interval_seconds = update_interval_seconds
-        self.ip_address = ip_address
-        self.debug = debug_mode
-        self.fullLogsAlreadySent = False
-
-        # fixed value, percentage of total installed power reserved for
-        # internal battery system purposes
-        self.batt_reserved_factor = 7.0
-
-        # placeholders, will be filled later
-        self.serial = ""
-
-        # error tracking
+        """ private attributes """
+        self._batt_reserved_factor = 7.0    # fixed value, reseved percentage of total installed power for internal use
+        self._config_entry = config_entry
+        self._fullLogsAlreadySent = False
         self._last_error = None
+
+        """ public attributes """
+        self.latestData = {}
+        self.name = config_entry.title
+        self.serial = config_entry.data.get(CONF_SERIAL_NUMBER, "unknown")
+
+        self.sbconn = AsyncSonnenBatterie(username=self._config_entry.data[CONF_USERNAME],
+                                          password=self._config_entry.data[CONF_PASSWORD],
+                                          ipaddress=self._config_entry.data[CONF_IP_ADDRESS])
+
+
+
+        super().__init__(hass,
+                         LOGGER,
+                         name=DOMAIN,
+                         update_interval=timedelta(seconds=config_entry.data.get(CONF_SCAN_INTERVAL, 30)))
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -65,75 +47,15 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
 
         # noinspection HttpUrlsUsage
         return DeviceInfo(
-            identifiers={(DOMAIN, self.device_id)},
-            configuration_url=f"http://{self.ip_address}/",
+            identifiers={(DOMAIN, self._config_entry.entry_id)},
+            configuration_url=f"http://{self._config_entry.data[CONF_IP_ADDRESS]}/",
             manufacturer="Sonnen",
             model=system_data.get("ERP_ArticleName", "unknown"),
             name=f"{DOMAIN} {system_data.get('DE_Ticket_Number', 'unknown')}",
             sw_version=system_data.get("software_version", "unknown"),
         )
 
-    # noinspection PyTypeChecker
-    async def _async_update_data(self):
-        """Fetch data from API endpoint.
-        This is the place to pre-process the data to lookup tables
-        so entities can quickly look up their data.
-        """
-
-        try:  # ignore errors here, may be transient
-            result = await self.hass.async_add_executor_job(self.sbInst.get_battery)
-            self.latestData["battery"] = await result
-
-            result = await self.hass.async_add_executor_job(self.sbInst.get_batterysystem)
-            self.latestData["battery_system"] = await result
-
-            result = await self.hass.async_add_executor_job(self.sbInst.get_inverter)
-            self.latestData["inverter"] = await result
-
-            result = await self.hass.async_add_executor_job(self.sbInst.get_powermeter)
-            self.latestData["powermeter"] = await result
-
-            result = await self.hass.async_add_executor_job(self.sbInst.get_status)
-            self.latestData["status"] = await result
-
-            result = await self.hass.async_add_executor_job(self.sbInst.get_systemdata)
-            self.latestData["system_data"] = await result
-
-        except Exception as ex:
-            if self._last_error is not None:
-                LOGGER.info(traceback.format_exc() + " ... might be maintenance window")
-                elapsed = time() - self._last_error
-                if elapsed > 180:
-                    LOGGER.error(f"Unable to connecto to Sonnenbatteries at {self.ip_address} for {elapsed} seconds. Please check! [{ex}]")
-            else:
-                self._last_error = time()
-
-        self._last_error = None
-
-        if isinstance(self.latestData.get("powermeter"), dict):
-            # noinspection PyBroadException
-            try:
-                # some new firmware of sonnenbatterie seems to send a dictionary, but we work with a list, so reformat :)
-                new_powermeters = []
-                for index, dictIndex in enumerate(self.latestData["powermeter"]):
-                    new_powermeters.append(self.latestData["powermeter"][dictIndex])
-                self.latestData["powermeter"] = new_powermeters
-            except:
-                e = traceback.format_exc()
-                LOGGER.error(e)
-
-        if self.debug:
-            self.send_all_data_to_log()
-
-        if self.serial == "":
-            if (
-                serial := self.latestData.get("system_data", {}).get("DE_Ticket_Number")
-            ) is not None:
-                self.serial = serial
-            else:
-                LOGGER.warning("Unable to retrieve sonnenbatterie serial number.")
-                self.serial = "UNKNOWN"
-
+    def populate_battery_info(self):
         """ some manually calculated values """
         batt_module_capacity = int(
             self.latestData["battery_system"]["battery_system"]["system"]["storage_capacity_per_module"]
@@ -153,7 +75,7 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
             "total_installed_capacity"
         ] = total_installed_capacity = int(batt_module_count * batt_module_capacity)
         self.latestData["battery_info"]["reserved_capacity"] = reserved_capacity = int(
-            total_installed_capacity * (self.batt_reserved_factor / 100.0)
+            total_installed_capacity * (self._batt_reserved_factor / 100.0)
         )
         self.latestData["battery_info"]["remaining_capacity"] = remaining_capacity = (
             int(total_installed_capacity * self.latestData["status"]["RSOC"]) / 100.0
@@ -162,16 +84,74 @@ class SonnenBatterieCoordinator(DataUpdateCoordinator):
             0, int(remaining_capacity - reserved_capacity)
         )
 
+    async def _async_update_data(self):
+        """Populate self.latestdata"""
+        LOGGER.debug(f"COORDINATOR - async_update_data: {self.sbconn} {self._config_entry.data}")
+        try:
+            result = await self.sbconn.get_battery()
+            self.latestData["battery"] = result
+
+            result = await self.sbconn.get_batterysystem()
+            self.latestData["battery_system"] = result
+
+            result = await self.sbconn.get_inverter()
+            self.latestData["inverter"] = result
+
+            result = await self.sbconn.get_powermeter()
+            self.latestData["powermeter"] = result
+
+            result = await self.sbconn.get_status()
+            self.latestData["status"] = result
+
+            result = await self.sbconn.get_systemdata()
+            self.latestData["system_data"] = result
+
+            # Fixup for older models
+            if isinstance(self.latestData.get("powermeter"), dict):
+                # noinspection PyBroadException
+                try:
+                    # some new firmware of sonnenbatterie seems to send a dictionary, but we work with a list, so reformat :)
+                    new_powermeters = []
+                    for index, dictIndex in enumerate(self.latestData["powermeter"]):
+                        new_powermeters.append(self.latestData["powermeter"][dictIndex])
+                    self.latestData["powermeter"] = new_powermeters
+                except:
+                    e = traceback.format_exc()
+                    LOGGER.error(e)
+
+            if self._config_entry.data.get(ATTR_SONNEN_DEBUG, False):
+                self.send_all_data_to_log()
+
+        except Exception as e:
+            LOGGER.debug(traceback.format_exc())
+            if self._last_error is not None:
+                LOGGER.info(traceback.format_exc() + " ... might be maintenance window")
+                elapsed = time() - self._last_error
+                if elapsed > 180:
+                    LOGGER.error(
+                        f"Unable to connecto to Sonnenbatteries at {self._config_entry.data[CONF_IP_ADDRESS]} for {elapsed} seconds. Please check! [{e}]")
+            else:
+                self._last_error = time()
+
+        self._last_error = None
+
+        self.populate_battery_info()
+
+    async def fetch_sonnenbatterie_on_startup(self):
+        """Fetch all config items from Sonnenbatterie."""
+        LOGGER.debug(f"Fetching Sonnenbatteries on startup: {self.sbconn}")
+        await self._async_update_data()
+
     def send_all_data_to_log(self):
         """
         Since we're in "debug" mode, send all data to the log, so we don't have to search for the
         variable we're looking for if it's not where we expect it to be
         """
-        if not self.fullLogsAlreadySent:
+        if not self._fullLogsAlreadySent:
             LOGGER.warning(f"Powermeter data:\n{self.latestData['powermeter']}")
             LOGGER.warning(f"Battery system data:\n{self.latestData['battery_system']}")
             LOGGER.warning(f"Inverted:\n{self.latestData['inverter']}")
             LOGGER.warning(f"System data:\n{self.latestData['system_data']}")
             LOGGER.warning(f"Status:\n{self.latestData['status']}")
             LOGGER.warning(f"Battery:\n{self.latestData['battery']}")
-            self.fullLogsAlreadySent = True
+            self._fullLogsAlreadySent = True

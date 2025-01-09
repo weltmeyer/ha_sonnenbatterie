@@ -7,7 +7,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import EntityCategory
 from homeassistant.helpers.typing import StateType
-from custom_components.sonnenbatterie.coordinator import SonnenBatterieCoordinator
+from custom_components.sonnenbatterie.coordinator import SonnenbatterieCoordinator
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -15,7 +15,7 @@ class SonnenbatterieSensorEntityDescription(SensorEntityDescription):
     """Describes Example sensor entity."""
     legacy_key: str = None
     # exists_fn: Callable[[SonnenBatterieCoordinator], bool] = lambda _: True
-    value_fn: Callable[[SonnenBatterieCoordinator], StateType]
+    value_fn: Callable[[SonnenbatterieCoordinator], StateType]
 
 
 def generate_powermeter_sensors(_coordinator):
