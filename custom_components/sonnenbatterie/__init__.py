@@ -52,13 +52,12 @@ async def async_setup(hass, config):
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
-    LOGGER.warning(f"setup_entry: {config_entry.data}\n{config_entry.entry_id}")
+    LOGGER.debug(f"setup_entry: {config_entry.data}\n{config_entry.entry_id}")
     hass.data.setdefault(DOMAIN, {})
 
     # init the master coordinator
 
     sb_coordinator = SonnenbatterieCoordinator(hass, config_entry)
-    LOGGER.warning(f"coordinator: {coordinator}")
 
     # calls SonnenbatterieCoordinator._async_update_data()
     await sb_coordinator.async_refresh()
@@ -69,7 +68,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         await sb_coordinator.fetch_sonnenbatterie_on_startup()
 
     inverter_power = sb_coordinator.latestData['battery_system']['battery_system']['system']['inverter_capacity']
-    LOGGER.debug(f"inverter_power: {inverter_power}")
 
     # noinspection PyPep8Naming
     SCHEMA_CHARGE_BATTERY = vol.Schema(

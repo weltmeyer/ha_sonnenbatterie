@@ -1,8 +1,9 @@
 import logging
+from typing import Final
 
 from homeassistant.const import Platform
 
-SONNENBATTERIE_ISSUE_URL = "https://github.com/weltmeyer/ha_sonnenbatterie/issues"
+SONNENBATTERIE_ISSUE_URL: Final = "https://github.com/weltmeyer/ha_sonnenbatterie/issues"
 
 CONF_SERIAL_NUMBER = "serial_number"
 
@@ -37,7 +38,7 @@ CONF_SERVICE_VALUE = "value"
 
 PLATFORMS = [ Platform.SENSOR ]
 
-SB_OPERATING_MODES = {
+SB_OPERATING_MODES: Final = {
     "manual": 1,
     "automatic": 2,
     "expansion": 6,

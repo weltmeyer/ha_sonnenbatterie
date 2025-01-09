@@ -32,13 +32,12 @@ from .sensor_list import (
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the sensor platform."""
-    LOGGER.debug(f"SENSOR async_setup_entry - {config_entry}\n{hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]}")
+    LOGGER.debug(f"SENSOR async_setup_entry - {config_entry.data}")
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
 
     update_interval_seconds = config_entry.data.get(CONF_SCAN_INTERVAL)
 
     update_interval_seconds = update_interval_seconds or DEFAULT_SCAN_INTERVAL
-    LOGGER.debug(f"{DOMAIN} - UPDATEINTERVAL: {update_interval_seconds}")
 
     """ The Coordinator is called from HA for updates from API
     coordinator = SonnenBatterieCoordinator(

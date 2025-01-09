@@ -17,7 +17,7 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
 
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry):
         LOGGER.debug(f"Initializing SonnenbatterieCoordinator: {config_entry.data}")
-        LOGGER.warning(f"config_entry: {config_entry.data}")
+        LOGGER.debug(f"config_entry: {config_entry.data}")
 
         """ private attributes """
         self._batt_reserved_factor = 7.0    # fixed value, reseved percentage of total installed power for internal use
@@ -43,16 +43,17 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
 
     @property
     def device_info(self) -> DeviceInfo:
-        system_data = self.latestData["system_data"]
-
+        system_data = self.latestData["battery_system"]["battery_system"]
+        system_info = self.latestData["system_data"]
         # noinspection HttpUrlsUsage
         return DeviceInfo(
             identifiers={(DOMAIN, self._config_entry.entry_id)},
             configuration_url=f"http://{self._config_entry.data[CONF_IP_ADDRESS]}/",
             manufacturer="Sonnen",
-            model=system_data.get("ERP_ArticleName", "unknown"),
+            model=system_info.get("ERP_ArticleName", "unknown"),
             name=f"{DOMAIN} {system_data.get('DE_Ticket_Number', 'unknown')}",
-            sw_version=system_data.get("software_version", "unknown"),
+            sw_version=f"{system_data['software'].get('software_version', 'unknown')} ({system_data['software'].get('firmware_version', 'unknown')})",
+            hw_version=f"{system_data['system'].get('hardware_version', 'unknown'):.1f}",
         )
 
     def populate_battery_info(self):
@@ -86,14 +87,14 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         """Populate self.latestdata"""
-        LOGGER.debug(f"COORDINATOR - async_update_data: {self.sbconn} {self._config_entry.data}")
+        LOGGER.debug(f"COORDINATOR - async_update_data: {self._config_entry.data}")
         try:
             result = await self.sbconn.get_battery()
             self.latestData["battery"] = result
 
             result = await self.sbconn.get_batterysystem()
             self.latestData["battery_system"] = result
-
+            LOGGER.debug(f"result: {result}")
             result = await self.sbconn.get_inverter()
             self.latestData["inverter"] = result
 
@@ -139,7 +140,7 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
 
     async def fetch_sonnenbatterie_on_startup(self):
         """Fetch all config items from Sonnenbatterie."""
-        LOGGER.debug(f"Fetching Sonnenbatteries on startup: {self.sbconn}")
+        LOGGER.debug(f"Fetching Sonnenbatteries on startup")
         await self._async_update_data()
 
     def send_all_data_to_log(self):

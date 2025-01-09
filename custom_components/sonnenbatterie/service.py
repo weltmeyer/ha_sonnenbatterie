@@ -52,9 +52,9 @@ class SonnenbatterieService:
         power = int(call.data.get(CONF_CHARGE_WATT))
         # Make sure we have an sb2 object
         sb_conn = self._get_sb_connection(call.data)
-        await sb_conn.login()
+        # await sb_conn.login()
         response = await sb_conn.sb2.charge_battery(power)
-        await sb_conn.logout()
+        # await sb_conn.logout()
         return {
             "charge": response,
         }
@@ -62,9 +62,9 @@ class SonnenbatterieService:
     async def discharge_battery(self, call: ServiceCall) -> ServiceResponse:
         power = int(call.data.get(CONF_CHARGE_WATT))
         sb_conn = self._get_sb_connection(call.data)
-        await sb_conn.login()
+        # await sb_conn.login()
         response = await sb_conn.sb2.discharge_battery(power)
-        await sb_conn.logout()
+        # await sb_conn.logout()
         return {
             "discharge": response,
         }
@@ -72,9 +72,9 @@ class SonnenbatterieService:
     async def set_battery_reserve(self, call: ServiceCall) -> ServiceResponse:
         value = call.data.get(CONF_SERVICE_VALUE)
         sb_conn = self._get_sb_connection(call.data)
-        await sb_conn.login()
+        # await sb_conn.login()
         response = int((await sb_conn.sb2.set_battery_reserve(value))["EM_USOC"])
-        await sb_conn.logout()
+        # await sb_conn.logout()
         return {
             "battery_reserve": response,
         }
@@ -83,9 +83,9 @@ class SonnenbatterieService:
         item = call.data.get(CONF_SERVICE_ITEM)
         value = call.data.get(CONF_SERVICE_VALUE)
         sb_conn = self._get_sb_connection(call.data)
-        await sb_conn.login()
+        # await sb_conn.login()
         response = await sb_conn.sb2.set_config_item(item, value)
-        await sb_conn.logout()
+        # await sb_conn.logout()
         return {
             "response": response,
         }
@@ -93,9 +93,9 @@ class SonnenbatterieService:
     async def set_operating_mode(self, call: ServiceCall) -> ServiceResponse:
         mode = SB_OPERATING_MODES.get(call.data.get('mode'))
         sb_conn = self._get_sb_connection(call.data)
-        await sb_conn.login()
+        # await sb_conn.login()
         response = await sb_conn.set_operating_mode(mode)
-        await sb_conn.logout()
+        # await sb_conn.logout()
         return {
             "mode": response,
         }
@@ -116,9 +116,9 @@ class SonnenbatterieService:
             raise HomeAssistantError(f"Schedule is not a valid schedule: '{schedule}'") from t
 
         sb_conn = self._get_sb_connection(call.data)
-        await sb_conn.login()
+        # await sb_conn.login()
         response = await sb_conn.sb2.set_tou_schedule_string(schedule)
-        await sb_conn.logout()
+        # await sb_conn.logout()
         return {
             "schedule": response["EM_ToU_Schedule"],
         }
@@ -126,9 +126,9 @@ class SonnenbatterieService:
     # noinspection PyUnusedLocal
     async def get_tou_schedule(self, call: ServiceCall) -> ServiceResponse:
         sb_conn = self._get_sb_connection(call.data)
-        await sb_conn.login()
+        # await sb_conn.login()
         response = await sb_conn.sb2.get_tou_schedule_string()
-        await sb_conn.logout()
+        # await sb_conn.logout()
         return {
             "schedule": response,
         }
@@ -136,19 +136,18 @@ class SonnenbatterieService:
     # noinspection PyUnusedLocal
     async def get_battery_reserve(self, call: ServiceCall) -> ServiceResponse:
         sb_conn = self._get_sb_connection(call.data)
-        await sb_conn.login()
+        # await sb_conn.login()
         response = await sb_conn.sb2.get_battery_reserve()
-        await sb_conn.logout()
+        # await sb_conn.logout()
         return {
             "backup_reserve": response,
         }
 
     async def get_operating_mode(self, call: ServiceCall) -> ServiceResponse:
         sb_conn = self._get_sb_connection(call.data)
-        await sb_conn.login()
+        # await sb_conn.login()
         response = await sb_conn.sb2.get_operating_mode()
-        await sb_conn.logout()
+        # await sb_conn.logout()
         return {
             "operating_mode": response,
         }
-
