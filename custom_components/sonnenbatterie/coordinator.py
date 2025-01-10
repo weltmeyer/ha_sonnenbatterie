@@ -24,18 +24,15 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
         self._config_entry = config_entry
         self._fullLogsAlreadySent = False
         self._last_error = None
+        self._last_login = 0
 
         """ public attributes """
         self.latestData = {}
         self.name = config_entry.title
         self.serial = config_entry.data.get(CONF_SERIAL_NUMBER, "unknown")
-
         self.sbconn = AsyncSonnenBatterie(username=self._config_entry.data[CONF_USERNAME],
                                           password=self._config_entry.data[CONF_PASSWORD],
                                           ipaddress=self._config_entry.data[CONF_IP_ADDRESS])
-
-
-
         super().__init__(hass,
                          LOGGER,
                          name=DOMAIN,
@@ -51,7 +48,8 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
             configuration_url=f"http://{self._config_entry.data[CONF_IP_ADDRESS]}/",
             manufacturer="Sonnen",
             model=system_info.get("ERP_ArticleName", "unknown"),
-            name=f"{DOMAIN} {system_data.get('DE_Ticket_Number', 'unknown')}",
+            name=f"{DOMAIN} {self._config_entry.data.get(CONF_SERIAL_NUMBER, 'unknown')}",
+            serial_number=f"{self._config_entry.data[CONF_SERIAL_NUMBER]}",
             sw_version=f"{system_data['software'].get('software_version', 'unknown')} ({system_data['software'].get('firmware_version', 'unknown')})",
             hw_version=f"{system_data['system'].get('hardware_version', 'unknown'):.1f}",
         )
@@ -87,6 +85,14 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         """Populate self.latestdata"""
+        if time() - self._last_login > 120:
+            try:
+                await self.sbconn.logout()
+            except:
+                pass
+            await self.sbconn.login()
+            self._last_login = time()
+
         LOGGER.debug(f"COORDINATOR - async_update_data: {self._config_entry.data}")
         try:
             result = await self.sbconn.get_battery()
@@ -94,7 +100,7 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
 
             result = await self.sbconn.get_batterysystem()
             self.latestData["battery_system"] = result
-            LOGGER.debug(f"result: {result}")
+
             result = await self.sbconn.get_inverter()
             self.latestData["inverter"] = result
 
@@ -103,9 +109,13 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
 
             result = await self.sbconn.get_status()
             self.latestData["status"] = result
+            LOGGER.debug(f"result: {result}")
 
             result = await self.sbconn.get_systemdata()
             self.latestData["system_data"] = result
+
+            result = await self.sbconn.sb2.get_configurations()
+            self.latestData["configurations"] = result
 
             # Fixup for older models
             if isinstance(self.latestData.get("powermeter"), dict):

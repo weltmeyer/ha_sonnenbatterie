@@ -1,22 +1,26 @@
 from collections.abc import Callable
 from dataclasses import dataclass
+
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntityDescription,
     SensorStateClass,
 )
 from homeassistant.const import EntityCategory
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.typing import StateType
+
+from custom_components.sonnenbatterie.const import DOMAIN, LOGGER
 from custom_components.sonnenbatterie.coordinator import SonnenbatterieCoordinator
 
 
 @dataclass(frozen=True, kw_only=True)
 class SonnenbatterieSensorEntityDescription(SensorEntityDescription):
-    """Describes Example sensor entity."""
+    """Describes Sonnebatterie sensor entity."""
+    _attr_has_entity_name: bool = True
     legacy_key: str = None
     # exists_fn: Callable[[SonnenBatterieCoordinator], bool] = lambda _: True
     value_fn: Callable[[SonnenbatterieCoordinator], StateType]
-
 
 def generate_powermeter_sensors(_coordinator):
     powermeter_sensors: list[SonnenbatterieSensorEntityDescription] = []
@@ -45,21 +49,27 @@ def generate_powermeter_sensors(_coordinator):
 
         for sensor_meter in generate_sensors_for:
             sensor_key = f"{sensor_prefix_key}_{sensor_meter}"
-            sensor_name = f"meter {meter['direction']} {sensor_meter}"
+            # sensor_name = f"meter {meter['direction']} {sensor_meter}"
+            sensor_name = f"meter {meter['direction']} {meter['channel']} {sensor_meter}"
             unit = (sensor_meter[0] + "").upper()
             match unit:
                 case "V":
                     device_class = SensorDeviceClass.VOLTAGE
+                    icon = "mdi:current-ac"
                 case "A":
                     device_class = SensorDeviceClass.CURRENT
+                    icon = "mdi:flash-triangle-outline"
                 case "W":
                     device_class = SensorDeviceClass.POWER
+                    icon = "mdi:meter-electric-outline"
                 case _:
                     device_class = None
+                    icon = "None"
             powermeter_sensors.append(
                 SonnenbatterieSensorEntityDescription(
                     key=sensor_key,
                     name=sensor_name,
+                    icon=icon,
                     state_class=SensorStateClass.MEASUREMENT,
                     native_unit_of_measurement=unit,
                     device_class=device_class,
@@ -77,6 +87,7 @@ def generate_powermeter_sensors(_coordinator):
                     entity_registry_enabled_default=False,
                 )
             )
+    LOGGER.debug(powermeter_sensors)
     return powermeter_sensors
 
 
@@ -87,6 +98,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     # main sensor
     SonnenbatterieSensorEntityDescription(
         key="state_sonnenbatterie",
+        icon="mdi:battery-charging-medium",
         options=["standby", "charging", "discharging"],
         device_class=SensorDeviceClass.ENUM,
         value_fn=lambda coordinator: coordinator.latestData.get("battery_info", {}).get(
@@ -259,6 +271,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     # system
     SonnenbatterieSensorEntityDescription(
         key="state_system_status",
+        icon="mdi:battery-check-outline",
         legacy_key="systemstatus",
         device_class=SensorDeviceClass.ENUM,
         # TODO if known, the possible states should be added (e.g. options=["OnGrid", "AnotherState"],).
@@ -273,6 +286,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     SonnenbatterieSensorEntityDescription(
         key="state_operating_mode",
         legacy_key="operating_mode",
+        icon="mdi:cogs",
         options=["1", "2", "6", "10"],
         device_class=SensorDeviceClass.ENUM,
         value_fn=lambda coordinator: coordinator.latestData.get("status", {}).get(

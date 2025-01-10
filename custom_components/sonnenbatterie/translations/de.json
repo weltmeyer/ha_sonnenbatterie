@@ -49,7 +49,7 @@
             "state_consumption_current": {
                 "name": "Aktueller Verbrauch"
             },
-            "state_production_w": {
+            "state_production": {
                 "name": "Aktuelle Produktion"
             },
             "state_grid_inout": {

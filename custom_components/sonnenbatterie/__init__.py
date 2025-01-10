@@ -8,9 +8,12 @@ from homeassistant.core import (
     HomeAssistant, SupportsResponse,
 )
 from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import *
 from .coordinator import SonnenbatterieCoordinator
+from .sensor_list import SonnenbatterieSensorEntityDescription
 from .service import SonnenbatterieService
 
 SCAN_INTERVAL = timedelta(seconds=DEFAULT_SCAN_INTERVAL)
@@ -53,19 +56,22 @@ async def async_setup(hass, config):
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     LOGGER.debug(f"setup_entry: {config_entry.data}\n{config_entry.entry_id}")
-    hass.data.setdefault(DOMAIN, {})
+    # only initialize if not already present
+    if DOMAIN not in hass.data:
+        hass.data.setdefault(DOMAIN, {})
 
     # init the master coordinator
 
     sb_coordinator = SonnenbatterieCoordinator(hass, config_entry)
-
     # calls SonnenbatterieCoordinator._async_update_data()
     await sb_coordinator.async_refresh()
-
     if not sb_coordinator.last_update_success:
         raise ConfigEntryNotReady
     else:
         await sb_coordinator.fetch_sonnenbatterie_on_startup()
+    # save coordinator as early as possible
+    hass.data[DOMAIN][config_entry.entry_id] = {}
+    hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR] = sb_coordinator
 
     inverter_power = sb_coordinator.latestData['battery_system']['battery_system']['system']['inverter_capacity']
 
@@ -82,8 +88,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     # Set up base data in hass object
     # hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][config_entry.entry_id] = {}
-    hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR] = sb_coordinator
     hass.data[DOMAIN][config_entry.entry_id][CONF_INVERTER_MAX] = inverter_power
 
     # Setup our sensors, services and whatnot
@@ -180,3 +184,28 @@ async def async_unload_entry(hass, entry):
     """Handle removal of an entry."""
     LOGGER.debug(f"Unloading config entry: {entry}")
     return await hass.config_entries.async_forward_entry_unload(entry, Platform.SENSOR)
+
+
+class SonnenBaseEntity(CoordinatorEntity[SonnenbatterieCoordinator], Entity):
+    entity_description: SonnenbatterieSensorEntityDescription
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+
+    def __init__(self, coordinator: SonnenbatterieCoordinator, description: SonnenbatterieSensorEntityDescription):
+        super().__init__(coordinator=coordinator)
+        self.coordinator = coordinator
+        self.entity_description = description
+        # {DOMAIN} is replaced by the correct platform by HA
+        self.entity_id = f"{DOMAIN}.sonnenbatterie_{self.coordinator.serial}_{self.entity_description.key}"
+        LOGGER.debug(f"{self.entity_id}")
+
+        # set the device info
+        self._attr_device_info = self.coordinator.device_info
+
+        # set the translation key
+        self._attr_translation_key = (
+            tkey
+            if (tkey := self.entity_description.translation_key)
+            else self.entity_description.key
+        )
+
