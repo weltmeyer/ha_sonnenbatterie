@@ -34,6 +34,19 @@
         }
     },
     "entity": {
+        "number": {
+            "number_charge": {
+                "name": "Force charge (W)"
+            },
+            "number_discharge": {
+                "name": "Force discharge (W)"
+            }
+        },
+        "select": {
+            "select_operating_mode": {
+                "name": "Operating mode"
+            }
+        },
         "sensor": {
             "state_sonnenbatterie": {
                 "name": "Sonnenbatterie",

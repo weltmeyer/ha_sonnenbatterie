@@ -5,8 +5,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import CONF_COORDINATOR, SonnenbatterieCoordinator, SB_OPERATING_MODES_NUM
 from .const import DOMAIN, LOGGER, SB_OPERATING_MODES
-from .entities import SonnenSelectEntity
-from .select_entities import SELECT_ENTITIES, SonnenbatterieSelectEntityDescription
+from .entities import SonnenSelectEntity, SELECT_ENTITIES, SonnenbatterieSelectEntityDescription
 
 
 async def async_setup_entry(
@@ -16,6 +15,7 @@ async def async_setup_entry(
 ) -> None:
     LOGGER.debug(f"SELECT async_setup_entry: {config_entry}")
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
+    await coordinator.async_refresh()
 
     entities = []
     for description in SELECT_ENTITIES:
@@ -23,7 +23,7 @@ async def async_setup_entry(
         entity = SonnenBatterieSelect(coordinator, description)
         entities.append(entity)
 
-    async_entity_cb(entities)
+    async_entity_cb(entities) if len(entities) > 0 else None
 
 
 class SonnenBatterieSelect(SonnenSelectEntity, SelectEntity):
@@ -33,7 +33,6 @@ class SonnenBatterieSelect(SonnenSelectEntity, SelectEntity):
     @property
     def current_option(self) ->  str | list[str] | None:
         tag = self.entity_description.tag
-        LOGGER.debug(f"SELECT current_option: {self.options} | {self.coordinator.latestData[tag.section][tag.property]}")
         value = self.coordinator.latestData[tag.section][tag.property]
         return SB_OPERATING_MODES_NUM[value] or "unknown"
 
@@ -44,6 +43,8 @@ class SonnenBatterieSelect(SonnenSelectEntity, SelectEntity):
             match tag.section:
                 case "configurations":
                     match tag.key:
-                        case "operating_mode":
+                        case "select_operating_mode":
                             await self.coordinator.sbconn.sb2.set_operating_mode(SB_OPERATING_MODES[option])
+                            await self.coordinator.async_request_refresh()
+
         return None

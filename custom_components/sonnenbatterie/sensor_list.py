@@ -7,10 +7,8 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.const import EntityCategory
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.typing import StateType
 
-from custom_components.sonnenbatterie.const import DOMAIN, LOGGER
 from custom_components.sonnenbatterie.coordinator import SonnenbatterieCoordinator
 
 

@@ -34,6 +34,19 @@
         }
     },
     "entity": {
+        "number": {
+            "number_charge": {
+                "name": "Laden erzwingen (W)"
+            },
+            "number_discharge": {
+                "name": "Entladen erzwingen (W)"
+            }
+        },
+        "select": {
+            "select_operating_mode": {
+                "name": "Betriebsmodus"
+            }
+        },
         "sensor": {
             "state_sonnenbatterie": {
                 "name": "Sonnenbatterie",
