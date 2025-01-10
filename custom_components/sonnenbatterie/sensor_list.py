@@ -87,7 +87,7 @@ def generate_powermeter_sensors(_coordinator):
                     entity_registry_enabled_default=False,
                 )
             )
-    LOGGER.debug(powermeter_sensors)
+
     return powermeter_sensors
 
 

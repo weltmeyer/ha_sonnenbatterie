@@ -8,8 +8,6 @@ from homeassistant.core import (
     HomeAssistant, SupportsResponse,
 )
 from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers.entity import Entity
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import *
 from .coordinator import SonnenbatterieCoordinator
@@ -184,28 +182,4 @@ async def async_unload_entry(hass, entry):
     """Handle removal of an entry."""
     LOGGER.debug(f"Unloading config entry: {entry}")
     return await hass.config_entries.async_forward_entry_unload(entry, Platform.SENSOR)
-
-
-class SonnenBaseEntity(CoordinatorEntity[SonnenbatterieCoordinator], Entity):
-    entity_description: SonnenbatterieSensorEntityDescription
-    _attr_should_poll = False
-    _attr_has_entity_name = True
-
-    def __init__(self, coordinator: SonnenbatterieCoordinator, description: SonnenbatterieSensorEntityDescription):
-        super().__init__(coordinator=coordinator)
-        self.coordinator = coordinator
-        self.entity_description = description
-        # {DOMAIN} is replaced by the correct platform by HA
-        self.entity_id = f"{DOMAIN}.sonnenbatterie_{self.coordinator.serial}_{self.entity_description.key}"
-        LOGGER.debug(f"{self.entity_id}")
-
-        # set the device info
-        self._attr_device_info = self.coordinator.device_info
-
-        # set the translation key
-        self._attr_translation_key = (
-            tkey
-            if (tkey := self.entity_description.translation_key)
-            else self.entity_description.key
-        )
 

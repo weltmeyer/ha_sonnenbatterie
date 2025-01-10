@@ -85,7 +85,7 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         """Populate self.latestdata"""
-        if time() - self._last_login > 120:
+        if time() - self._last_login > 60:
             try:
                 await self.sbconn.logout()
             except:
@@ -109,7 +109,6 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
 
             result = await self.sbconn.get_status()
             self.latestData["status"] = result
-            LOGGER.debug(f"result: {result}")
 
             result = await self.sbconn.get_systemdata()
             self.latestData["system_data"] = result

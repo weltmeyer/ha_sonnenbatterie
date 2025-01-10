@@ -36,14 +36,20 @@ CONF_SERVICE_MODE = "mode"
 CONF_SERVICE_SCHEDULE = "schedule"
 CONF_SERVICE_VALUE = "value"
 
-# PLATFORMS = [ Platform.SENSOR, Platform.SELECT ]
-PLATFORMS = [ Platform.SENSOR ]
+PLATFORMS = [ Platform.SENSOR, Platform.SELECT ]
+# PLATFORMS = [ Platform.SENSOR ]
 
 SB_OPERATING_MODES: Final = {
     "manual": 1,
     "automatic": 2,
     "expansion": 6,
     "timeofuse": 10
+}
+
+SB_OPERATING_MODES_NUM: Final = {
+    '1': "manual",
+    '2': "automatic",
+    '10': "timeofuse"
 }
 
 # rustydust_241227: doesn't seem to be used anywhere

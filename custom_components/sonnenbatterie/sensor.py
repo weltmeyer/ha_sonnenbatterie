@@ -5,12 +5,13 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.typing import StateType
 
-from . import CONF_COORDINATOR, SonnenBaseEntity
+from . import CONF_COORDINATOR
 from .const import (
     DOMAIN,
     LOGGER,
 )
 from .coordinator import SonnenbatterieCoordinator
+from .entities import SonnenBaseEntity
 
 from .sensor_list import (
     SENSORS,
@@ -31,17 +32,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     LOGGER.debug(f"SENSOR async_setup_entry - {config_entry.data}")
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
 
-    """ The Coordinator is called from HA for updates from API
-    coordinator = SonnenBatterieCoordinator(
-        hass,
-        sonnen_inst,
-        update_interval_seconds,
-        ip_address,
-        debug_mode,
-        config_entry.entry_id,
-    )
-    """
-
     if config_entry.state == ConfigEntryState.SETUP_IN_PROGRESS:
         LOGGER.debug(f"SENSOR {DOMAIN} - first refresh")
         await coordinator.async_config_entry_first_refresh()
@@ -49,23 +39,11 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         LOGGER.debug(f"SENSOR {DOMAIN} - Async Refresh")
         await coordinator.async_refresh()
 
-    entries = []
-    for sensor in SENSORS:
-        if sensor.value_fn(coordinator) is not None:
-            if sensor.name is None:
-                sensor.name = f"{DOMAIN} {coordinator.serial} {sensor.key}"
-            LOGGER.debug(f"{sensor}")
-            entries.append(SonnenbatterieSensor(coordinator,sensor))
-        else:
-            LOGGER.error (f"SENSOR {DOMAIN} {sensor.key} - {sensor.value_fn(coordinator)}")
-
-    async_add_entities(entries)
-
-    # async_add_entities(
-    #     SonnenbatterieSensor(coordinator=coordinator, entity_description=description)
-    #     for description in SENSORS
-    #     if description.value_fn(coordinator) is not None
-    # )
+    async_add_entities(
+        SonnenbatterieSensor(coordinator=coordinator, entity_description=description)
+        for description in SENSORS
+        if description.value_fn(coordinator) is not None
+    )
 
     async_add_entities(
         SonnenbatterieSensor(coordinator=coordinator, entity_description=description)

@@ -3,9 +3,10 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import CONF_COORDINATOR, SonnenbatterieCoordinator, SonnenBaseEntity
-from .const import DOMAIN, LOGGER
-from .select_entities import SELECT_ENTITIES
+from . import CONF_COORDINATOR, SonnenbatterieCoordinator, SB_OPERATING_MODES_NUM
+from .const import DOMAIN, LOGGER, SB_OPERATING_MODES
+from .entities import SonnenSelectEntity
+from .select_entities import SELECT_ENTITIES, SonnenbatterieSelectEntityDescription
 
 
 async def async_setup_entry(
@@ -18,40 +19,31 @@ async def async_setup_entry(
 
     entities = []
     for description in SELECT_ENTITIES:
+        LOGGER.debug(f"SELECT async_setup_entry: {description}")
         entity = SonnenBatterieSelect(coordinator, description)
         entities.append(entity)
-
-    """
-    description = SonnenbatterieSelectEntityDescription(
-        key="select_test",
-        name="Sonnenbatterie_Select",
-        icon="mdi:select",
-        tag="sru_select",
-        max=config_entry.data.get(CONF_INVERTER_MAX),
-        min=0,
-        device_class=SensorDeviceClass.POWER,
-        unit_of_measurement="W",
-        entity_category=EntityCategory.CONFIG,
-        entity_registry_enabled_default=True,
-        options=SB_OPERATING_MODES
-    )
-    entity = SonnenBatterieSelect(coordinator, description)
-    entities.append(entity)
-    """
 
     async_entity_cb(entities)
 
 
-
-class SonnenBatterieSelect(SonnenBaseEntity, SelectEntity):
+class SonnenBatterieSelect(SonnenSelectEntity, SelectEntity):
     def __init__(self, coordinator: SonnenbatterieCoordinator, description: SonnenbatterieSelectEntityDescription):
         super().__init__(coordinator=coordinator, description=description)
 
     @property
-    def current_option(self) -> str | None:
-        LOGGER.debug(f"SELECT current_option: {self.coordinator.latestData}")
-        return None
+    def current_option(self) ->  str | list[str] | None:
+        tag = self.entity_description.tag
+        LOGGER.debug(f"SELECT current_option: {self.options} | {self.coordinator.latestData[tag.section][tag.property]}")
+        value = self.coordinator.latestData[tag.section][tag.property]
+        return SB_OPERATING_MODES_NUM[value] or "unknown"
 
     async def async_select_option(self, option: str) -> None:
-        LOGGER.debug(f"SELECT async_select_option: {option}")
-
+        tag = self.entity_description.tag
+        # Check if we actually can change the setting
+        if tag.writable:
+            match tag.section:
+                case "configurations":
+                    match tag.key:
+                        case "operating_mode":
+                            await self.coordinator.sbconn.sb2.set_operating_mode(SB_OPERATING_MODES[option])
+        return None
