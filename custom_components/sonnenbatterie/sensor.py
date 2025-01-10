@@ -45,7 +45,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         for description in generate_powermeter_sensors(_coordinator=coordinator)
     )
 
-    LOGGER.debug("Init done")
     return True
 
 

@@ -17,7 +17,6 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
 
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry):
         LOGGER.debug(f"Initializing SonnenbatterieCoordinator: {config_entry.data}")
-        LOGGER.debug(f"config_entry: {config_entry.data}")
 
         """ private attributes """
         self._batt_reserved_factor = 7.0    # fixed value, reseved percentage of total installed power for internal use

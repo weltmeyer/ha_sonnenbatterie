@@ -53,7 +53,7 @@ async def async_setup(hass, config):
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
-    LOGGER.debug(f"setup_entry: {config_entry.data}\n{config_entry.entry_id}")
+    LOGGER.debug(f"setup_entry: {config_entry.data} | {config_entry.entry_id}")
     # only initialize if not already present
     if DOMAIN not in hass.data:
         hass.data.setdefault(DOMAIN, {})
