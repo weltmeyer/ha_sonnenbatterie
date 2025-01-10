@@ -34,6 +34,17 @@
         }
     },
     "entity": {
+        "button": {
+            "button_reset_all": {
+                "name": "Reset charge/discharge"
+            },
+            "button_reset_charge": {
+                "name": "Reset forced charge"
+            },
+            "button_reset_discharge": {
+                "name": "Reset forced discharge"
+            }
+        },
         "number": {
             "number_charge": {
                 "name": "Force charge (W)"

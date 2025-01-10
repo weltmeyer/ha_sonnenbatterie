@@ -36,7 +36,7 @@ CONF_SERVICE_MODE = "mode"
 CONF_SERVICE_SCHEDULE = "schedule"
 CONF_SERVICE_VALUE = "value"
 
-PLATFORMS = [ Platform.SENSOR, Platform.SELECT, Platform.NUMBER ]
+PLATFORMS = [ Platform.SENSOR, Platform.SELECT, Platform.NUMBER, Platform.BUTTON ]
 # PLATFORMS = [ Platform.SENSOR ]
 
 SB_OPERATING_MODES: Final = {

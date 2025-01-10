@@ -19,7 +19,6 @@ async def async_setup_entry(
 
     entities = []
     for description in SELECT_ENTITIES:
-        LOGGER.debug(f"SELECT async_setup_entry: {description}")
         entity = SonnenBatterieSelect(coordinator, description)
         entities.append(entity)
 

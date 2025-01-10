@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from enum import Enum
-from numbers import Number
 from typing import NamedTuple
 
+from homeassistant.components.button import ButtonEntityDescription
 from homeassistant.components.number import NumberEntityDescription, NumberDeviceClass, NumberMode
 from homeassistant.components.select import SelectEntityDescription
 from homeassistant.const import Platform, EntityCategory
@@ -56,6 +56,21 @@ class Tag(SelectEntry, Enum):
         writable=True,
     )
 
+    BTN_RESET_CHARGE = SelectEntry(
+        key="button_reset_charge",
+        type=Platform.BUTTON,
+    )
+
+    BTN_RESET_DISCHARGE = SelectEntry(
+        key="button_reset_discharge",
+        type=Platform.BUTTON,
+    )
+
+    BTN_RESET_ALL = SelectEntry(
+        key="button_reset_all",
+        type=Platform.BUTTON,
+    )
+
 
 @dataclass(frozen=True,kw_only=True)
 class SonnenbatterieSelectEntityDescription(SelectEntityDescription):
@@ -98,7 +113,7 @@ class SonnenSelectEntity(CoordinatorEntity[SonnenbatterieCoordinator], Entity):
         self.coordinator = coordinator
         self.entity_description = description
         # {DOMAIN} is replaced by the correct platform by HA
-        self.entity_id = f"{DOMAIN}.{DOMAIN}_{self.coordinator.serial}_{self.entity_description.key.lower()}"
+        self.entity_id = f"{DOMAIN}.{DOMAIN}_{self.coordinator.serial}_{self.entity_description.key}"
 
         self._attr_device_info = self.coordinator.device_info
         self._attr_translation_key = (
@@ -129,7 +144,7 @@ class SonnenNumberEntity(CoordinatorEntity[SonnenbatterieCoordinator], Entity):
         self.coordinator = coordinator
         self.entity_description = description
 
-        self.entity_id = f"{DOMAIN}.{DOMAIN}_{self.coordinator.serial}_{self.entity_description.key.lower()}"
+        self.entity_id = f"{DOMAIN}.{DOMAIN}_{self.coordinator.serial}_{self.entity_description.key}"
         self._attr_device_info = self.coordinator.device_info
         self._attr_translation_key = (
             tkey
@@ -137,6 +152,34 @@ class SonnenNumberEntity(CoordinatorEntity[SonnenbatterieCoordinator], Entity):
             else self.entity_description.key
         )
         self._number_option_unit_of_measurement="W"
+
+    @property
+    def unique_id(self) -> str:
+        return self.entity_id
+
+
+@dataclass(frozen=True, kw_only=True)
+class SonnenbatterieButtonEntityDescription(ButtonEntityDescription):
+    tag: Tag = None
+    _attr_device_class = None
+
+class SonnenButtonEntity(CoordinatorEntity[SonnenbatterieCoordinator], Entity):
+    entity_description: SonnenbatterieButtonEntityDescription
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+
+    def __init__(self, coordinator: SonnenbatterieCoordinator, description: SonnenbatterieButtonEntityDescription):
+        super().__init__(coordinator)
+        self.coordinator = coordinator
+        self.entity_description = description
+
+        self.entity_id = f"{DOMAIN}.{DOMAIN}_{self.coordinator.serial}_{self.entity_description.key}"
+        self._attr_device_info = self.coordinator.device_info
+        self._attr_translation_key = (
+            tkey
+            if (tkey := self.entity_description.translation_key)
+            else self.entity_description.key
+        )
 
     @property
     def unique_id(self) -> str:
@@ -169,5 +212,29 @@ NUMBER_ENTITIES = [
         tag=Tag.DISCHARGE_POWER,
         device_class=NumberDeviceClass.POWER,
         mode=NumberMode.SLIDER,
+    )
+]
+
+BUTTON_ENTITIES = [
+    SonnenbatterieButtonEntityDescription(
+        key=Tag.BTN_RESET_ALL.key,
+        icon="mdi:numeric-0-box-multiple-outline",
+        entity_category=EntityCategory.CONFIG,
+        tag=Tag.BTN_RESET_ALL,
+        device_class=None,
+    ),
+    SonnenbatterieButtonEntityDescription(
+        key=Tag.BTN_RESET_CHARGE.key,
+        icon="mdi:numeric-0-box-outline",
+        entity_category=EntityCategory.CONFIG,
+        tag=Tag.BTN_RESET_CHARGE,
+        device_class=None,
+    ),
+    SonnenbatterieButtonEntityDescription(
+        key=Tag.BTN_RESET_DISCHARGE.key,
+        icon="mdi:numeric-0-box-outline",
+        entity_category=EntityCategory.CONFIG,
+        tag=Tag.BTN_RESET_DISCHARGE,
+        device_class=None,
     )
 ]
