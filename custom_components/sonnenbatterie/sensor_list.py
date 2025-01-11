@@ -284,7 +284,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     SonnenbatterieSensorEntityDescription(
         key="state_operating_mode",
         legacy_key="operating_mode",
-        icon="mdi:cogs",
+        icon="mdi:state-machine",
         options=["1", "2", "6", "10"],
         device_class=SensorDeviceClass.ENUM,
         value_fn=lambda coordinator: coordinator.latestData.get("status", {}).get(
