@@ -154,6 +154,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     SonnenbatterieSensorEntityDescription(
         key="state_grid_inout",
         state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:transmission-tower",
         native_unit_of_measurement="W",
         device_class=SensorDeviceClass.POWER,
         value_fn=lambda coordinator: coordinator.latestData.get("status", {}).get(
@@ -164,6 +165,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         key="state_grid_in",
         legacy_key="state_grid_input",
         state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:transmission-tower-export",
         native_unit_of_measurement="W",
         device_class=SensorDeviceClass.POWER,
         value_fn=lambda coordinator: (
@@ -179,6 +181,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     SonnenbatterieSensorEntityDescription(
         key="state_grid_out",
         legacy_key="state_grid_output",
+        icon="mdi:transmission-tower-import",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="W",
         device_class=SensorDeviceClass.POWER,
