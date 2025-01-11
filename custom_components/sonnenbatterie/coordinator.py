@@ -115,21 +115,7 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
             result = await self.sbconn.sb2.get_configurations()
             self.latestData["configurations"] = result
 
-            # Fixup for older models
-            if isinstance(self.latestData.get("powermeter"), dict):
-                # noinspection PyBroadException
-                try:
-                    # some new firmware of sonnenbatterie seems to send a dictionary, but we work with a list, so reformat :)
-                    new_powermeters = []
-                    for index, dictIndex in enumerate(self.latestData["powermeter"]):
-                        new_powermeters.append(self.latestData["powermeter"][dictIndex])
-                    self.latestData["powermeter"] = new_powermeters
-                except:
-                    e = traceback.format_exc()
-                    LOGGER.error(e)
-
-            if self._config_entry.data.get(ATTR_SONNEN_DEBUG, False):
-                self.send_all_data_to_log()
+            self._last_error = None
 
         except Exception as e:
             LOGGER.debug(traceback.format_exc())
@@ -142,7 +128,21 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
             else:
                 self._last_error = time()
 
-        self._last_error = None
+        # Fixup for older models
+        if isinstance(self.latestData.get("powermeter"), dict):
+            # noinspection PyBroadException
+            try:
+                # some new firmware of sonnenbatterie seems to send a dictionary, but we work with a list, so reformat :)
+                new_powermeters = []
+                for index, dictIndex in enumerate(self.latestData["powermeter"]):
+                    new_powermeters.append(self.latestData["powermeter"][dictIndex])
+                self.latestData["powermeter"] = new_powermeters
+            except:
+                e = traceback.format_exc()
+                LOGGER.error(e)
+
+        if self._config_entry.data.get(ATTR_SONNEN_DEBUG, False):
+            self.send_all_data_to_log()
 
         self.populate_battery_info()
 
