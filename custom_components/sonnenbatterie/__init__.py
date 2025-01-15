@@ -4,10 +4,12 @@ from datetime import timedelta
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_USERNAME, CONF_PASSWORD, CONF_IP_ADDRESS
 from homeassistant.core import (
     HomeAssistant, SupportsResponse,
 )
 from homeassistant.exceptions import ConfigEntryNotReady
+from sonnenbatterie import AsyncSonnenBatterie
 
 from .const import *
 from .coordinator import SonnenbatterieCoordinator
@@ -46,6 +48,15 @@ SCHEMA_SET_TOU_SCHEDULE_STRING = vol.Schema(
 )
 
 
+async def _get_serial_number(config_entry: ConfigEntry) -> str:
+    sb_conn = AsyncSonnenBatterie(config_entry.data.get(CONF_USERNAME),
+                                  config_entry.data.get(CONF_PASSWORD),
+                                  config_entry.data.get(CONF_IP_ADDRESS))
+    await sb_conn.logout()
+    sysdata = await sb_conn.get_systemdata()
+    await sb_conn.logout()
+    return sysdata.get("DE_Ticket_Number", "sru-unknown")
+
 # noinspection PyUnusedLocal
 async def async_setup(hass, config):
     """Set up using YAML is not supported by this integration."""
@@ -58,9 +69,19 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     if DOMAIN not in hass.data:
         hass.data.setdefault(DOMAIN, {})
 
-    # init the master coordinator
+    # Fix missing serial number
+    serial_number = config_entry.data.get(CONF_SERIAL_NUMBER)
+    if serial_number is None:
+        LOGGER.debug("No serial number provided, trying to determine from Sonnenbatterie")
+        serial_number = await _get_serial_number(config_entry)
+        _config_data = config_entry.data.copy()
+        _config_data[CONF_SERIAL_NUMBER] = serial_number
+        hass.config_entries.async_update_entry(config_entry, data=_config_data)
+        LOGGER.debug(f"serial_number: {serial_number}")
 
-    sb_coordinator = SonnenbatterieCoordinator(hass, config_entry)
+    # init the master coordinator
+    sb_coordinator = SonnenbatterieCoordinator(hass, config_entry, serial_number)
+
     # calls SonnenbatterieCoordinator._async_update_data()
     await sb_coordinator.async_refresh()
     if not sb_coordinator.last_update_success:

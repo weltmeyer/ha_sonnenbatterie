@@ -15,8 +15,8 @@ from custom_components.sonnenbatterie import LOGGER, DOMAIN, ATTR_SONNEN_DEBUG, 
 class SonnenbatterieCoordinator(DataUpdateCoordinator):
     """Class to manage fetching Sonnenbatteries data."""
 
-    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry):
-        LOGGER.debug(f"Initializing SonnenbatterieCoordinator: {config_entry.data}")
+    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, serial: str) -> None:
+        LOGGER.info(f"Initializing SonnenbatterieCoordinator: {config_entry.data}")
 
         """ private attributes """
         self._batt_reserved_factor = 7.0    # fixed value, reseved percentage of total installed power for internal use
@@ -28,10 +28,11 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
         """ public attributes """
         self.latestData = {}
         self.name = config_entry.title
-        self.serial = config_entry.data.get(CONF_SERIAL_NUMBER, "unknown")
+        self.serial = serial
         self.sbconn = AsyncSonnenBatterie(username=self._config_entry.data[CONF_USERNAME],
                                           password=self._config_entry.data[CONF_PASSWORD],
                                           ipaddress=self._config_entry.data[CONF_IP_ADDRESS])
+
         super().__init__(hass,
                          LOGGER,
                          name=DOMAIN,
@@ -41,14 +42,15 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
     def device_info(self) -> DeviceInfo:
         system_data = self.latestData["battery_system"]["battery_system"]
         system_info = self.latestData["system_data"]
+
         # noinspection HttpUrlsUsage
         return DeviceInfo(
             identifiers={(DOMAIN, self._config_entry.entry_id)},
             configuration_url=f"http://{self._config_entry.data[CONF_IP_ADDRESS]}/",
             manufacturer="Sonnen",
             model=system_info.get("ERP_ArticleName", "unknown"),
-            name=f"{DOMAIN} {self._config_entry.data.get(CONF_SERIAL_NUMBER, 'unknown')}",
-            serial_number=f"{self._config_entry.data[CONF_SERIAL_NUMBER]}",
+            name=f"{DOMAIN} {self.serial}",
+            serial_number=f"{self.serial}",
             sw_version=f"{system_data['software'].get('software_version', 'unknown')} ({system_data['software'].get('firmware_version', 'unknown')})",
             hw_version=f"{system_data['system'].get('hardware_version', 'unknown'):.1f}",
         )
