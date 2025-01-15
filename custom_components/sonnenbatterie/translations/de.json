@@ -34,6 +34,30 @@
         }
     },
     "entity": {
+        "button": {
+            "button_reset_all": {
+                "name": "Reset Laden/Entladen"
+            },
+            "button_reset_charge": {
+                "name": "Reset erzwungendes Laden"
+            },
+            "button_reset_discharge": {
+                "name": "Reset erzwungenes Entladen"
+            }
+        },
+        "number": {
+            "number_charge": {
+                "name": "Laden erzwingen (W)"
+            },
+            "number_discharge": {
+                "name": "Entladen erzwingen (W)"
+            }
+        },
+        "select": {
+            "select_operating_mode": {
+                "name": "Betriebsmodus"
+            }
+        },
         "sensor": {
             "state_sonnenbatterie": {
                 "name": "Sonnenbatterie",
@@ -49,7 +73,7 @@
             "state_consumption_current": {
                 "name": "Aktueller Verbrauch"
             },
-            "state_production_w": {
+            "state_production": {
                 "name": "Aktuelle Produktion"
             },
             "state_grid_inout": {

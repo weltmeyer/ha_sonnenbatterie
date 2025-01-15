@@ -1,6 +1,9 @@
 import logging
+from typing import Final
 
-SONNENBATTERIE_ISSUE_URL = "https://github.com/weltmeyer/ha_sonnenbatterie/issues"
+from homeassistant.const import Platform
+
+SONNENBATTERIE_ISSUE_URL: Final = "https://github.com/weltmeyer/ha_sonnenbatterie/issues"
 
 CONF_SERIAL_NUMBER = "serial_number"
 
@@ -26,10 +29,28 @@ CONF_OPERATING_MODES = [
 ]
 
 CONF_CHARGE_WATT  = "power"
+CONF_COORDINATOR = "coordinator"
+CONF_INVERTER_MAX = "inverter_max"
 CONF_SERVICE_ITEM = "item"
 CONF_SERVICE_MODE = "mode"
 CONF_SERVICE_SCHEDULE = "schedule"
 CONF_SERVICE_VALUE = "value"
+
+PLATFORMS = [ Platform.SENSOR, Platform.SELECT, Platform.NUMBER, Platform.BUTTON ]
+# PLATFORMS = [ Platform.SENSOR ]
+
+SB_OPERATING_MODES: Final = {
+    "manual": 1,
+    "automatic": 2,
+    "expansion": 6,
+    "timeofuse": 10
+}
+
+SB_OPERATING_MODES_NUM: Final = {
+    '1': "manual",
+    '2': "automatic",
+    '10': "timeofuse"
+}
 
 # rustydust_241227: doesn't seem to be used anywhere
 # def flatten_obj(prefix, seperator, obj):
