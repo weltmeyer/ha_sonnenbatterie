@@ -75,6 +75,13 @@ are already activated.
 Since version 2025.01.01 this integration also supports actions you can use to
 set some variables that influence the behaviour of your SonnenBatterie.
 
+> [!NOTE]
+> All actions require you ro provide a `device_id` to correctly identify the
+> Sonnenbatterie you want to talk to. To find the device id for your Sonnenbatterie
+> use the developer tools provided by Home Assistant. Just open the "Actions" tab
+> and select an action an a device. Then switch to YAML mode where instead of the
+> user-friendly name the device id will be displayed.
+
 Currently supported actions are:
 
 ### <a name="set_operatingmode"></a>`set_operating_mode(mode=<mode>)`
@@ -88,6 +95,7 @@ Currently supported actions are:
 ``` yaml
 action: sonnenbatterie.set_operating_mode
 data:
+  device_id: "<your sb instance's device id>"
   mode: "automatic"
 ```
 
@@ -118,6 +126,7 @@ An `int` representing the mode that has been set:
 ``` yaml
 action: sonnenbatterie.charge_battery
 data:
+  device_id: "<your sb instance's device id>"
   power: 0
 ```
 
@@ -148,6 +157,7 @@ otherwise.
 ``` yaml
 action: sonnenbatterie.discharge_battery
 data:
+  device_id: "<your sb instance's device id>"
   power: 0
 ```
 
@@ -164,6 +174,7 @@ otherwise.
 ``` yaml
 action: sonnenbatterie.set_battery_reserve
 data:
+  device_id: "<your sb instance's device id>"
   value: 10
 ```
 
@@ -203,6 +214,7 @@ An integer representing the current value of "battery reserve"
 ``` yaml
 action: sonnenbatterie.set_config_item
 data:
+  device_id: "<your sb instance's device id>"
   item: "EM_USOC"
   value: "10"
 ```
@@ -236,6 +248,7 @@ data:
 ``` yaml
 action: sonnenbatterie.set_tou_schedule_string
 data:
+  device_id: "<your sb instance's device id>"
   schedule: '[{"start":"10:00", "stop":"10:00", "threshold_p_max": 20000}]'
 ```
 
@@ -252,7 +265,8 @@ data:
 ##### Code snippet
 ``` yaml 
 action: sonnenbatterie.get_tou_schedule
-data: {}
+data:
+  deviceid: "<your sb instance's device id>"
 ```
 
 ##### Result
