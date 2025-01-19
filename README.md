@@ -220,7 +220,7 @@ data:
 ```
 ##### Response
 ``` json
-{'EM_USOC': '10'}
+{"EM_USOC": "10"}
 ```
 
 ### <a name="set_tou_schedule"></a>`set_tou_schedule(schedule=<schedule_array>)`
@@ -255,7 +255,7 @@ data:
 ##### Result
 ``` json
 {
-  "schedule": '[{"start": "10:00", "stop": "10:00", "threshold_p_max": 20000}]'
+  "schedule": [{"start": "10:00", "stop": "10:00", "threshold_p_max": 20000}]
 }
 ```
 
@@ -270,8 +270,10 @@ data:
 ```
 
 ##### Result
-``` yaml
-schedule: "[{\"start\":\"10:00\", \"stop\":\"10:00\", \"threshold_p_max\": 20000}]"
+``` json
+{
+  "schedule": [{"start": "10:00", "stop": "10:00", "threshold_p_max": 20000}]
+}
 ```
 
 ## Problems and/or unused/unavailable sensors
