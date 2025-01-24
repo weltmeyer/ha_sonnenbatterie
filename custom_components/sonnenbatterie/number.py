@@ -27,7 +27,11 @@ class SonnenbatterieNumber(SonnenNumberEntity, NumberEntity):
 
     def __init__(self, coordinator: SonnenbatterieCoordinator, description: SonnenbatterieNumberEntityDescription, max_power: int) -> None:
         super().__init__(coordinator, description)
-        self._max_power = max_power
+        LOGGER.debug(f"SonnenbatterieNumberEntity: {description}")
+        if description.key == "battery_reserve":
+            self._max_power = 100
+        else:
+            self._max_power = max_power
 
     @property
     def native_max_value(self) -> int:
@@ -42,5 +46,7 @@ class SonnenbatterieNumber(SonnenNumberEntity, NumberEntity):
                     await self.coordinator.sbconn.sb2.charge_battery(int(value))
                 case "number_discharge":
                     await self.coordinator.sbconn.sb2.discharge_battery(int(value))
+                case "battery_reserve":
+                    await self.coordinator.sbconn.sb2.set_battery_reserve(int(value))
             await self.coordinator.async_request_refresh()
         return None
