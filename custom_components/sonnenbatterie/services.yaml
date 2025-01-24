@@ -22,7 +22,8 @@ charge_battery:
       required: true
       example: "1000"
       selector:
-        number:
+        text:
+          suffix: "W"
 discharge_battery:
   fields:
     device_id:
@@ -34,7 +35,8 @@ discharge_battery:
       required: true
       example: "1000"
       selector:
-        number:
+        text:
+          suffix: "W"
 set_battery_reserve:
   fields:
     device_id:

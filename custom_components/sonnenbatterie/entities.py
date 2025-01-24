@@ -56,6 +56,14 @@ class Tag(SelectEntry, Enum):
         writable=True,
     )
 
+    BATTERY_RESERVE = SelectEntry(
+        key="battery_reserve",
+        type=Platform.NUMBER,
+        section="status",
+        property="USOC",
+        writable=True,
+    )
+
     BTN_RESET_CHARGE = SelectEntry(
         key="button_reset_charge",
         type=Platform.BUTTON,
@@ -131,7 +139,7 @@ class SonnenSelectEntity(CoordinatorEntity[SonnenbatterieCoordinator], Entity):
 class SonnenbatterieNumberEntityDescription(NumberEntityDescription):
     tag: Tag = None
     native_min_value = 0
-    native_step = 100
+    native_step = 1
 
 
 class SonnenNumberEntity(CoordinatorEntity[SonnenbatterieCoordinator], Entity):
@@ -204,6 +212,7 @@ NUMBER_ENTITIES = [
         tag=Tag.CHARGE_POWER,
         device_class=NumberDeviceClass.POWER,
         mode=NumberMode.SLIDER,
+        native_step=100,
     ),
     SonnenbatterieNumberEntityDescription(
         key=Tag.DISCHARGE_POWER.key,
@@ -212,6 +221,16 @@ NUMBER_ENTITIES = [
         tag=Tag.DISCHARGE_POWER,
         device_class=NumberDeviceClass.POWER,
         mode=NumberMode.SLIDER,
+        native_step=100,
+    ),
+    SonnenbatterieNumberEntityDescription(
+        key=Tag.BATTERY_RESERVE.key,
+        icon="mdi:battery-unknown",
+        entity_category=EntityCategory.CONFIG,
+        tag=Tag.BATTERY_RESERVE,
+        device_class=NumberDeviceClass.BATTERY,
+        mode=NumberMode.SLIDER,
+        native_step=1,
     )
 ]
 

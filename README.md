@@ -1,3 +1,4 @@
+[![hacs_badge][hacsbadge]][hacs] [![hainstall][hainstallbadge]][hainstall]
 # ha_sonnenbatterie
 Homeassistant integration to show many stats of Sonnenbatterie
 that should work with current versions of Sonnenbatterie.
@@ -5,16 +6,60 @@ that should work with current versions of Sonnenbatterie.
 [![Validate with hassfest](https://github.com/weltmeyer/ha_sonnenbatterie/actions/workflows/hassfest.yaml/badge.svg)](https://github.com/weltmeyer/ha_sonnenbatterie/actions/workflows/hassfest.yaml)
 [![Validate with HACS](https://github.com/weltmeyer/ha_sonnenbatterie/actions/workflows/validate.yaml/badge.svg)](https://github.com/weltmeyer/ha_sonnenbatterie/actions/workflows/validate.yaml)
 
-## Installation
-Easiest way to install is to add this repository via [HACS](https://hacs.xyz).
-
-## Tested working with
+### Tested working with
 * eco 8.03 9010 ND
 * eco 8.0 DE 9010 ND
 * sonnenBatterie 10 performance
 
 ### Won't work with older Batteries
 * ex. model 9.2 eco from 2014 not working
+
+## Installation
+
+### 1) via HACS
+1. Add a custom **integration** repository to HACS using this link:
+   [https://github.com/weltmeyer/hasonnenbatterie](https://github.com/weltmeyer/hasonnenbatterie)
+   > [!IMPORTANT] 
+   > This is a **HACS _integration_**, not a **HASS-IO _AddOn_**, so you <ins>need to have [HACS](https://hacs.xyz) installed</ins>,
+   > and you need to add this repository as a custom **integration repository** to HACS.
+2. Once the repository is added, use the search bar and type `sonnenbatterie`
+3. Use the 3-dot menu to the right of the list entry (not the one at the top bar!) to download/install the integration.  
+   The latest release is automatically selected. Only select a different version if you've been told to do so
+   by one of the maintainers.
+4. After you press download and the process has completed, you have to __Restart Home Assistant__ to install the
+   dependencies required by the integration
+5. Setup the `sonnenbatterie` custom integration
+
+### 2) Manual installation
+
+1. Using your tool of choice open the directory (folder) where your HA configuration resides, e.g. where the
+   `configuration.yaml` is
+2. If you don't have a `custom_components` directory (folder) there, create it
+3. In the `custom_components` directory (folder) create a new folder called `sonnenbatterie`
+4. Download _all_ the files from the `custom_components/sonnenbatterie/` directory (folder) from this repository
+5. Place the files you downloaded in the new directory (folder) `sonnenbatterie` you created
+6. Restart Home Assistant
+7. Setup the sonnenbatterie custom integration as described below (see [Adding or enabling the integration](#adding_or_enabling_the_integration))
+
+## Adding or enabling the integration
+
+> [!IMPORTANT]
+> The integration must be [installed](#installation) before you can start to add or enable it!
+
+### 1) My Home Assistant
+
+Just click the following Button to start the configuration automatically:
+
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)][hainstall]
+
+### 2) Manual
+
+- Open the Home Assistant we interface
+- Go to `Configuration -> Integrations` and click the "Add Integration" button in the lower right corner
+- Search for "sonnenbatterie", select the correct entry and click on it
+- This starts the configuration of a new Sonnenbatterie instance. Make sure to
+  - provide the correct IP address of your Sonnenbatterie within your network
+  - set the update interval to a reasonable value
 
 ## Sensors
 The main focus of the integration is to provide a comprehensive set of sensors
@@ -30,6 +75,13 @@ are already activated.
 Since version 2025.01.01 this integration also supports actions you can use to
 set some variables that influence the behaviour of your SonnenBatterie.
 
+> [!NOTE]
+> All actions require you ro provide a `device_id` to correctly identify the
+> Sonnenbatterie you want to talk to. To find the device id for your Sonnenbatterie
+> use the developer tools provided by Home Assistant. Just open the "Actions" tab
+> and select an action an a device. Then switch to YAML mode where instead of the
+> user-friendly name the device id will be displayed.
+
 Currently supported actions are:
 
 ### <a name="set_operatingmode"></a>`set_operating_mode(mode=<mode>)`
@@ -43,6 +95,7 @@ Currently supported actions are:
 ``` yaml
 action: sonnenbatterie.set_operating_mode
 data:
+  device_id: "<your sb instance's device id>"
   mode: "automatic"
 ```
 
@@ -73,6 +126,7 @@ An `int` representing the mode that has been set:
 ``` yaml
 action: sonnenbatterie.charge_battery
 data:
+  device_id: "<your sb instance's device id>"
   power: 0
 ```
 
@@ -103,6 +157,7 @@ otherwise.
 ``` yaml
 action: sonnenbatterie.discharge_battery
 data:
+  device_id: "<your sb instance's device id>"
   power: 0
 ```
 
@@ -119,6 +174,7 @@ otherwise.
 ``` yaml
 action: sonnenbatterie.set_battery_reserve
 data:
+  device_id: "<your sb instance's device id>"
   value: 10
 ```
 
@@ -158,12 +214,13 @@ An integer representing the current value of "battery reserve"
 ``` yaml
 action: sonnenbatterie.set_config_item
 data:
+  device_id: "<your sb instance's device id>"
   item: "EM_USOC"
   value: "10"
 ```
 ##### Response
 ``` json
-{'EM_USOC': '10'}
+{"EM_USOC": "10"}
 ```
 
 ### <a name="set_tou_schedule"></a>`set_tou_schedule(schedule=<schedule_array>)`
@@ -191,13 +248,14 @@ data:
 ``` yaml
 action: sonnenbatterie.set_tou_schedule_string
 data:
+  device_id: "<your sb instance's device id>"
   schedule: '[{"start":"10:00", "stop":"10:00", "threshold_p_max": 20000}]'
 ```
 
 ##### Result
 ``` json
 {
-  "schedule": '[{"start": "10:00", "stop": "10:00", "threshold_p_max": 20000}]'
+  "schedule": [{"start": "10:00", "stop": "10:00", "threshold_p_max": 20000}]
 }
 ```
 
@@ -207,12 +265,15 @@ data:
 ##### Code snippet
 ``` yaml 
 action: sonnenbatterie.get_tou_schedule
-data: {}
+data:
+  deviceid: "<your sb instance's device id>"
 ```
 
 ##### Result
-``` yaml
-schedule: "[{\"start\":\"10:00\", \"stop\":\"10:00\", \"threshold_p_max\": 20000}]"
+``` json
+{
+  "schedule": [{"start": "10:00", "stop": "10:00", "threshold_p_max": 20000}]
+}
 ```
 
 ## Problems and/or unused/unavailable sensors
@@ -233,3 +294,10 @@ Please put those logs along with the setting you want monitored into
 
 ## Screenshots :)
 ![image](https://user-images.githubusercontent.com/1668465/78452159-ed2d7d80-7689-11ea-9e30-3a66ecc2372a.png)
+
+---
+[hacs]: https://hacs.xyz
+[hacsbadge]: https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge&logo=homeassistantcommunitystore&logoColor=ccc
+
+[hainstall]: https://my.home-assistant.io/redirect/config_flow_start/?domain=sonnenbatterie
+[hainstallbadge]: https://img.shields.io/badge/dynamic/json?style=for-the-badge&logo=home-assistant&logoColor=ccc&label=usage&suffix=%20installs&cacheSeconds=15600&url=https://analytics.home-assistant.io/custom_integrations.json&query=$.sonnenbatterie.total
