@@ -93,12 +93,14 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR] = sb_coordinator
 
     inverter_power = sb_coordinator.latestData['battery_system']['battery_system']['system']['inverter_capacity']
+    LOGGER.debug(f"inverter_power: {inverter_power}")
 
     # noinspection PyPep8Naming
     SCHEMA_CHARGE_BATTERY = vol.Schema(
         {
             **cv.ENTITY_SERVICE_FIELDS,
-            vol.Required(CONF_CHARGE_WATT): vol.Range(min=0, max=inverter_power),
+            # vol.Required(CONF_CHARGE_WATT): vol.Range(min=0, max=inverter_power),
+            vol.Required(CONF_CHARGE_WATT): str,
         }
     )
 
