@@ -51,7 +51,11 @@
             },
             "number_discharge": {
                 "name": "Force discharge (W)"
+            },
+            "battery_reserve": {
+                "name": "Set battery reserve (%)"
             }
+
         },
         "select": {
             "select_operating_mode": {

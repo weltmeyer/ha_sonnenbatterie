@@ -51,6 +51,9 @@
             },
             "number_discharge": {
                 "name": "Entladen erzwingen (W)"
+            },
+            "battery_reserve": {
+                "name": "Batterie-Reserve einstellen (%)"
             }
         },
         "select": {
