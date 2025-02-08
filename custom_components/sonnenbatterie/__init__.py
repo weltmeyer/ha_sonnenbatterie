@@ -40,6 +40,13 @@ SCHEMA_SET_OPERATING_MODE = vol.Schema(
     }
 )
 
+SCHEMA_SET_OPERATING_MODE_NUM = vol.Schema(
+    {
+        **cv.ENTITY_SERVICE_FIELDS,
+        vol.Required(CONF_SERVICE_MODE, default=2): vol.In(CONF_OPERATING_MODES_NUM),
+    }
+)
+
 SCHEMA_SET_TOU_SCHEDULE_STRING = vol.Schema(
     {
         **cv.ENTITY_SERVICE_FIELDS,
@@ -157,6 +164,14 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     hass.services.async_register(
         DOMAIN,
+        "set_operating_mode_num",
+        services.set_operating_mode_num,
+        schema=SCHEMA_SET_OPERATING_MODE_NUM,
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+
+    hass.services.async_register(
+        DOMAIN,
         "set_tou_schedule",
         services.set_tou_schedule,
         schema=SCHEMA_SET_TOU_SCHEDULE_STRING,
@@ -181,6 +196,13 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         DOMAIN,
         "get_operating_mode",
         services.get_operating_mode,
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+
+    hass.services.async_register(
+        DOMAIN,
+        "get_operating_mode_num",
+        services.get_operating_mode_num,
         supports_response=SupportsResponse.OPTIONAL,
     )
 

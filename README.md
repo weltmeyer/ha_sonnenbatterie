@@ -100,6 +100,27 @@ data:
 ```
 
 ##### Response
+The name of the mode that has been set:
+- `manual`
+- `automatic`
+- `timeofuse`
+
+### <a name="set_operatingmode_num"></a>`set_operating_mode_num(mode=<mode>)`
+- Sets the operating mode of your SonnenBatterie.
+- Supported values for `<mode>` are:
+  - `1`
+  - `2`
+  - `10`
+
+##### Code snippet
+``` yaml
+action: sonnenbatterie.set_operating_mode_num
+data:
+  device_id: "<your sb instance's device id>"
+  mode: 2
+```
+
+##### Response
 An `int` representing the mode that has been set:
 - 1: `manual`
 - 2: `automatic`
@@ -275,6 +296,38 @@ data:
   "schedule": [{"start": "10:00", "stop": "10:00", "threshold_p_max": 20000}]
 }
 ```
+
+### <a name="get_operatingmode"></a>`get_operating_mode()`
+- Retrieves the current operating mode of your SonnenBatterie.
+
+##### Code snippet
+``` yaml
+action: sonnenbatterie.get_operating_mode
+data:
+  device_id: "<your sb instance's device id>"
+```
+
+##### Response
+The name of the mode that has been set:
+- `manual`
+- `automatic`
+- `timeofuse`
+
+### <a name="get_operatingmode_num"></a>`get_operating_mode_num()`
+- Retrieves the current operating mode of your SonnenBatterie in numeric form
+
+##### Code snippet
+``` yaml
+action: sonnenbatterie.get_operating_mode_num
+data:
+  device_id: "<your sb instance's device id>"
+```
+
+##### Response
+An `int` representing the mode that has been set:
+- 1: `manual`
+- 2: `automatic`
+- 10: `timeofuse`
 
 ## Problems and/or unused/unavailable sensors
 Depending on the software on and the operating mode of your Sonnenbatterie some

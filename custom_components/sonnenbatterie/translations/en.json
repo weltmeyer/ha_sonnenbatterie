@@ -178,20 +178,36 @@
             }
         }
     },
-        "services": {
+    "services": {
         "set_operating_mode": {
             "name": "Set operating mode",
             "description": "Sets the operating mode of the Sonnenbatterie",
             "fields": {
                 "device_id": {
                     "description": "HomeAssistant Id of the target device",
-                    "name": "Device Id",
-                    "example": "1234567890"
+                    "example": "1234567890",
+                    "name": "Device Id"
                 },
                 "mode": {
                     "description": "Operating mode to set ('manual', 'automatic', 'timeofuse')",
                     "name": "Operating mode",
                     "example": "automatic"
+                }
+            }
+        },
+        "set_operating_mode_num": {
+            "name": "Set operating mode (numeric)",
+            "description": "Sets the numeric operating mode of the Sonnenbatterie",
+            "fields": {
+                "device_id": {
+                    "description": "HomeAssistant Id of the target device",
+                    "name": "Device ID",
+                    "example": "1234567890"
+                },
+                "mode": {
+                    "description": "Operating mode to set ('1', '2', '10')",
+                    "name": "Operating mode",
+                    "example": "2"
                 }
             }
         },
@@ -304,6 +320,17 @@
         },
         "get_operating_mode": {
             "name": "Get operating mode",
+            "description": "Returns the current operating mode of the SonnenBatterie in textual form",
+            "fields": {
+                "device_id": {
+                    "description": "HomeAssistant ID of the target device",
+                    "name": "Device ID",
+                    "example": "1234567890"
+                }
+            }
+        },
+        "get_operating_mode_num": {
+            "name": "Get operating mode (numeric)",
             "description": "Returns the current operating mode of the SonnenBatterie in numeric form",
             "fields": {
                 "device_id": {
@@ -313,5 +340,5 @@
                 }
             }
         }
-}
+    }
 }
