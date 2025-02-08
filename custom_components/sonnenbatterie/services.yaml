@@ -29,9 +29,9 @@ set_operating_mode_num:
       selector:
         select:
           options:
-            - 1
-            - 2
-            - 10
+            - "1"
+            - "2"
+            - "10"
 charge_battery:
   fields:
     device_id:

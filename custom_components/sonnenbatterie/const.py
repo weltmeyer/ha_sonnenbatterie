@@ -29,9 +29,9 @@ CONF_OPERATING_MODES = [
 ]
 
 CONF_OPERATING_MODES_NUM = [
-    1,
-    2,
-    10
+    "1",
+    "2",
+    "10"
 ]
 
 CONF_CHARGE_WATT  = "power"
