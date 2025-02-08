@@ -10,7 +10,28 @@ set_operating_mode:
       example: "timeofuse"
       default: "automatic"
       selector:
-        text:
+        select:
+          options:
+            - "manual"
+            - "automatic"
+            - "timeofuse"
+set_operating_mode_num:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: sonnenbatterie
+    mode:
+      required: true
+      example: 10
+      default: 2
+      selector:
+        select:
+          options:
+            - "1"
+            - "2"
+            - "10"
 charge_battery:
   fields:
     device_id:
@@ -94,6 +115,13 @@ get_battery_reserve:
         device:
           integration: sonnenbatterie
 get_operating_mode:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: sonnenbatterie
+get_operating_mode_num:
   fields:
     device_id:
       required: true

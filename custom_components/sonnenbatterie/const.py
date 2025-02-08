@@ -28,6 +28,12 @@ CONF_OPERATING_MODES = [
     "timeofuse"
 ]
 
+CONF_OPERATING_MODES_NUM = [
+    "1",
+    "2",
+    "10"
+]
+
 CONF_CHARGE_WATT  = "power"
 CONF_COORDINATOR = "coordinator"
 CONF_INVERTER_MAX = "inverter_max"

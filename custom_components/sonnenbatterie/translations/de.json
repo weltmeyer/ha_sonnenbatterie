@@ -194,6 +194,22 @@
                 }
             }
         },
+        "set_operating_mode_num": {
+            "name": "Setze numerischen Sonnenbatterie-Betriebsmodus",
+            "description": "Setzt den numerischen Betriebsmodus der Sonnenbatterie",
+            "fields": {
+                "device_id": {
+                    "description": "HomeAssistant ID des Geräts",
+                    "name": "Device ID",
+                    "example": "1234567890"
+                },
+                "mode": {
+                    "description": "Der zu setzende numerische Betriebsmodus ('1', '2', '10')",
+                    "name": "Betriebsmodus",
+                    "example": "2"
+                }
+            }
+        },
         "charge_battery": {
             "name": "Sonnenbatterie laden",
             "description": "Erzwingt das Laden der Sonnenbatterie mit der angegebenen Leistung",
@@ -303,7 +319,18 @@
         },
         "get_operating_mode": {
             "name": "Betriebsmodus auslesen",
-            "description": "Liefert den aktuellen Betriebsmodus der Sonnebatterie in numerischer Form",
+            "description": "Liefert den aktuellen Betriebsmodus der Sonnenbatterie in Textform",
+            "fields": {
+                "device_id": {
+                    "description": "HomeAssistant ID des Geräts",
+                    "name": "Device ID",
+                    "example": "1234567890"
+                }
+            }
+        },
+        "get_operating_mode_num": {
+            "name": "Betriebsmodus auslesen (numerisch)",
+            "description": "Liefert den aktuellen Betriebsmodus der Sonnenbatterie in numerischer Form",
             "fields": {
                 "device_id": {
                     "description": "HomeAssistant ID des Geräts",
