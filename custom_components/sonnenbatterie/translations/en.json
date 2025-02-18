@@ -175,6 +175,15 @@
             },
             "inverter_state_upv2": {
                 "name": "Inverter UPV 2"
+            },
+            "read_api": {
+                "name": "JSON-API read access"
+            },
+            "write_api": {
+                "name": "JSON-API write access"
+            },
+            "tou_max_power": {
+                "name": "ToU max power consumption"
             }
         }
     },

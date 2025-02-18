@@ -37,6 +37,7 @@ CONF_OPERATING_MODES_NUM = [
 CONF_CHARGE_WATT  = "power"
 CONF_COORDINATOR = "coordinator"
 CONF_INVERTER_MAX = "inverter_max"
+CONF_TOU_MAX = "tou_max"
 CONF_SERVICE_ITEM = "item"
 CONF_SERVICE_MODE = "mode"
 CONF_SERVICE_SCHEDULE = "schedule"

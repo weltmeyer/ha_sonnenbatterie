@@ -117,6 +117,12 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
             result = await self.sbconn.sb2.get_configurations()
             self.latestData["configurations"] = result
 
+            result = await self.sbconn.get_api_configuration()
+            self.latestData["api_configuration"] = result
+
+            result = await self.sbconn.get_commissioning_settings()
+            self.latestData["commissioning_settings"] = result
+
             self._last_error = None
 
         except Exception as e:
@@ -165,4 +171,5 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
             LOGGER.warning(f"System data:\n{self.latestData['system_data']}")
             LOGGER.warning(f"Status:\n{self.latestData['status']}")
             LOGGER.warning(f"Battery:\n{self.latestData['battery']}")
+            LOGGER.warning(f"API-Config:\n{self.latestData['api_configuration']}")
             self._fullLogsAlreadySent = True

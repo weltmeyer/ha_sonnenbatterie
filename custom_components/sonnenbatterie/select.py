@@ -15,15 +15,19 @@ async def async_setup_entry(
 ) -> None:
     LOGGER.debug(f"SELECT async_setup_entry: {config_entry}")
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
-    await coordinator.async_refresh()
 
-    entities = []
-    for description in SELECT_ENTITIES:
-        entity = SonnenBatterieSelect(coordinator, description)
-        entities.append(entity)
+    if coordinator.latestData.get('api_configuration',{}).get('IN_LocalAPIWriteActive', '0') == '1':
+        # await coordinator.async_refresh()
 
-    async_entity_cb(entities) if len(entities) > 0 else None
+        entities = []
+        for description in SELECT_ENTITIES:
+            entity = SonnenBatterieSelect(coordinator, description)
+            entities.append(entity)
 
+        async_entity_cb(entities) if len(entities) > 0 else None
+
+    else:
+        LOGGER.info(f"JSON-API write access not enabled - disabling SELECT functions")
 
 class SonnenBatterieSelect(SonnenSelectEntity, SelectEntity):
     def __init__(self, coordinator: SonnenbatterieCoordinator, description: SonnenbatterieSelectEntityDescription):

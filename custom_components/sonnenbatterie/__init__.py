@@ -100,7 +100,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR] = sb_coordinator
 
     inverter_power = sb_coordinator.latestData['battery_system']['battery_system']['system']['inverter_capacity']
-    LOGGER.debug(f"inverter_power: {inverter_power}")
+    max_tou_power = sb_coordinator.latestData.get('commissioning_settings',{}).get('data', {}).get('attributes', {}).get('tou_max_power_limit', '22000')
+    LOGGER.debug(f"inverter_power: {inverter_power}, tou_power: {max_tou_power}")
+    hass.data[DOMAIN][config_entry.entry_id][CONF_INVERTER_MAX] = inverter_power
+    hass.data[DOMAIN][config_entry.entry_id][CONF_TOU_MAX] = int(max_tou_power)
 
     # noinspection PyPep8Naming
     SCHEMA_CHARGE_BATTERY = vol.Schema(
@@ -114,97 +117,97 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     # Initialize our services
     services = SonnenbatterieService(hass, config_entry, sb_coordinator)
 
-    # Set up base data in hass object
-    # hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][config_entry.entry_id][CONF_INVERTER_MAX] = inverter_power
-
     # Setup our sensors, services and whatnot
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
 
-    # service registration
-    hass.services.async_register(
-        DOMAIN,
-        "charge_battery",
-        services.charge_battery,
-        schema=SCHEMA_CHARGE_BATTERY,
-        supports_response=SupportsResponse.OPTIONAL,
-    )
+    if sb_coordinator.latestData.get('api_configuration',{}).get('IN_LocalAPIWriteActive', '0') == '1':
+        # service registration
+        hass.services.async_register(
+            DOMAIN,
+            "charge_battery",
+            services.charge_battery,
+            schema=SCHEMA_CHARGE_BATTERY,
+            supports_response=SupportsResponse.OPTIONAL,
+        )
 
-    hass.services.async_register(
-        DOMAIN,
-        "discharge_battery",
-        services.discharge_battery,
-        schema=SCHEMA_CHARGE_BATTERY,
-        supports_response=SupportsResponse.OPTIONAL,
-    )
+        hass.services.async_register(
+            DOMAIN,
+            "discharge_battery",
+            services.discharge_battery,
+            schema=SCHEMA_CHARGE_BATTERY,
+            supports_response=SupportsResponse.OPTIONAL,
+        )
 
-    hass.services.async_register(
-        DOMAIN,
-        "set_battery_reserve",
-        services.set_battery_reserve,
-        schema=SCHEMA_SET_BATTERY_RESERVE,
-        supports_response=SupportsResponse.OPTIONAL,
-    )
+        hass.services.async_register(
+            DOMAIN,
+            "set_battery_reserve",
+            services.set_battery_reserve,
+            schema=SCHEMA_SET_BATTERY_RESERVE,
+            supports_response=SupportsResponse.OPTIONAL,
+        )
 
-    hass.services.async_register(
-        DOMAIN,
-        "set_config_item",
-        services.set_config_item,
-        schema=SCHEMA_SET_CONFIG_ITEM,
-        supports_response=SupportsResponse.OPTIONAL,
-    )
+        hass.services.async_register(
+            DOMAIN,
+            "set_config_item",
+            services.set_config_item,
+            schema=SCHEMA_SET_CONFIG_ITEM,
+            supports_response=SupportsResponse.OPTIONAL,
+        )
 
-    hass.services.async_register(
-        DOMAIN,
-        "set_operating_mode",
-        services.set_operating_mode,
-        schema=SCHEMA_SET_OPERATING_MODE,
-        supports_response=SupportsResponse.OPTIONAL,
-    )
+        hass.services.async_register(
+            DOMAIN,
+            "set_operating_mode",
+            services.set_operating_mode,
+            schema=SCHEMA_SET_OPERATING_MODE,
+            supports_response=SupportsResponse.OPTIONAL,
+        )
 
-    hass.services.async_register(
-        DOMAIN,
-        "set_operating_mode_num",
-        services.set_operating_mode_num,
-        schema=SCHEMA_SET_OPERATING_MODE_NUM,
-        supports_response=SupportsResponse.OPTIONAL,
-    )
+        hass.services.async_register(
+            DOMAIN,
+            "set_operating_mode_num",
+            services.set_operating_mode_num,
+            schema=SCHEMA_SET_OPERATING_MODE_NUM,
+            supports_response=SupportsResponse.OPTIONAL,
+        )
 
-    hass.services.async_register(
-        DOMAIN,
-        "set_tou_schedule",
-        services.set_tou_schedule,
-        schema=SCHEMA_SET_TOU_SCHEDULE_STRING,
-        supports_response=SupportsResponse.OPTIONAL,
-    )
+        hass.services.async_register(
+            DOMAIN,
+            "set_tou_schedule",
+            services.set_tou_schedule,
+            schema=SCHEMA_SET_TOU_SCHEDULE_STRING,
+            supports_response=SupportsResponse.OPTIONAL,
+        )
 
-    hass.services.async_register(
-        DOMAIN,
-        "get_tou_schedule",
-        services.get_tou_schedule,
-        supports_response=SupportsResponse.OPTIONAL,
-    )
+        hass.services.async_register(
+            DOMAIN,
+            "get_tou_schedule",
+            services.get_tou_schedule,
+            supports_response=SupportsResponse.OPTIONAL,
+        )
 
-    hass.services.async_register(
-        DOMAIN,
-        "get_battery_reserve",
-        services.get_battery_reserve,
-        supports_response=SupportsResponse.OPTIONAL,
-    )
+        hass.services.async_register(
+            DOMAIN,
+            "get_battery_reserve",
+            services.get_battery_reserve,
+            supports_response=SupportsResponse.OPTIONAL,
+        )
 
-    hass.services.async_register(
-        DOMAIN,
-        "get_operating_mode",
-        services.get_operating_mode,
-        supports_response=SupportsResponse.OPTIONAL,
-    )
+        hass.services.async_register(
+            DOMAIN,
+            "get_operating_mode",
+            services.get_operating_mode,
+            supports_response=SupportsResponse.OPTIONAL,
+        )
 
-    hass.services.async_register(
-        DOMAIN,
-        "get_operating_mode_num",
-        services.get_operating_mode_num,
-        supports_response=SupportsResponse.OPTIONAL,
-    )
+        hass.services.async_register(
+            DOMAIN,
+            "get_operating_mode_num",
+            services.get_operating_mode_num,
+            supports_response=SupportsResponse.OPTIONAL,
+        )
+
+    else:
+        LOGGER.info(f"JSON-API write access not enabled - disabling SERVICE functions")
 
     # Done setting up the entry
     return True

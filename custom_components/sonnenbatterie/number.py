@@ -12,22 +12,27 @@ from .entities import SonnenNumberEntity, SonnenbatterieNumberEntityDescription,
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     LOGGER.debug(f"NUMBER - async_setup_entry: {config_entry}")
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
-    await coordinator.async_refresh()
+    # await coordinator.async_refresh()
 
-    max_power = int(hass.data[DOMAIN][config_entry.entry_id][CONF_INVERTER_MAX])
-    entities = []
-    for description in NUMBER_ENTITIES:
-        if description.tag.type == Platform.NUMBER:
-            entity = SonnenbatterieNumber(coordinator, description, max_power)
-            entities.append(entity)
-    async_add_entities(entities)
+    if coordinator.latestData.get('api_configuration',{}).get('IN_LocalAPIWriteActive', '0') == '1':
+
+        max_power = int(hass.data[DOMAIN][config_entry.entry_id][CONF_INVERTER_MAX])
+        entities = []
+        for description in NUMBER_ENTITIES:
+            if description.tag.type == Platform.NUMBER:
+                entity = SonnenbatterieNumber(coordinator, description, max_power)
+                entities.append(entity)
+        async_add_entities(entities)
+
+    else:
+        LOGGER.info(f"JSON-API write access not enabled - disabling NUMBER functions")
 
 class SonnenbatterieNumber(SonnenNumberEntity, NumberEntity):
     _attr_native_value: int = 0
 
     def __init__(self, coordinator: SonnenbatterieCoordinator, description: SonnenbatterieNumberEntityDescription, max_power: int) -> None:
         super().__init__(coordinator, description)
-        LOGGER.debug(f"SonnenbatterieNumberEntity: {description}")
+        # LOGGER.debug(f"SonnenbatterieNumberEntity: {description}")
         if description.key == "battery_reserve":
             self._max_power = 100
         else:
