@@ -14,6 +14,7 @@ from custom_components.sonnenbatterie.const import (
     CONF_SERVICE_ITEM,
     CONF_SERVICE_SCHEDULE,
     CONF_SERVICE_VALUE,
+    CONF_TOU_MAX,
     DOMAIN,
     LOGGER,
     SB_OPERATING_MODES,
@@ -27,6 +28,7 @@ class SonnenbatterieService:
         self._hass = hass
         self._config = config
         self._coordinator = coordinator
+        self._tou_max = hass.data[DOMAIN][config.entry_id][CONF_TOU_MAX]
 
     def _get_sb_connection(self, call_data: ReadOnlyDict) -> AsyncSonnenBatterie:
         LOGGER.debug(f"_get_sb_connection: {call_data}")
@@ -111,6 +113,10 @@ class SonnenbatterieService:
             json_schedule = json.loads(schedule)
         except ValueError as e:
             raise HomeAssistantError(f"Schedule is not a valid JSON string: '{schedule}'") from e
+
+        if json_schedule['threshold_p_max'] > self._tou_max:
+            LOGGER.warning(f"Specified 'threshold_p_max' exceeds configured limit of {self._tou_max}, value capped to {json_schedule['threshold_p_max']}")
+            json_schedule['threshold_p_max'] = self._tou_max
 
         tou = TimeofUseSchedule()
         try:

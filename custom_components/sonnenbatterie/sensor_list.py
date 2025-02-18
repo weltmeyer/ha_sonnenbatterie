@@ -517,4 +517,34 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         .get("tmax"),
         entity_registry_enabled_default=False,
     ),
+    ###########################
+    ### -- advanced sensors ###
+    ###
+    SonnenbatterieSensorEntityDescription(
+        key="read_api",
+        icon="mdi:alpha-r-circle-outline",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda coordinator: coordinator.latestData.get("api_configuration", {})
+        .get('IN_LocalAPIReadActive', '0') == '1',
+        entity_registry_enabled_default=True,
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="write_api",
+        icon="mdi:alpha-w-circle-outline",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn= lambda coordinator: coordinator.latestData.get("api_configuration", {})
+        .get('IN_LocalAPIWriteActive', '0') == '1',
+        entity_registry_enabled_default = True,
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="tou_max_power",
+        icon="mdi:transmission-tower-import",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda coordinator: coordinator.latestData.get("commissioning_settings", {})
+                                     .get('data', {}).get('attributes',{}).get('tou_max_power_limit', 'unknown'),
+        entity_registry_enabled_default=True,
+    )
 )
