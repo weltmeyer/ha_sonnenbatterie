@@ -17,11 +17,12 @@ that should work with current versions of Sonnenbatterie.
 ## Installation
 
 ### 1) via HACS
+> [!IMPORTANT] 
+> This is a **HACS _integration_**, not a **HASS-IO _AddOn_**, so you <ins>need to have [HACS](https://hacs.xyz) installed</ins>,
+> and you need to add this repository as a custom **integration repository** to HACS.
+
 1. Add a custom **integration** repository to HACS using this link:
-   [https://github.com/weltmeyer/hasonnenbatterie](https://github.com/weltmeyer/hasonnenbatterie)
-   > [!IMPORTANT] 
-   > This is a **HACS _integration_**, not a **HASS-IO _AddOn_**, so you <ins>need to have [HACS](https://hacs.xyz) installed</ins>,
-   > and you need to add this repository as a custom **integration repository** to HACS.
+   [https://github.com/weltmeyer/hasonnenbatterie](https://github.com/weltmeyer/hasonnenbatterie) 
 2. Once the repository is added, use the search bar and type `sonnenbatterie`
 3. Use the 3-dot menu to the right of the list entry (not the one at the top bar!) to download/install the integration.  
    The latest release is automatically selected. Only select a different version if you've been told to do so
@@ -90,6 +91,7 @@ Currently supported actions are:
   - `"manual"`
   - `"automatic"`
   - `"timeofuse"`
+  - `"optimizing"`
 
 ##### Code snippet
 ``` yaml
@@ -104,6 +106,7 @@ The name of the mode that has been set:
 - `manual`
 - `automatic`
 - `timeofuse`
+- `optimizing`
 
 ### <a name="set_operatingmode_num"></a>`set_operating_mode_num(mode=<mode>)`
 - Sets the operating mode of your SonnenBatterie.
@@ -111,6 +114,7 @@ The name of the mode that has been set:
   - `1`
   - `2`
   - `10`
+  - `11`
 
 ##### Code snippet
 ``` yaml
@@ -125,6 +129,7 @@ An `int` representing the mode that has been set:
 - 1: `manual`
 - 2: `automatic`
 - 10: `timeofuse`
+- 11: `optimizing`
 
 ### `charge_battery(power=<power>)`
 > [!IMPORTANT]
@@ -210,6 +215,7 @@ An integer representing the current value of "battery reserve"
       - `manual`
       - `automatic`
       - `timeofuse`
+      - `optimizing`
     - _prefer [`set_operating_mode`](.#set_operatingmode)) over this_
   - "EM_ToU_Schedule"
     - set a scheulde for charging in ToU mode
@@ -312,6 +318,7 @@ The name of the mode that has been set:
 - `manual`
 - `automatic`
 - `timeofuse`
+- `optimizing`
 
 ### <a name="get_operatingmode_num"></a>`get_operating_mode_num()`
 - Retrieves the current operating mode of your SonnenBatterie in numeric form
@@ -328,6 +335,7 @@ An `int` representing the mode that has been set:
 - 1: `manual`
 - 2: `automatic`
 - 10: `timeofuse`
+- 11: `optimizing`
 
 ## Problems and/or unused/unavailable sensors
 Depending on the software on and the operating mode of your Sonnenbatterie some
