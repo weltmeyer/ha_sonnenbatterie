@@ -114,9 +114,10 @@ class SonnenbatterieService:
         except ValueError as e:
             raise HomeAssistantError(f"Schedule is not a valid JSON string: '{schedule}'") from e
 
-        if json_schedule['threshold_p_max'] > self._tou_max:
-            LOGGER.warning(f"Specified 'threshold_p_max' exceeds configured limit of {self._tou_max}, value capped to {json_schedule['threshold_p_max']}")
-            json_schedule['threshold_p_max'] = self._tou_max
+        for lp in range(len(json_schedule)):
+            if json_schedule[lp]['threshold_p_max'] > self._tou_max:
+                LOGGER.warning(f"Specified 'threshold_p_max' exceeds configured limit of {self._tou_max}, value capped to {json_schedule[lp]['threshold_p_max']}")
+                json_schedule[lp]['threshold_p_max'] = self._tou_max
 
         tou = TimeofUseSchedule()
         try:

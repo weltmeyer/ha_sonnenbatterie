@@ -118,8 +118,10 @@
                 "state": {
                     "1": "Manual",
                     "2": "Automatic",
+                    "4": "Testing",
                     "6": "Extension module",
-                    "10": "Time of Use"
+                    "10": "Time of Use",
+                    "11": "Optimization"
                 }
             },
             "battery_system_cycles": {

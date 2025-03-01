@@ -117,8 +117,10 @@
                 "state": {
                     "1": "Manuell",
                     "2": "Automatisch",
+                    "4": "Testbetrieb",
                     "6": "Erweiterungsmodul",
-                    "10": "Zeitgesteuert"
+                    "10": "Zeitgesteuert",
+                    "11": "Auto-Optimierung"
                 }
             },
             "battery_system_cycles": {

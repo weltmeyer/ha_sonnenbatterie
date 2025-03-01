@@ -25,13 +25,15 @@ CONF_CONFIG_ITEMS = [
 CONF_OPERATING_MODES = [
     "manual",
     "automatic",
-    "timeofuse"
+    "timeofuse",
+    "optimizing"
 ]
 
 CONF_OPERATING_MODES_NUM = [
     "1",
     "2",
-    "10"
+    "10",
+    "11"
 ]
 
 CONF_CHARGE_WATT  = "power"
@@ -49,14 +51,19 @@ PLATFORMS = [ Platform.SENSOR, Platform.SELECT, Platform.NUMBER, Platform.BUTTON
 SB_OPERATING_MODES: Final = {
     "manual": 1,
     "automatic": 2,
+    "testing": 4,
     "expansion": 6,
-    "timeofuse": 10
+    "timeofuse": 10,
+    "optimizing": 11
 }
 
 SB_OPERATING_MODES_NUM: Final = {
     '1': "manual",
     '2': "automatic",
-    '10': "timeofuse"
+    '4': "testing",
+    '6': "expansion",
+    '10': "timeofuse",
+    '11': "optimizing"
 }
 
 # rustydust_241227: doesn't seem to be used anywhere
