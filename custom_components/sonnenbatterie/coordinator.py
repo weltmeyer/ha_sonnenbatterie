@@ -123,6 +123,9 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
             result = await self.sbconn.get_commissioning_settings()
             self.latestData["commissioning_settings"] = result
 
+            result = await self.sbconn.sb2.get_status()
+            self.latestData["v2_status"] = result
+
             self._last_error = None
 
         except Exception as e:

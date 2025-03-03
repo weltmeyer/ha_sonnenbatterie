@@ -185,6 +185,9 @@
             },
             "tou_max_power": {
                 "name": "Maximaler ToU Netzbezug"
+            },
+            "battery_care": {
+                "name": "Batteriepflege aktiv"
             }
         }
     },

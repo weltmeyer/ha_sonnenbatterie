@@ -546,5 +546,14 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         value_fn=lambda coordinator: coordinator.latestData.get("commissioning_settings", {})
                                      .get('data', {}).get('attributes',{}).get('tou_max_power_limit', 'unknown'),
         entity_registry_enabled_default=True,
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="battery_care",
+        icon="mdi:wrench-clock",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda coordinator: (coordinator.latestData.get("v2_status", {})
+        .get("dischargeNotAllowed", "false") == "true"),
+        entity_registry_enabled_default=True,
     )
 )

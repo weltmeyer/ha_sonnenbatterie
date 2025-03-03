@@ -186,6 +186,9 @@
             },
             "tou_max_power": {
                 "name": "ToU max power consumption"
+            },
+            "battery_care": {
+                "name": "Battery care active"
             }
         }
     },
