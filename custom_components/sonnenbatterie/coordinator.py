@@ -9,7 +9,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from sonnenbatterie import AsyncSonnenBatterie
 
-from custom_components.sonnenbatterie import LOGGER, DOMAIN, ATTR_SONNEN_DEBUG, CONF_SERIAL_NUMBER
+from custom_components.sonnenbatterie import LOGGER, DOMAIN, ATTR_SONNEN_DEBUG
 
 
 class SonnenbatterieCoordinator(DataUpdateCoordinator):
@@ -87,6 +87,7 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self):
         """Populate self.latestdata"""
         if time() - self._last_login > 60:
+            # noinspection PyBroadException
             try:
                 await self.sbconn.logout()
             except:
