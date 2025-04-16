@@ -22,7 +22,7 @@ that should work with current versions of Sonnenbatterie.
 > and you need to add this repository as a custom **integration repository** to HACS.
 
 1. Add a custom **integration** repository to HACS using this link:
-   [https://github.com/weltmeyer/hasonnenbatterie](https://github.com/weltmeyer/hasonnenbatterie) 
+   [https://github.com/weltmeyer/hasonnenbatterie](https://github.com/weltmeyer/ha_sonnenbatterie) 
 2. Once the repository is added, use the search bar and type `sonnenbatterie`
 3. Use the 3-dot menu to the right of the list entry (not the one at the top bar!) to download/install the integration.  
    The latest release is automatically selected. Only select a different version if you've been told to do so
