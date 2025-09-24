@@ -7,6 +7,6 @@
     "documentation": "https://github.com/weltmeyer/ha_sonnenbatterie",
     "iot_class": "local_polling",
     "issue_tracker": "https://github.com/weltmeyer/ha_sonnenbatterie/issues",
-    "requirements": ["requests","sonnenbatterie>=0.7.dev2"],
-    "version": "2025.09.dev2"
+    "requirements": ["requests","sonnenbatterie>=0.7.dev3"],
+    "version": "2025.09.dev3"
 }
