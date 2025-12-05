@@ -553,7 +553,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda coordinator: (coordinator.latestData.get("v2_status", {})
-        .get("dischargeNotAllowed", "false") == "true"),
+        .get("dischargeNotAllowed", False) == True),
         entity_registry_enabled_default=True,
-    )
+    ),
 )
