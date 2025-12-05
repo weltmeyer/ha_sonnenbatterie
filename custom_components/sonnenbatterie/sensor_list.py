@@ -560,6 +560,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         key="backup_buffer",
         icon="mdi:battery-20",
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
         native_unit_of_measurement="%",
         value_fn=lambda coordinator: int(coordinator.latestData.get("v2_status", {}).get("BackupBuffer", "0")),
         entity_registry_enabled_default=True,

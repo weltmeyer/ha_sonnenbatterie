@@ -123,6 +123,9 @@
                     "11": "Auto-Optimierung"
                 }
             },
+            "backup_buffer": {
+                "name": "Backup-Puffer"
+            },
             "battery_system_cycles": {
                 "name": "Akku Ladezyklen"
             },

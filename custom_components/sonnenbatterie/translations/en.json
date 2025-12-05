@@ -124,6 +124,9 @@
                     "11": "Optimization"
                 }
             },
+            "backup_buffer": {
+                "name": "Backup buffer"
+            },
             "battery_system_cycles": {
                 "name": "Battery cycles"
             },
