@@ -308,7 +308,7 @@
                 "schedule": {
                     "name": "Charging window(s)",
                     "description": "One or more charging windows as string containing a JSON array",
-                    "example": "[{start:10:00, stop:11:00, threshold_p_max: 20000}]"
+                    "example": "\"[{\"start\":\"10:00\", \"stop\":\"11:00\", \"threshold_p_max\": 20000}]\""
                 }
             }
         },
