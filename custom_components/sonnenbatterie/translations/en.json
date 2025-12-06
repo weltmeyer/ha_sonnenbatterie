@@ -55,7 +55,6 @@
             "battery_reserve": {
                 "name": "Set battery reserve (%)"
             }
-
         },
         "select": {
             "select_operating_mode": {
