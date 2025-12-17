@@ -20,9 +20,8 @@ that should work with current versions of Sonnenbatterie.
 > [!IMPORTANT] 
 > This is a **HACS _integration_**, not a **HASS-IO _AddOn_**, so you <ins>need to have [HACS](https://hacs.xyz) installed</ins>,
 > and you need to add this repository as a custom **integration repository** to HACS.
-
-1. [Add a custom **integration** repository](https://www.hacs.xyz/docs/faq/custom_repositories/) to HACS using this repository link:
-   [https://github.com/weltmeyer/ha_sonnenbatterie](https://github.com/weltmeyer/ha_sonnenbatterie) 
+1. [Add a custom **integration** repository](https://www.hacs.xyz/docs/faq/custom_repositories/) to HACS using this as the repository URL:
+   `https://github.com/weltmeyer/ha_sonnenbatterie`
 2. Once the repository is added, use the search bar and type `sonnenbatterie`
 3. Use the 3-dot menu to the right of the list entry (not the one at the top bar!) to download/install the integration.  
    The latest release is automatically selected. Only select a different version if you've been told to do so
