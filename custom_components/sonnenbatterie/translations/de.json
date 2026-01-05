@@ -308,7 +308,7 @@
                 "schedule": {
                     "name": "Zeitfenster (JSON-Array)",
                     "description": "Ein oder mehrere Zeitfenster-Angaben als JSON-Array im String-Format",
-                    "example": "\"[{\"start\":\"10:00\", \"stop\":\"11:00\", \"threshold_p_max\": 20000}]\""
+                    "example": "[{start:10:00, stop:11:00, threshold_p_max: 20000}]"
                 }
             }
         },
