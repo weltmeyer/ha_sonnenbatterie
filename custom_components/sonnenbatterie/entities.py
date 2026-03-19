@@ -5,7 +5,7 @@ from typing import NamedTuple
 from homeassistant.components.button import ButtonEntityDescription
 from homeassistant.components.number import NumberEntityDescription, NumberDeviceClass, NumberMode
 from homeassistant.components.select import SelectEntityDescription
-from homeassistant.const import Platform, EntityCategory
+from homeassistant.const import Platform, EntityCategory, UnitOfPower
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -22,6 +22,8 @@ class SelectEntry(NamedTuple):
     section: str = None
     # the property name of the setting
     property: str = None
+    # the unit of measurement (optional, for number entities)
+    unit_of_measurement: str = None
     # whether the value is writable or not
     writable: bool = None
 
@@ -45,6 +47,7 @@ class Tag(SelectEntry, Enum):
         type=Platform.NUMBER,
         section="status",
         property="Pac_total_W",
+        unit_of_measurement="W",
         writable=True,
     )
 
@@ -53,6 +56,7 @@ class Tag(SelectEntry, Enum):
         type=Platform.NUMBER,
         section="status",
         property="Pac_total_W",
+        unit_of_measurement="W",
         writable=True,
     )
 
@@ -159,7 +163,6 @@ class SonnenNumberEntity(CoordinatorEntity[SonnenbatterieCoordinator], Entity):
             if (tkey := self.entity_description.translation_key)
             else self.entity_description.key
         )
-        self._number_option_unit_of_measurement="W"
 
     @property
     def unique_id(self) -> str:
@@ -213,6 +216,7 @@ NUMBER_ENTITIES = [
         device_class=NumberDeviceClass.POWER,
         mode=NumberMode.SLIDER,
         native_step=100,
+        native_unit_of_measurement=UnitOfPower.WATT,
     ),
     SonnenbatterieNumberEntityDescription(
         key=Tag.DISCHARGE_POWER.key,
@@ -222,6 +226,7 @@ NUMBER_ENTITIES = [
         device_class=NumberDeviceClass.POWER,
         mode=NumberMode.SLIDER,
         native_step=100,
+        native_unit_of_measurement=UnitOfPower.WATT,
     ),
     SonnenbatterieNumberEntityDescription(
         key=Tag.BATTERY_RESERVE.key,
@@ -231,6 +236,7 @@ NUMBER_ENTITIES = [
         device_class=NumberDeviceClass.BATTERY,
         mode=NumberMode.SLIDER,
         native_step=1,
+        native_unit_of_measurement="%",
     )
 ]
 
