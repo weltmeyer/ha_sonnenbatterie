@@ -9,6 +9,7 @@ that should work with current versions of Sonnenbatterie.
 ### Tested working with
 * eco 8.03 9010 ND
 * eco 8.0 DE 9010 ND
+* sonnenBatterie hybrid 8.1
 * sonnenBatterie 10 performance
 
 ### Won't work with older Batteries
