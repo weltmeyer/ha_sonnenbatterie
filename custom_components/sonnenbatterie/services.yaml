@@ -41,10 +41,12 @@ charge_battery:
           integration: sonnenbatterie
     power:
       required: true
-      example: "1000"
+      example: 1000
       selector:
-        text:
-          suffix: "W"
+        number:
+          min: 0
+          step: 1
+          unit_of_measurement: "W"
 discharge_battery:
   fields:
     device_id:
@@ -54,10 +56,12 @@ discharge_battery:
           integration: sonnenbatterie
     power:
       required: true
-      example: "1000"
+      example: 1000
       selector:
-        text:
-          suffix: "W"
+        number:
+          min: 0
+          step: 1
+          unit_of_measurement: "W"
 set_battery_reserve:
   fields:
     device_id:
