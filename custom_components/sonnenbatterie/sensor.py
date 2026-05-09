@@ -81,7 +81,7 @@ class SonnenbatterieSensor(SonnenBaseEntity, SensorEntity, RestoreEntity):
         """Return a unique ID."""
         # legacy support / prevent breaking changes
         key = self.entity_description.legacy_key or self.entity_description.key
-        return f"sensor.sonnenbatterie_{self.coordinator.serial}_{key}"
+        return f"sonnenbatterie_{self.coordinator.serial}_{key}"
 
     @property
     def native_value(self) -> StateType:
