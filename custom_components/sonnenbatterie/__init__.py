@@ -110,7 +110,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         {
             **cv.ENTITY_SERVICE_FIELDS,
             # vol.Required(CONF_CHARGE_WATT): vol.Range(min=0, max=inverter_power),
-            vol.Required(CONF_CHARGE_WATT): str,
+            vol.Required(CONF_CHARGE_WATT): int,
         }
     )
 
