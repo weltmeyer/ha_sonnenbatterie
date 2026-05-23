@@ -51,14 +51,14 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
             model=system_info.get("ERP_ArticleName", "unknown"),
             name=f"{DOMAIN} {self.serial}",
             serial_number=f"{self.serial}",
-            sw_version=f"{system_data['software'].get('software_version', 'unknown')} ({system_data['software'].get('firmware_version', 'unknown')})",
-            hw_version=f"{system_data['system'].get('hardware_version', 'unknown'):.1f}",
+            sw_version=f"{system_data.get('software', {}).get('software_version', 'unknown')} ({system_data.get('software', {}).get('firmware_version', 'unknown')})",
+            hw_version=f"{system_data.get('system', {}).get('hardware_version', 'unknown')}",
         )
 
     def populate_battery_info(self):
         """ some manually calculated values """
         batt_module_capacity = int(
-            self.latestData["battery_system"]["battery_system"]["system"]["storage_capacity_per_module"]
+            self.latestData["battery_system"]["battery_system"].get("system", {}).get("storage_capacity_per_module", 0)
         )
         batt_module_count = int(self.latestData["battery_system"]["modules"])
 
