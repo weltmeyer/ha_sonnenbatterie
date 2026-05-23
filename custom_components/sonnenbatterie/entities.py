@@ -98,8 +98,6 @@ class SonnenBaseEntity(CoordinatorEntity[SonnenbatterieCoordinator], Entity):
         super().__init__(coordinator=coordinator)
         self.coordinator = coordinator
         self.entity_description = description
-        # {DOMAIN} is replaced by the correct platform by HA
-        self.entity_id = f"{DOMAIN}.{DOMAIN}_{self.coordinator.serial}_{self.entity_description.key}"
 
         # set the device info
         self._attr_device_info = self.coordinator.device_info
@@ -113,7 +111,13 @@ class SonnenBaseEntity(CoordinatorEntity[SonnenbatterieCoordinator], Entity):
 
     @property
     def unique_id(self) -> str:
-        return self.entity_id
+        key = self.entity_description.legacy_key or self.entity_description.key
+        return f"{DOMAIN}_{self.coordinator.serial}_{key}"
+
+    @property
+    def suggested_object_id(self) -> str:
+        return f"{DOMAIN}_{self.coordinator.serial}_{self.entity_description.key}"
+
 
 class SonnenSelectEntity(CoordinatorEntity[SonnenbatterieCoordinator], Entity):
     entity_description: SonnenbatterieSelectEntityDescription
@@ -124,8 +128,6 @@ class SonnenSelectEntity(CoordinatorEntity[SonnenbatterieCoordinator], Entity):
         super().__init__(coordinator)
         self.coordinator = coordinator
         self.entity_description = description
-        # {DOMAIN} is replaced by the correct platform by HA
-        self.entity_id = f"{DOMAIN}.{DOMAIN}_{self.coordinator.serial}_{self.entity_description.key}"
 
         self._attr_device_info = self.coordinator.device_info
         self._attr_translation_key = (
@@ -136,8 +138,11 @@ class SonnenSelectEntity(CoordinatorEntity[SonnenbatterieCoordinator], Entity):
 
     @property
     def unique_id(self) -> str:
-        return self.entity_id
+        return f"{DOMAIN}_{self.coordinator.serial}_{self.entity_description.key}"
 
+    @property
+    def suggested_object_id(self) -> str:
+        return f"{DOMAIN}_{self.coordinator.serial}_{self.entity_description.key}"
 
 @dataclass(frozen=True, kw_only=True)
 class SonnenbatterieNumberEntityDescription(NumberEntityDescription):
@@ -156,7 +161,6 @@ class SonnenNumberEntity(CoordinatorEntity[SonnenbatterieCoordinator], Entity):
         self.coordinator = coordinator
         self.entity_description = description
 
-        self.entity_id = f"{DOMAIN}.{DOMAIN}_{self.coordinator.serial}_{self.entity_description.key}"
         self._attr_device_info = self.coordinator.device_info
         self._attr_translation_key = (
             tkey
@@ -166,8 +170,11 @@ class SonnenNumberEntity(CoordinatorEntity[SonnenbatterieCoordinator], Entity):
 
     @property
     def unique_id(self) -> str:
-        return self.entity_id
+        return f"{DOMAIN}_{self.coordinator.serial}_{self.entity_description.key}"
 
+    @property
+    def suggested_object_id(self) -> str:
+        return f"{DOMAIN}_{self.coordinator.serial}_{self.entity_description.key}"
 
 @dataclass(frozen=True, kw_only=True)
 class SonnenbatterieButtonEntityDescription(ButtonEntityDescription):
@@ -184,7 +191,6 @@ class SonnenButtonEntity(CoordinatorEntity[SonnenbatterieCoordinator], Entity):
         self.coordinator = coordinator
         self.entity_description = description
 
-        self.entity_id = f"{DOMAIN}.{DOMAIN}_{self.coordinator.serial}_{self.entity_description.key}"
         self._attr_device_info = self.coordinator.device_info
         self._attr_translation_key = (
             tkey
@@ -194,8 +200,11 @@ class SonnenButtonEntity(CoordinatorEntity[SonnenbatterieCoordinator], Entity):
 
     @property
     def unique_id(self) -> str:
-        return self.entity_id
+        return f"{DOMAIN}_{self.coordinator.serial}_{self.entity_description.key}"
 
+    @property
+    def suggested_object_id(self) -> str:
+        return f"{DOMAIN}_{self.coordinator.serial}_{self.entity_description.key}"
 
 SELECT_ENTITIES = [
     SonnenbatterieSelectEntityDescription(
