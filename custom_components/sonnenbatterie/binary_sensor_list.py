@@ -77,4 +77,16 @@ BINARY_SENSORS: tuple[SonnenbatterieBinarySensorEntityDescription, ...] = (
         .get("Grid detached"),
         entity_registry_enabled_default=False,
     ),
+    ###
+    # setpoint priorities, from /api/v2/latestdata (ic_status.Setpoint Priority)
+    SonnenbatterieBinarySensorEntityDescription(
+        key="latestdata_full_charge_request",
+        icon="mdi:battery-alert",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda coordinator: coordinator.latestData.get("latestdata", {})
+        .get("ic_status", {})
+        .get("Setpoint Priority", {})
+        .get("Full Charge Request"),
+        entity_registry_enabled_default=False,
+    ),
 )

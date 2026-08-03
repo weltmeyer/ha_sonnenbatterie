@@ -62,6 +62,16 @@ Just click the following Button to start the configuration automatically:
   - provide the correct IP address of your Sonnenbatterie within your network
   - set the update interval to a reasonable value
 
+### Authentication
+
+You can set up the integration in one of two ways:
+
+- **Username and password** - the classic login, using the credentials found
+  on the side of your Sonnenbatterie near the main switch.
+- **API key only** - no login at all. Generate an Auth-Token in the Sonnen
+  app/dashboard under _Settings -> Integrations -> Software Integration_ and
+  use only that. This works for both reading and controlling the battery.
+
 ## Sensors
 The main focus of the integration is to provide a comprehensive set of sensors
 for your SonnenBatterie. Right after installation the most relevant sensors 

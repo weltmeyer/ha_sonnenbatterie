@@ -55,7 +55,6 @@ class SonnenbatterieSensor(SonnenBaseEntity, SensorEntity, RestoreEntity):
     # entity_description: SonnenbatterieSensorEntityDescription
     # _attr_should_poll = False
     # _attr_has_entity_name = True
-    _attr_suggested_display_precision = 0
 
     def __init__(
         self,
@@ -73,8 +72,15 @@ class SonnenbatterieSensor(SonnenBaseEntity, SensorEntity, RestoreEntity):
         #     if (tkey := entity_description.translation_key)
         #   else entity_description.key
         # )
-        if precision := entity_description.suggested_display_precision:
-            self._attr_suggested_display_precision = precision
+        if entity_description.suggested_display_precision is not None:
+            self._attr_suggested_display_precision = entity_description.suggested_display_precision
+        elif entity_description.state_class is not None:
+            # Numeric (measurement) sensors without an explicit precision default
+            # to whole numbers. Sensors with neither a state_class nor a
+            # suggested_display_precision are non-numeric (plain text/enum
+            # values) - forcing a precision on those makes Home Assistant treat
+            # them as numeric and crash when the value isn't a number.
+            self._attr_suggested_display_precision = 0
 
     @property
     def unique_id(self) -> str:

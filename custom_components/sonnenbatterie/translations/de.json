@@ -10,21 +10,40 @@
         },
         "step": {
             "user": {
+                "title": "Sonnenbatterie-Konfiguration",
+                "menu_options": {
+                    "login": "Mit Benutzername und Passwort anmelden",
+                    "api_key": "Nur mit API-Schlüssel (ohne Anmeldung)"
+                }
+            },
+            "login": {
                 "data": {
                     "password": "Passwort",
                     "username": "Benutzer",
                     "ip_address": "IP-Adresse",
+                    "auth_token": "Auth-Token (optional)",
                     "scan_interval": "Aktualisierungsinterval (Sekunden)",
                     "sonnenbatterie_debug": "Debug-Modus (mehr Logs)"
                 },
                 "title": "Sonnenbatterie-Konfiguration",
                 "description": "Dein Passwort findest du normalerweise an der Seite deiner Sonnenbatterie in der Nähe des Hauptschalters."
             },
+            "api_key": {
+                "data": {
+                    "ip_address": "IP-Adresse",
+                    "auth_token": "Auth-Token",
+                    "scan_interval": "Aktualisierungsinterval (Sekunden)",
+                    "sonnenbatterie_debug": "Debug-Modus (mehr Logs)"
+                },
+                "title": "Sonnenbatterie-Konfiguration",
+                "description": "Es wird keine Anmeldung mit Benutzername/Passwort verwendet - der Auth-Token genügt sowohl zum Lesen als auch zum Steuern der Batterie. Du findest ihn in der Sonnen-App/im Dashboard unter Einstellungen -> Integrationen -> Software-Integration."
+            },
             "reconfigure": {
                 "data": {
                     "password": "Passwort",
                     "username": "Benutzer",
                     "ip_address": "IP-Adresse",
+                    "auth_token": "Auth-Token",
                     "scan_interval": "Aktualisierungsinterval (Sekunden)",
                     "sonnenbatterie_debug": "Debug-Modus (mehr Logs)"
                 },
@@ -197,6 +216,15 @@
             },
             "battery_care": {
                 "name": "Batteriepflege aktiv"
+            },
+            "led_status": {
+                "name": "Status-LED Animation"
+            },
+            "led_brightness": {
+                "name": "Status-LED Helligkeit"
+            },
+            "led_status_code": {
+                "name": "Status-LED Statuscode"
             }
         },
         "binary_sensor": {
@@ -214,6 +242,9 @@
             },
             "latestdata_grid_detached": {
                 "name": "Netz getrennt"
+            },
+            "latestdata_full_charge_request": {
+                "name": "Vollladung angefordert"
             }
         }
     },

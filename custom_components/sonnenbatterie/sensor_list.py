@@ -89,6 +89,40 @@ def generate_powermeter_sensors(_coordinator):
     return powermeter_sensors
 
 
+# Eclipse Led (the battery's front status light) reports its current animation
+# as a set of mutually-exclusive booleans (at most one "Blinking .../Pulsing
+# .../Solid .../Rotating ..." key is true at a time) instead of a single
+# field, so this picks out whichever one is active for a single readable sensor.
+_ECLIPSE_LED_PATTERN_KEYS = (
+    "Blinking Green",
+    "Blinking Red",
+    "Blinking blue",
+    "Blinking purple",
+    "Blinking sonnenGradient",
+    "Pulsing Green",
+    "Pulsing Orange",
+    "Pulsing Red",
+    "Pulsing White",
+    "Pulsing blue",
+    "Pulsing purple",
+    "Rotating sonnenGradient",
+    "Solid Red",
+    "Solid blue",
+    "Solid purple",
+    "Solid sonnenGradient",
+)
+
+
+def _eclipse_led_state(coordinator) -> str | None:
+    led = coordinator.latestData.get("latestdata", {}).get("ic_status", {}).get("Eclipse Led")
+    if led is None:
+        return None
+    for key in _ECLIPSE_LED_PATTERN_KEYS:
+        if led.get(key):
+            return key
+    return "Off"
+
+
 SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     ################################
     ### basic sensors ("status") ###
@@ -206,6 +240,10 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
             coordinator.latestData.get("inverter", {}).get("status", {}).get("fac")
             or coordinator.latestData.get("inverter", {}).get("status", {}).get("status", {}).get("fac")
             or coordinator.latestData.get("battery_system", {}).get("grid_information", {}).get("fac")
+            # v2 "inverter"/"status" (token-only mode) report frequency as a flat
+            # "fac"/"Fac" field instead of the nested v1 shape above
+            or coordinator.latestData.get("inverter", {}).get("fac")
+            or coordinator.latestData.get("status", {}).get("Fac")
         ),
     ),
     ###
@@ -376,6 +414,8 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
             .get("measurements", {})
             .get("battery_status", {})
             .get("cyclecount")
+            # v2 "battery" (token-only mode) reports this as a flat field instead
+            or coordinator.latestData.get("battery", {}).get("cyclecount")
         ),
     ),
     SonnenbatterieSensorEntityDescription(
@@ -405,6 +445,8 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
             .get("measurements", {})
             .get("battery_status", {})
             .get("minimumcelltemperature")
+            # v2 "battery" (token-only mode) reports this as a flat field instead
+            or coordinator.latestData.get("battery", {}).get("minimumcelltemperature")
         ),
     ),
     SonnenbatterieSensorEntityDescription(
@@ -420,6 +462,8 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
             .get("measurements", {})
             .get("battery_status", {})
             .get("maximumcelltemperature")
+            # v2 "battery" (token-only mode) reports this as a flat field instead
+            or coordinator.latestData.get("battery", {}).get("maximumcelltemperature")
         ),
     ),
     SonnenbatterieSensorEntityDescription(
@@ -485,10 +529,15 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         native_unit_of_measurement="Wh",
         device_class=SensorDeviceClass.ENERGY_STORAGE,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda coordinator: coordinator.latestData.get("battery_system", {})
-        .get("battery_system", {})
-        .get("system", {})
-        .get("storage_capacity_per_module"),
+        value_fn=lambda coordinator: (
+            coordinator.latestData.get("battery_system", {})
+            .get("battery_system", {})
+            .get("system", {})
+            .get("storage_capacity_per_module")
+            # v1-only; in token-only mode fall back to the nominal/marketing
+            # per-module capacity from "configurations" (always available)
+            or coordinator.latestData.get("configurations", {}).get("CM_MarketingModuleCapacity")
+        ),
         entity_registry_enabled_default=False,
     ),
     SonnenbatterieSensorEntityDescription(
@@ -497,9 +546,12 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         icon="mdi:battery",
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda coordinator: coordinator.latestData.get(
-            "battery_system", {}
-        ).get("modules"),
+        value_fn=lambda coordinator: (
+            coordinator.latestData.get("battery_system", {}).get("modules")
+            # v1-only; in token-only mode fall back to "configurations"
+            # (always available)
+            or coordinator.latestData.get("configurations", {}).get("IC_BatteryModules")
+        ),
         entity_registry_enabled_default=False,
     ),
     SonnenbatterieSensorEntityDescription(
@@ -508,9 +560,12 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="A",
         device_class=SensorDeviceClass.CURRENT,
-        value_fn=lambda coordinator: coordinator.latestData.get("battery_system", {})
-        .get("grid_information", {})
-        .get("ipv"),
+        value_fn=lambda coordinator: (
+            coordinator.latestData.get("battery_system", {}).get("grid_information", {}).get("ipv")
+            # v1-only; in token-only mode "inverter" (v2, always available)
+            # reports the same PV-side current under the same field name
+            or coordinator.latestData.get("inverter", {}).get("ipv")
+        ),
         entity_registry_enabled_default=False,
     ),
     SonnenbatterieSensorEntityDescription(
@@ -519,9 +574,12 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="W",
         device_class=SensorDeviceClass.POWER,
-        value_fn=lambda coordinator: coordinator.latestData.get("battery_system", {})
-        .get("grid_information", {})
-        .get("ppv"),
+        value_fn=lambda coordinator: (
+            coordinator.latestData.get("battery_system", {}).get("grid_information", {}).get("ppv")
+            # v1-only; in token-only mode "inverter" (v2, always available)
+            # reports the same PV-side power under the same field name
+            or coordinator.latestData.get("inverter", {}).get("ppv")
+        ),
         entity_registry_enabled_default=False,
     ),
     SonnenbatterieSensorEntityDescription(
@@ -530,9 +588,12 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="V",
         device_class=SensorDeviceClass.VOLTAGE,
-        value_fn=lambda coordinator: coordinator.latestData.get("battery_system", {})
-        .get("grid_information", {})
-        .get("upv"),
+        value_fn=lambda coordinator: (
+            coordinator.latestData.get("battery_system", {}).get("grid_information", {}).get("upv")
+            # v1-only; in token-only mode "inverter" (v2, always available)
+            # reports the same PV-side voltage under the same field name
+            or coordinator.latestData.get("inverter", {}).get("upv")
+        ),
         entity_registry_enabled_default=False,
     ),
     SonnenbatterieSensorEntityDescription(
@@ -542,9 +603,12 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="°C",
         device_class=SensorDeviceClass.TEMPERATURE,
-        value_fn=lambda coordinator: coordinator.latestData.get("battery_system", {})
-        .get("grid_information", {})
-        .get("tmax"),
+        value_fn=lambda coordinator: (
+            coordinator.latestData.get("battery_system", {}).get("grid_information", {}).get("tmax")
+            # v1-only; in token-only mode "inverter" (v2, always available)
+            # reports the same inverter temperature under the same field name
+            or coordinator.latestData.get("inverter", {}).get("tmax")
+        ),
         entity_registry_enabled_default=False,
     ),
     ###########################
@@ -574,7 +638,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda coordinator: coordinator.latestData.get("commissioning_settings", {})
-                                     .get('data', {}).get('attributes',{}).get('tou_max_power_limit', 'unknown'),
+                                     .get('data', {}).get('attributes',{}).get('tou_max_power_limit'),
         entity_registry_enabled_default=True,
     ),
     SonnenbatterieSensorEntityDescription(
@@ -594,5 +658,36 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         native_unit_of_measurement="%",
         value_fn=lambda coordinator: int(coordinator.latestData.get("v2_status", {}).get("BackupBuffer", "0")),
         entity_registry_enabled_default=True,
+    ),
+    ###
+    # Eclipse Led (front status light), from /api/v2/latestdata (ic_status.Eclipse Led)
+    SonnenbatterieSensorEntityDescription(
+        key="led_status",
+        icon="mdi:led-on",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_eclipse_led_state,
+        entity_registry_enabled_default=False,
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="led_brightness",
+        icon="mdi:brightness-percent",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="%",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda coordinator: coordinator.latestData.get("latestdata", {})
+        .get("ic_status", {})
+        .get("Eclipse Led", {})
+        .get("Brightness"),
+        entity_registry_enabled_default=False,
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="led_status_code",
+        icon="mdi:information-outline",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda coordinator: coordinator.latestData.get("latestdata", {})
+        .get("ic_status", {})
+        .get("Eclipse Led", {})
+        .get("Eclipse Status"),
+        entity_registry_enabled_default=False,
     ),
 )
