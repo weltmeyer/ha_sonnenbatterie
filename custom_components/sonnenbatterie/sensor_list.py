@@ -123,6 +123,12 @@ def _eclipse_led_state(coordinator) -> str | None:
     return "Off"
 
 
+# Sensors whose data only exists in the v1 API. They are not created in
+# API-key-only mode, and registry entries left over from an earlier run are
+# removed there (see async_setup_entry in sensor.py).
+V1_ONLY_SENSOR_KEYS = ("battery_system_health", "tou_max_power")
+
+
 SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     ################################
     ### basic sensors ("status") ###

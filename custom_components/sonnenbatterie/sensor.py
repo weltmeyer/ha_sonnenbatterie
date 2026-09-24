@@ -2,6 +2,7 @@ from homeassistant.components.sensor import (
     SensorEntity,
 )
 from homeassistant.config_entries import ConfigEntryState
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.typing import StateType
 
@@ -15,6 +16,7 @@ from .entities import SonnenBaseEntity
 
 from .sensor_list import (
     SENSORS,
+    V1_ONLY_SENSOR_KEYS,
     generate_powermeter_sensors, SonnenbatterieSensorEntityDescription
 )
 
@@ -33,6 +35,17 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
 
     # await coordinator.async_refresh()
+
+    if coordinator._token_only:
+        # These sensors are never created in API-key-only mode, but entries from
+        # an earlier run (e.g. login mode) would otherwise stay in the registry
+        # as permanently unavailable entities.
+        registry = er.async_get(hass)
+        for key in V1_ONLY_SENSOR_KEYS:
+            unique_id = f"sensor.sonnenbatterie_{coordinator.serial}_{key}"
+            if entity_id := registry.async_get_entity_id("sensor", DOMAIN, unique_id):
+                LOGGER.debug(f"Removing stale v1-only entity {entity_id}")
+                registry.async_remove(entity_id)
 
     async_add_entities(
         SonnenbatterieSensor(coordinator=coordinator, entity_description=description)
