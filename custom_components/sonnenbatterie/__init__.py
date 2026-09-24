@@ -256,5 +256,10 @@ async def async_unload_entry(hass, entry):
     missing.
     """
     LOGGER.debug(f"Unloading config entry: {entry}")
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unload_ok:
+        entry_data = hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
+        if entry_data and entry_data.get(CONF_COORDINATOR):
+            await entry_data[CONF_COORDINATOR].aclose()
+    return unload_ok
 

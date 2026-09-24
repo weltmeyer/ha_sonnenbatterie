@@ -65,15 +65,16 @@ class TokenSonnenBatterie:
     async def _get_v1_optional(self, path: str):
         """Best-effort GET against a legacy v1-only endpoint.
 
-        Returns None if the static token isn't accepted there (401) instead
-        of raising, so callers can fall back to a sane default.
+        Returns None instead of raising on ANY failure - not just 401
+        (unauthorized). In practice the battery's embedded webserver also
+        answers these endpoints with a transient 502 Bad Gateway from time to
+        time (unrelated to auth), and callers need the same graceful
+        fallback either way.
         """
         try:
             return await self._get(path)
-        except aiohttp.ClientResponseError as e:
-            if e.status == 401:
-                return None
-            raise
+        except Exception:  # noqa: BLE001 - any failure here is "not available"
+            return None
 
     # Endpoints with a v2 equivalent - served from there so they work with
     # just the static token.

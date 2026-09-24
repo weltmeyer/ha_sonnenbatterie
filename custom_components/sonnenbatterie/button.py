@@ -41,5 +41,5 @@ class SonnenbatterieButton(SonnenButtonEntity, ButtonEntity):
             case "button_reset_discharge":
                 await self.coordinator.sbconn.sb2.discharge_battery(0)
 
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.after_write()
         return None

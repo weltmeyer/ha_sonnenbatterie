@@ -425,7 +425,10 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         native_unit_of_measurement="%",
         device_class=SensorDeviceClass.BATTERY,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda coordinator: (
+        # v1-only (battery.measurements.battery_status.stateofhealth), no v2
+        # equivalent exists at all - never create this entity in token-only
+        # mode instead of leaving it permanently "unknown".
+        value_fn=lambda coordinator: None if coordinator._token_only else (
             coordinator.latestData.get("battery", {})
             .get("measurements", {})
             .get("battery_status", {})
@@ -637,8 +640,14 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         icon="mdi:transmission-tower-import",
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda coordinator: coordinator.latestData.get("commissioning_settings", {})
-                                     .get('data', {}).get('attributes',{}).get('tou_max_power_limit'),
+        # v1-only (commissioning_settings), no v2 equivalent exists at all -
+        # never create this entity in token-only mode instead of leaving it
+        # permanently "unknown".
+        value_fn=lambda coordinator: (
+            None if coordinator._token_only else
+            coordinator.latestData.get("commissioning_settings", {})
+            .get('data', {}).get('attributes', {}).get('tou_max_power_limit')
+        ),
         entity_registry_enabled_default=True,
     ),
     SonnenbatterieSensorEntityDescription(
@@ -689,5 +698,17 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         .get("Eclipse Led", {})
         .get("Eclipse Status"),
         entity_registry_enabled_default=False,
+    ),
+    ###
+    # current charge/discharge setpoint, from /api/v2/latestdata (SetPoint_W):
+    # positive = discharge, negative = charge
+    SonnenbatterieSensorEntityDescription(
+        key="state_setpoint",
+        icon="mdi:target",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="W",
+        device_class=SensorDeviceClass.POWER,
+        value_fn=lambda coordinator: coordinator.latestData.get("latestdata", {}).get("SetPoint_W"),
+        entity_registry_enabled_default=True,
     ),
 )

@@ -39,16 +39,33 @@
                 "description": "Es wird keine Anmeldung mit Benutzername/Passwort verwendet - der Auth-Token genügt sowohl zum Lesen als auch zum Steuern der Batterie. Du findest ihn in der Sonnen-App/im Dashboard unter Einstellungen -> Integrationen -> Software-Integration."
             },
             "reconfigure": {
+                "title": "Sonnenbatterie-Konfiguration",
+                "menu_options": {
+                    "reconfigure_login": "Mit Benutzername und Passwort anmelden",
+                    "reconfigure_api_key": "Nur mit API-Schlüssel (ohne Anmeldung)"
+                }
+            },
+            "reconfigure_login": {
                 "data": {
                     "password": "Passwort",
                     "username": "Benutzer",
+                    "ip_address": "IP-Adresse",
+                    "auth_token": "Auth-Token (optional)",
+                    "scan_interval": "Aktualisierungsinterval (Sekunden)",
+                    "sonnenbatterie_debug": "Debug-Modus (mehr Logs)"
+                },
+                "title": "Sonnenbatterie-Konfiguration",
+                "description": "Dein Passwort findest du normalerweise an der Seite deiner Sonnenbatterie in der Nähe des Hauptschalters."
+            },
+            "reconfigure_api_key": {
+                "data": {
                     "ip_address": "IP-Adresse",
                     "auth_token": "Auth-Token",
                     "scan_interval": "Aktualisierungsinterval (Sekunden)",
                     "sonnenbatterie_debug": "Debug-Modus (mehr Logs)"
                 },
                 "title": "Sonnenbatterie-Konfiguration",
-                "description": "Dein Passwort findest du normalerweise an der Seite deiner Sonnenbatterie in der Nähe des Hauptschalters."
+                "description": "Es wird keine Anmeldung mit Benutzername/Passwort verwendet - der Auth-Token genügt sowohl zum Lesen als auch zum Steuern der Batterie. Du findest ihn in der Sonnen-App/im Dashboard unter Einstellungen -> Integrationen -> Software-Integration."
             }
         }
     },
@@ -225,6 +242,9 @@
             },
             "led_status_code": {
                 "name": "Status-LED Statuscode"
+            },
+            "state_setpoint": {
+                "name": "Akku Sollwert"
             }
         },
         "binary_sensor": {

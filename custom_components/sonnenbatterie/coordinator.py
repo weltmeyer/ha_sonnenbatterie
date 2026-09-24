@@ -40,6 +40,10 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
     # so the battery's small embedded webserver isn't saturated with static reads.
     SLOW_POLL_EVERY = 6
 
+    # After a setpoint write the inverter needs a moment (observed: applied
+    # somewhere within 5 s) before latestdata.SetPoint_W shows the new value.
+    SETTLE_DELAY = 6.0
+
     # The lib defaults to sock_read=6 s / total=10 s. The battery's embedded server
     # regularly needs LONGER than 6 s to answer (busy with EM cycles / cloud sync);
     # every such answer became "Timeout on reading data from socket" although the
@@ -61,6 +65,9 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
         self._last_error = None
         self._last_login = 0
         self._cycle_count = 0   # schedules the rarely-changing endpoints
+        self._write_seq = 0     # counts setpoint writes, see after_write()
+        self._settling = False
+        self._settle_task = None
 
         """ public attributes """
         # Serializes ALL device I/O (poll bursts, entity writes, services): the
@@ -335,7 +342,41 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
                         if attempt == 2:
                             raise
                         LOGGER.debug(f"setpoint write {key} failed, re-login + retry: {e}")
+        await self.after_write()
+
+    @property
+    def setpoint_settling(self) -> bool:
+        """True from a setpoint write until the read-back has had time to
+        catch up - entities show the value that was just written meanwhile."""
+        return self._settling
+
+    async def after_write(self) -> None:
+        """Refresh right after a setpoint write, and once more when the
+        inverter has had time to apply it (latestdata.SetPoint_W lags the
+        write by up to a few seconds, so the first read can still return the
+        old value). The second refresh runs in the background and is shared by
+        writes that arrive in quick succession (external controllers write
+        every few seconds), so they don't pile up extra requests."""
+        self._write_seq += 1
+        self._settling = True
         await self.refresh_after_write()
+        if self._settle_task is None or self._settle_task.done():
+            self._settle_task = self.hass.async_create_task(self._refresh_after_settle())
+
+    async def _refresh_after_settle(self) -> None:
+        try:
+            while True:
+                seen = self._write_seq
+                await asyncio.sleep(self.SETTLE_DELAY)
+                if self._write_seq == seen:
+                    # last write of a burst: entities switch to the read-back
+                    # value in the update this refresh publishes
+                    self._settling = False
+                await self.refresh_after_write()
+                if self._write_seq == seen:
+                    return
+        finally:
+            self._settling = False
 
     async def refresh_after_write(self):
         """Light refresh after a setpoint/mode write: a few targeted reads instead
@@ -348,6 +389,8 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
                 self.latestData["status"] = await self.sbconn.get_status()
                 self.latestData["v2_status"] = await self.sbconn.sb2.get_status()
                 self.latestData["configurations"] = await self.sbconn.sb2.get_configurations()
+                # SetPoint_W is the read-back of the charge/discharge setpoint
+                self.latestData["latestdata"] = await self.sbconn.sb2.get_latest_data()
         except Exception:  # noqa: BLE001
             LOGGER.debug(traceback.format_exc())
             self._last_login = 0
@@ -359,6 +402,28 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
         """Fetch all config items from Sonnenbatterie."""
         LOGGER.debug(f"Fetching Sonnenbatteries on startup")
         await self._async_update_data()
+
+    async def aclose(self):
+        """Close every open aiohttp session (main client + write client, if
+        separate). Called on config entry unload/reload - without this the
+        underlying ClientSession is only closed by garbage collection, which
+        aiohttp warns about as an "Unclosed client session"."""
+        if self._settle_task is not None and not self._settle_task.done():
+            self._settle_task.cancel()
+        try:
+            await self.sbconn.logout()
+        except Exception:  # noqa: BLE001 - best effort, we're tearing down anyway
+            LOGGER.debug("sonnenbatterie: error closing main session", exc_info=True)
+
+        # In login mode with a separate static-token write client, sbconn.sb2
+        # is a DIFFERENT AsyncSonnenBatterieV2 instance and needs its own
+        # close. In token-only mode self._write_v2 IS sbconn.sb2, already
+        # closed above.
+        if self._write_v2 is not None and self._write_v2 is not getattr(self.sbconn, "sb2", None):
+            try:
+                await self._write_v2.logout()
+            except Exception:  # noqa: BLE001
+                LOGGER.debug("sonnenbatterie: error closing write session", exc_info=True)
 
     def send_all_data_to_log(self):
         """

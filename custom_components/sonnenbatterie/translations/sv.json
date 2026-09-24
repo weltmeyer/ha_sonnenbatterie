@@ -39,16 +39,33 @@
                 "description": "Ingen inloggning med användarnamn/lösenord används - Auth-Token räcker för att både läsa av och styra batteriet. Du hittar den i Sonnen-appen/dashboarden under Inställningar -> Integrationer -> Software Integration."
             },
             "reconfigure": {
+                "title": "Konfigurera din Sonnenbatterie",
+                "menu_options": {
+                    "reconfigure_login": "Logga in med användarnamn och lösenord",
+                    "reconfigure_api_key": "Använd endast API-nyckel (ingen inloggning)"
+                }
+            },
+            "reconfigure_login": {
                 "data": {
                     "password": "Lösenord",
                     "username": "Användare",
+                    "ip_address": "IP-adress",
+                    "auth_token": "Auth-Token (valfritt)",
+                    "scan_interval": "Uppdateringsintervall (sekunder)",
+                    "sonnenbatterie_debug": "Debugläge (fler loggposter)"
+                },
+                "title": "Konfigurera din Sonnenbatterie",
+                "description": "Lösenordet hittar du normalt på sidan av din sonnenbatterie, nära huvudbrytaren."
+            },
+            "reconfigure_api_key": {
+                "data": {
                     "ip_address": "IP-adress",
                     "auth_token": "Auth-Token",
                     "scan_interval": "Uppdateringsintervall (sekunder)",
                     "sonnenbatterie_debug": "Debugläge (fler loggposter)"
                 },
                 "title": "Konfigurera din Sonnenbatterie",
-                "description": "Lösenordet hittar du normalt på sidan av din sonnenbatterie, nära huvudbrytaren."
+                "description": "Ingen inloggning med användarnamn/lösenord används - Auth-Token räcker för att både läsa av och styra batteriet. Du hittar den i Sonnen-appen/dashboarden under Inställningar -> Integrationer -> Software Integration."
             }
         }
     },
@@ -225,6 +242,9 @@
             },
             "led_status_code": {
                 "name": "Status-LED statuskod"
+            },
+            "state_setpoint": {
+                "name": "Batteri börvärde"
             }
         },
         "binary_sensor": {

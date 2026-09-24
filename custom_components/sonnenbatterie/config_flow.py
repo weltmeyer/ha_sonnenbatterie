@@ -143,108 +143,136 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             last_step=True,
         )
 
-    async def async_step_reconfigure(self, user_input):
-        entry = self._get_reconfigure_entry()
-        token_only = bool(entry.data.get(CONF_AUTH_TOKEN)) and not entry.data.get(CONF_USERNAME)
+    async def async_step_reconfigure(self, user_input=None):
+        """Let the user pick which authentication method to reconfigure with -
+        switching between login and API-key-only is allowed either way."""
+        return self.async_show_menu(
+            step_id="reconfigure",
+            menu_options=["reconfigure_login", "reconfigure_api_key"],
+        )
 
-        if token_only:
-            schema_reconf = vol.Schema(
-                {
-                    vol.Required(
-                        CONF_IP_ADDRESS,
-                        default = entry.data.get(CONF_IP_ADDRESS) or None
-                    ): str,
-                    vol.Required(
-                        CONF_AUTH_TOKEN,
-                        default = entry.data.get(CONF_AUTH_TOKEN) or ""
-                    ): str,
-                    vol.Required(
-                        CONF_SCAN_INTERVAL,
-                        default=entry.data.get(CONF_SCAN_INTERVAL) or DEFAULT_SCAN_INTERVAL
-                    ): cv.positive_int,
-                    vol.Optional(
-                        ATTR_SONNEN_DEBUG,
-                        default=entry.data.get(ATTR_SONNEN_DEBUG) or DEFAULT_SONNEN_DEBUG)
-                    : cv.boolean,
-                }
-            )
-        else:
-            schema_reconf = vol.Schema(
-                {
-                    vol.Required(
-                        CONF_IP_ADDRESS,
-                        default = entry.data.get(CONF_IP_ADDRESS) or None
-                    ): str,
-                    vol.Required(
-                        CONF_USERNAME,
-                        default = entry.data.get(CONF_USERNAME) or "User"
-                    ): vol.In(["User", "Installer"]),
-                    vol.Required(
-                        CONF_PASSWORD,
-                        default = entry.data.get(CONF_PASSWORD) or ""
-                    ): str,
-                    vol.Optional(
-                        CONF_AUTH_TOKEN,
-                        default = entry.data.get(CONF_AUTH_TOKEN) or ""
-                    ): str,
-                    vol.Required(
-                        CONF_SCAN_INTERVAL,
-                        default=entry.data.get(CONF_SCAN_INTERVAL) or DEFAULT_SCAN_INTERVAL
-                    ): cv.positive_int,
-                    vol.Optional(
-                        ATTR_SONNEN_DEBUG,
-                        default=entry.data.get(ATTR_SONNEN_DEBUG) or DEFAULT_SONNEN_DEBUG)
-                    : cv.boolean,
-                }
-            )
+    async def async_step_reconfigure_login(self, user_input=None):
+        entry = self._get_reconfigure_entry()
+        schema_reconf = vol.Schema(
+            {
+                vol.Required(
+                    CONF_IP_ADDRESS,
+                    default = entry.data.get(CONF_IP_ADDRESS) or None
+                ): str,
+                vol.Required(
+                    CONF_USERNAME,
+                    default = entry.data.get(CONF_USERNAME) or "User"
+                ): vol.In(["User", "Installer"]),
+                vol.Required(
+                    CONF_PASSWORD,
+                    default = entry.data.get(CONF_PASSWORD) or ""
+                ): str,
+                vol.Optional(
+                    CONF_AUTH_TOKEN,
+                    default = entry.data.get(CONF_AUTH_TOKEN) or ""
+                ): str,
+                vol.Required(
+                    CONF_SCAN_INTERVAL,
+                    default=entry.data.get(CONF_SCAN_INTERVAL) or DEFAULT_SCAN_INTERVAL
+                ): cv.positive_int,
+                vol.Optional(
+                    ATTR_SONNEN_DEBUG,
+                    default=entry.data.get(ATTR_SONNEN_DEBUG) or DEFAULT_SONNEN_DEBUG)
+                : cv.boolean,
+            }
+        )
 
         if user_input is not None:
-            LOGGER.debug(f"Reconfiguring {entry}")
-            if entry.data.get(CONF_SERIAL_NUMBER):
-                await self.async_set_unique_id(entry.data[CONF_SERIAL_NUMBER])
-                self._abort_if_unique_id_configured()
+            LOGGER.debug(f"Reconfiguring {entry} (login)")
             # noinspection PyBroadException
             try:
-                if token_only:
-                    sb_serial = await self._internal_setup_token(
-                        user_input[CONF_AUTH_TOKEN],
-                        user_input[CONF_IP_ADDRESS],
-                    )
-                    data_updates = {
-                        CONF_USERNAME: "",
-                        CONF_PASSWORD: "",
-                        **user_input,
-                    }
-                else:
-                    my_serial = await self.hass.async_add_executor_job(
-                        self._internal_setup,
-                        user_input[CONF_USERNAME],
-                        user_input[CONF_PASSWORD],
-                        user_input[CONF_IP_ADDRESS]
-                    )
-                    # async is a fickly beast ...
-                    sb_serial = await my_serial
-                    data_updates = user_input
-
+                my_serial = await self.hass.async_add_executor_job(
+                    self._internal_setup,
+                    user_input[CONF_USERNAME],
+                    user_input[CONF_PASSWORD],
+                    user_input[CONF_IP_ADDRESS]
+                )
+                # async is a fickly beast ... - only used to verify the
+                # connection here, the entry keeps its existing serial number
+                # (changing it would orphan every existing entity's unique_id)
+                await my_serial
             except:
                 e = traceback.format_exc()
                 LOGGER.error(f"Unable to connect to sonnenbatterie: {e}")
                 return self.async_show_form(
-                    step_id="reconfigure",
+                    step_id="reconfigure_login",
                     data_schema=schema_reconf,
                     errors={"base": "connection_error"},
                 )
 
             return self.async_update_reload_and_abort(
-                self._get_reconfigure_entry(),
-                data_updates=data_updates,
-                title=f"{user_input[CONF_IP_ADDRESS]} ({sb_serial})",
+                entry,
+                data_updates=user_input,
+                title=f"{user_input[CONF_IP_ADDRESS]} ({entry.data.get(CONF_SERIAL_NUMBER, '')})",
             )
 
+        return self.async_show_form(
+            step_id="reconfigure_login",
+            data_schema=schema_reconf,
+        )
+
+    async def async_step_reconfigure_api_key(self, user_input=None):
+        entry = self._get_reconfigure_entry()
+        schema_reconf = vol.Schema(
+            {
+                vol.Required(
+                    CONF_IP_ADDRESS,
+                    default = entry.data.get(CONF_IP_ADDRESS) or None
+                ): str,
+                vol.Required(
+                    CONF_AUTH_TOKEN,
+                    default = entry.data.get(CONF_AUTH_TOKEN) or ""
+                ): str,
+                vol.Required(
+                    CONF_SCAN_INTERVAL,
+                    default=entry.data.get(CONF_SCAN_INTERVAL) or DEFAULT_SCAN_INTERVAL
+                ): cv.positive_int,
+                vol.Optional(
+                    ATTR_SONNEN_DEBUG,
+                    default=entry.data.get(ATTR_SONNEN_DEBUG) or DEFAULT_SONNEN_DEBUG)
+                : cv.boolean,
+            }
+        )
+
+        if user_input is not None:
+            LOGGER.debug(f"Reconfiguring {entry} (api_key)")
+            # noinspection PyBroadException
+            try:
+                # only used to verify the connection here, the entry keeps
+                # its existing serial number (changing it would orphan every
+                # existing entity's unique_id)
+                await self._internal_setup_token(
+                    user_input[CONF_AUTH_TOKEN],
+                    user_input[CONF_IP_ADDRESS],
+                )
+            except:
+                e = traceback.format_exc()
+                LOGGER.error(f"Unable to connect to sonnenbatterie: {e}")
+                return self.async_show_form(
+                    step_id="reconfigure_api_key",
+                    data_schema=schema_reconf,
+                    errors={"base": "connection_error"},
+                )
+
+            data_updates = {
+                CONF_USERNAME: "",
+                CONF_PASSWORD: "",
+                **user_input,
+            }
+            return self.async_update_reload_and_abort(
+                entry,
+                data_updates=data_updates,
+                title=f"{user_input[CONF_IP_ADDRESS]} ({entry.data.get(CONF_SERIAL_NUMBER, '')})",
+            )
 
         return self.async_show_form(
-            step_id = "reconfigure",
-            data_schema = schema_reconf,
+            step_id="reconfigure_api_key",
+            data_schema=schema_reconf,
         )
 
 
