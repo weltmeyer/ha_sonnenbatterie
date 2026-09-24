@@ -18,12 +18,13 @@ from homeassistant.helpers import config_validation as cv
 from .const import *
 
 # pylint: enable=unused-wildcard-import
+from .token_client import TokenSonnenBatterie
 import voluptuous as vol
 
 
 class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
-    CONFIG_SCHEMA_USER = vol.Schema(
+    CONFIG_SCHEMA_LOGIN = vol.Schema(
         {
             vol.Required(CONF_IP_ADDRESS, default="192.168.0.1"): str,
             vol.Required(CONF_USERNAME): vol.In(["User", "Installer"]),
@@ -36,8 +37,24 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         }
     )
 
+    CONFIG_SCHEMA_API_KEY = vol.Schema(
+        {
+            vol.Required(CONF_IP_ADDRESS, default="192.168.0.1"): str,
+            vol.Required(CONF_AUTH_TOKEN): str,
+            vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): int,
+            vol.Optional(ATTR_SONNEN_DEBUG, default=DEFAULT_SONNEN_DEBUG): cv.boolean,
+        }
+    )
+
     async def async_step_user(self, user_input=None):
-        """Handle a flow initialized by the user."""
+        """Let the user pick how to authenticate against the Sonnenbatterie."""
+        return self.async_show_menu(
+            step_id="user",
+            menu_options=["login", "api_key"],
+        )
+
+    async def async_step_login(self, user_input=None):
+        """Handle setup using username/password login."""
         if user_input is not None:
 
             username = user_input[CONF_USERNAME]
@@ -53,7 +70,11 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             except:
                 e = traceback.format_exc()
                 LOGGER.error(f"Unable to connect to sonnenbatterie: {e}")
-                return self._show_form({"base": "connection_error"})
+                return self.async_show_form(
+                    step_id="login",
+                    data_schema=self.CONFIG_SCHEMA_LOGIN,
+                    errors={"base": "connection_error"},
+                )
 
             # async is a fickly beast ...
             sb_serial = await my_serial
@@ -75,12 +96,62 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             )
 
         return self.async_show_form(
-            step_id="user",
-            data_schema=self.CONFIG_SCHEMA_USER,
+            step_id="login",
+            data_schema=self.CONFIG_SCHEMA_LOGIN,
             last_step=True,
         )
 
-    async def async_step_reconfigure(self, user_input):
+    async def async_step_api_key(self, user_input=None):
+        """Handle setup using only a static Auth-Token (no login)."""
+        if user_input is not None:
+
+            token = user_input[CONF_AUTH_TOKEN]
+            ipaddress = user_input[CONF_IP_ADDRESS]
+
+            # noinspection PyBroadException
+            try:
+                sb_serial = await self._internal_setup_token(token, ipaddress)
+            except:
+                e = traceback.format_exc()
+                LOGGER.error(f"Unable to connect to sonnenbatterie: {e}")
+                return self.async_show_form(
+                    step_id="api_key",
+                    data_schema=self.CONFIG_SCHEMA_API_KEY,
+                    errors={"base": "connection_error"},
+                )
+
+            unique_id = f"{DOMAIN}-{sb_serial}"
+            await self.async_set_unique_id(unique_id)
+            self._abort_if_unique_id_configured()
+
+            return self.async_create_entry(
+                title=f"{ipaddress} ({sb_serial})",
+                data={
+                    CONF_USERNAME: "",
+                    CONF_PASSWORD: "",
+                    CONF_IP_ADDRESS: ipaddress,
+                    CONF_AUTH_TOKEN: token,
+                    CONF_SCAN_INTERVAL: user_input[CONF_SCAN_INTERVAL],
+                    ATTR_SONNEN_DEBUG: user_input[ATTR_SONNEN_DEBUG],
+                    CONF_SERIAL_NUMBER: sb_serial,
+                },
+            )
+
+        return self.async_show_form(
+            step_id="api_key",
+            data_schema=self.CONFIG_SCHEMA_API_KEY,
+            last_step=True,
+        )
+
+    async def async_step_reconfigure(self, user_input=None):
+        """Let the user pick which authentication method to reconfigure with -
+        switching between login and API-key-only is allowed either way."""
+        return self.async_show_menu(
+            step_id="reconfigure",
+            menu_options=["reconfigure_login", "reconfigure_api_key"],
+        )
+
+    async def async_step_reconfigure_login(self, user_input=None):
         entry = self._get_reconfigure_entry()
         schema_reconf = vol.Schema(
             {
@@ -112,10 +183,7 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
         if user_input is not None:
-            LOGGER.debug(f"Reconfiguring {entry}")
-            if entry.data.get(CONF_SERIAL_NUMBER):
-                await self.async_set_unique_id(entry.data[CONF_SERIAL_NUMBER])
-                self._abort_if_unique_id_configured()
+            LOGGER.debug(f"Reconfiguring {entry} (login)")
             # noinspection PyBroadException
             try:
                 my_serial = await self.hass.async_add_executor_job(
@@ -124,28 +192,87 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     user_input[CONF_PASSWORD],
                     user_input[CONF_IP_ADDRESS]
                 )
-
+                # async is a fickly beast ... - only used to verify the
+                # connection here, the entry keeps its existing serial number
+                # (changing it would orphan every existing entity's unique_id)
+                await my_serial
             except:
                 e = traceback.format_exc()
                 LOGGER.error(f"Unable to connect to sonnenbatterie: {e}")
                 return self.async_show_form(
-                    step_id="reconfigure",
+                    step_id="reconfigure_login",
                     data_schema=schema_reconf,
                     errors={"base": "connection_error"},
                 )
 
-            # async is a fickly beast ...
-            sb_serial = await my_serial
             return self.async_update_reload_and_abort(
-                self._get_reconfigure_entry(),
+                entry,
                 data_updates=user_input,
-                title=f"{user_input[CONF_IP_ADDRESS]} ({sb_serial})",
+                title=f"{user_input[CONF_IP_ADDRESS]} ({entry.data.get(CONF_SERIAL_NUMBER, '')})",
             )
 
+        return self.async_show_form(
+            step_id="reconfigure_login",
+            data_schema=schema_reconf,
+        )
+
+    async def async_step_reconfigure_api_key(self, user_input=None):
+        entry = self._get_reconfigure_entry()
+        schema_reconf = vol.Schema(
+            {
+                vol.Required(
+                    CONF_IP_ADDRESS,
+                    default = entry.data.get(CONF_IP_ADDRESS) or None
+                ): str,
+                vol.Required(
+                    CONF_AUTH_TOKEN,
+                    default = entry.data.get(CONF_AUTH_TOKEN) or ""
+                ): str,
+                vol.Required(
+                    CONF_SCAN_INTERVAL,
+                    default=entry.data.get(CONF_SCAN_INTERVAL) or DEFAULT_SCAN_INTERVAL
+                ): cv.positive_int,
+                vol.Optional(
+                    ATTR_SONNEN_DEBUG,
+                    default=entry.data.get(ATTR_SONNEN_DEBUG) or DEFAULT_SONNEN_DEBUG)
+                : cv.boolean,
+            }
+        )
+
+        if user_input is not None:
+            LOGGER.debug(f"Reconfiguring {entry} (api_key)")
+            # noinspection PyBroadException
+            try:
+                # only used to verify the connection here, the entry keeps
+                # its existing serial number (changing it would orphan every
+                # existing entity's unique_id)
+                await self._internal_setup_token(
+                    user_input[CONF_AUTH_TOKEN],
+                    user_input[CONF_IP_ADDRESS],
+                )
+            except:
+                e = traceback.format_exc()
+                LOGGER.error(f"Unable to connect to sonnenbatterie: {e}")
+                return self.async_show_form(
+                    step_id="reconfigure_api_key",
+                    data_schema=schema_reconf,
+                    errors={"base": "connection_error"},
+                )
+
+            data_updates = {
+                CONF_USERNAME: "",
+                CONF_PASSWORD: "",
+                **user_input,
+            }
+            return self.async_update_reload_and_abort(
+                entry,
+                data_updates=data_updates,
+                title=f"{user_input[CONF_IP_ADDRESS]} ({entry.data.get(CONF_SERIAL_NUMBER, '')})",
+            )
 
         return self.async_show_form(
-            step_id = "reconfigure",
-            data_schema = schema_reconf,
+            step_id="reconfigure_api_key",
+            data_schema=schema_reconf,
         )
 
 
@@ -157,12 +284,25 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         await sb_test.logout()
         return result
 
+    @staticmethod
+    async def _internal_setup_token(_token, _ipaddress):
+        sb_test = TokenSonnenBatterie(_ipaddress, _token)
+        try:
+            # Validates the token against the local v2 API - raises on a bad
+            # token/IP, unlike get_systemdata() which is v1-only and quietly
+            # degrades to {} when the static token isn't accepted there.
+            await sb_test.sb2.get_status()
+            systemdata = await sb_test.get_systemdata()
+        finally:
+            await sb_test.logout()
+        return systemdata.get("DE_Ticket_Number") or f"apikey-{_ipaddress}"
+
     @callback
     def _show_form(self, errors=None):
         """Show the form to the user."""
         return self.async_show_form(
-            step_id="user",
-            data_schema=self.CONFIG_SCHEMA_USER,
+            step_id="login",
+            data_schema=self.CONFIG_SCHEMA_LOGIN,
             errors=errors if errors else {},
         )
 

@@ -15,6 +15,7 @@ from .const import *
 from .coordinator import SonnenbatterieCoordinator
 from .sensor_list import SonnenbatterieSensorEntityDescription
 from .service import SonnenbatterieService
+from .token_client import TokenSonnenBatterie
 
 SCAN_INTERVAL = timedelta(seconds=DEFAULT_SCAN_INTERVAL)
 
@@ -56,9 +57,20 @@ SCHEMA_SET_TOU_SCHEDULE_STRING = vol.Schema(
 
 
 async def _get_serial_number(config_entry: ConfigEntry) -> str:
-    sb_conn = AsyncSonnenBatterie(config_entry.data.get(CONF_USERNAME),
-                                  config_entry.data.get(CONF_PASSWORD),
-                                  config_entry.data.get(CONF_IP_ADDRESS))
+    username = config_entry.data.get(CONF_USERNAME)
+    password = config_entry.data.get(CONF_PASSWORD)
+    token = config_entry.data.get(CONF_AUTH_TOKEN)
+    ipaddress = config_entry.data.get(CONF_IP_ADDRESS)
+
+    if token and not (username and password):
+        sb_conn = TokenSonnenBatterie(ipaddress, token)
+        try:
+            sysdata = await sb_conn.get_systemdata()
+        finally:
+            await sb_conn.logout()
+        return sysdata.get("DE_Ticket_Number", "sru-unknown")
+
+    sb_conn = AsyncSonnenBatterie(username, password, ipaddress)
     await sb_conn.logout()
     sysdata = await sb_conn.get_systemdata()
     await sb_conn.logout()
@@ -101,7 +113,14 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     hass.data[DOMAIN][config_entry.entry_id] = {}
     hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR] = sb_coordinator
 
-    inverter_power = sb_coordinator.latestData['battery_system']['battery_system']['system']['inverter_capacity']
+    # battery_system is v1-only and unavailable in token-only mode - fall back
+    # to the real max power from "configurations" (always available via v2),
+    # and only to a generous guess if even that is missing.
+    inverter_power = (
+        sb_coordinator.latestData.get('battery_system', {}).get('battery_system', {}).get('system', {}).get('inverter_capacity')
+        or sb_coordinator.latestData.get('configurations', {}).get('IC_InverterMaxPower_w')
+        or 25000
+    )
     max_tou_power = sb_coordinator.latestData.get('commissioning_settings',{}).get('data', {}).get('attributes', {}).get('tou_max_power_limit', '22000')
     LOGGER.debug(f"inverter_power: {inverter_power}, tou_power: {max_tou_power}")
     hass.data[DOMAIN][config_entry.entry_id][CONF_INVERTER_MAX] = inverter_power
@@ -237,5 +256,10 @@ async def async_unload_entry(hass, entry):
     missing.
     """
     LOGGER.debug(f"Unloading config entry: {entry}")
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unload_ok:
+        entry_data = hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
+        if entry_data and entry_data.get(CONF_COORDINATOR):
+            await entry_data[CONF_COORDINATOR].aclose()
+    return unload_ok
 

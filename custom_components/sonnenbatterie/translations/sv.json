@@ -1,0 +1,434 @@
+{
+    "config": {
+        "abort": {
+            "single_instance_allowed": "Endast en Sonnenbatterie-konfiguration tillåten."
+        },
+        "error": {
+            "connection_error": "Det gick inte att ansluta till Sonnenbatterie",
+            "identifier_exists": "Kontot finns redan",
+            "invalid_credentials": "Ogiltig inloggning"
+        },
+        "step": {
+            "user": {
+                "title": "Konfigurera ditt Sonnenbatterie",
+                "menu_options": {
+                    "login": "Logga in med användarnamn och lösenord",
+                    "api_key": "Använd endast API-nyckel (ingen inloggning)"
+                }
+            },
+            "login": {
+                "data": {
+                    "password": "Lösenord",
+                    "username": "Användare",
+                    "ip_address": "IP-adress",
+                    "auth_token": "Auth-Token (valfritt)",
+                    "scan_interval": "Uppdateringsintervall (sekunder)",
+                    "sonnenbatterie_debug": "Debugläge (fler loggposter)"
+                },
+                "title": "Konfigurera ditt Sonnenbatterie",
+                "description": "Lösenordet hittar du normalt på sidan av din sonnenbatterie, nära huvudbrytaren."
+            },
+            "api_key": {
+                "data": {
+                    "ip_address": "IP-adress",
+                    "auth_token": "Auth-Token",
+                    "scan_interval": "Uppdateringsintervall (sekunder)",
+                    "sonnenbatterie_debug": "Debugläge (fler loggposter)"
+                },
+                "title": "Konfigurera din Sonnenbatterie",
+                "description": "Ingen inloggning med användarnamn/lösenord används - Auth-Token räcker för att både läsa av och styra batteriet. Du hittar den i Sonnen-appen/dashboarden under Inställningar -> Integrationer -> Software Integration."
+            },
+            "reconfigure": {
+                "title": "Konfigurera din Sonnenbatterie",
+                "menu_options": {
+                    "reconfigure_login": "Logga in med användarnamn och lösenord",
+                    "reconfigure_api_key": "Använd endast API-nyckel (ingen inloggning)"
+                }
+            },
+            "reconfigure_login": {
+                "data": {
+                    "password": "Lösenord",
+                    "username": "Användare",
+                    "ip_address": "IP-adress",
+                    "auth_token": "Auth-Token (valfritt)",
+                    "scan_interval": "Uppdateringsintervall (sekunder)",
+                    "sonnenbatterie_debug": "Debugläge (fler loggposter)"
+                },
+                "title": "Konfigurera din Sonnenbatterie",
+                "description": "Lösenordet hittar du normalt på sidan av din sonnenbatterie, nära huvudbrytaren."
+            },
+            "reconfigure_api_key": {
+                "data": {
+                    "ip_address": "IP-adress",
+                    "auth_token": "Auth-Token",
+                    "scan_interval": "Uppdateringsintervall (sekunder)",
+                    "sonnenbatterie_debug": "Debugläge (fler loggposter)"
+                },
+                "title": "Konfigurera din Sonnenbatterie",
+                "description": "Ingen inloggning med användarnamn/lösenord används - Auth-Token räcker för att både läsa av och styra batteriet. Du hittar den i Sonnen-appen/dashboarden under Inställningar -> Integrationer -> Software Integration."
+            }
+        }
+    },
+    "entity": {
+        "button": {
+            "button_reset_all": {
+                "name": "Återställ laddning/urladdning"
+            },
+            "button_reset_charge": {
+                "name": "Återställ forcerad laddning"
+            },
+            "button_reset_discharge": {
+                "name": "Återställ forcerad urladdning"
+            }
+        },
+        "number": {
+            "number_charge": {
+                "name": "Forcera laddning (W)"
+            },
+            "number_discharge": {
+                "name": "Forcera urladdning (W)"
+            },
+            "battery_reserve": {
+                "name": "Sätt batterireserv (%)"
+            }
+        },
+        "select": {
+            "select_operating_mode": {
+                "name": "Driftläge"
+            }
+        },
+        "sensor": {
+            "state_sonnenbatterie": {
+                "name": "Sonnenbatterie",
+                 "state": {
+                    "standby": "Standby",
+                    "charging": "Laddar",
+                    "discharging": "Laddar ur"
+                }
+            },
+            "state_consumption_avg": {
+                "name": "Genomsnittlig förbrukning"
+            },
+            "state_consumption_current": {
+                "name": "Aktuell förbrukning"
+            },
+            "state_production": {
+                "name": "Aktuell produktion"
+            },
+            "state_grid_inout": {
+                "name": "Nät in/ut-effekt"
+            },
+            "state_grid_in": {
+                "name": "Nät in-effekt"
+            },
+            "state_grid_out": {
+                "name": "Nät ut-effekt"
+            },
+             "state_net_frequency": {
+                "name": "Nätfrekvens"
+            },
+            "state_battery_inout": {
+                "name": "Batteri laddning/urladdning-effekt"
+            },
+            "state_battery_in": {
+                "name": "Batteri laddningseffekt"
+            },
+            "state_battery_out": {
+                "name": "Batteri urladdningseffekt"
+            },
+            "state_battery_percentage_real": {
+                "name": "Batteriprocent (verklig)"
+            },
+            "state_battery_percentage_user": {
+                "name": "Batteriprocent (användar)"
+            },
+            "state_system_status": {
+                "name": "Systemstatus",
+                "state": {
+                    "ongrid": "Nätanslutet"
+                }
+            },
+            "state_operating_mode": {
+                "name": "Driftläge",
+                "state": {
+                    "1": "Manuellt",
+                    "2": "Automatiskt",
+                    "4": "Test",
+                    "6": "Utökningsmodul",
+                    "10": "Time of Use",
+                    "11": "Optimering"
+                }
+            },
+            "backup_buffer": {
+                "name": "Reservbuffert"
+            },
+            "battery_system_cycles": {
+                "name": "Battericykler"
+            },
+            "battery_system_health": {
+                "name": "Batterihälsa"
+            },
+            "battery_minimum_cell_temperature": {
+                "name": "Minsta celltemperatur"
+            },
+            "battery_maximum_cell_temperature": {
+                "name": "Högsta celltemperatur"
+            },
+            "battery_installed_capacity_total": {
+                "name": "Batteriets totala installerade kapacitet"
+            },
+            "battery_installed_capacity_usable": {
+                "name": "Batteriets användbara installerade kapacitet"
+            },
+            "battery_remaining_capacity_total": {
+                "name": "Batteriets totala återstående kapacitet"
+            },
+            "battery_remaining_capacity_usable": {
+                "name": "Batteriets användbara återstående kapacitet"
+            },
+            "battery_storage_capacity_per_module": {
+                "name": "Batterikapacitet per modul"
+            },
+            "battery_module_count": {
+                "name": "Antal batterimoduler"
+            },
+            "battery_grid_ipv": {
+                "name": "Batterisystem IPV"
+            },
+            "battery_grid_ppv": {
+                "name": "Batterisystem PPV"
+            },
+            "battery_grid_upv": {
+                "name": "Batterisystem UPV"
+            },
+            "battery_grid_tmax": {
+                "name": "Batterisystem maxtemperatur"
+            },
+            "inverter_state_ipv": {
+                "name": "Växelriktare IPV 1"
+            },
+            "inverter_state_ipv2": {
+                "name": "Växelriktare IPV 2"
+            },
+            "inverter_state_ppv": {
+                "name": "Växelriktare hybrid solkraft 1"
+            },
+            "inverter_state_ppv2": {
+                "name": "Växelriktare hybrid solkraft 2"
+            },
+            "inverter_state_upv": {
+                "name": "Växelriktare UPV 1"
+            },
+            "inverter_state_upv2": {
+                "name": "Växelriktare UPV 2"
+            },
+            "read_api": {
+                "name": "JSON-API läsåtkomst"
+            },
+            "write_api": {
+                "name": "JSON-API skrivåtkomst"
+            },
+            "tou_max_power": {
+                "name": "ToU maxeffekt"
+            },
+            "battery_care": {
+                "name": "Batteriunderhåll aktivt"
+            },
+            "led_status": {
+                "name": "Status-LED animation"
+            },
+            "led_brightness": {
+                "name": "Status-LED ljusstyrka"
+            },
+            "led_status_code": {
+                "name": "Status-LED statuskod"
+            },
+            "state_setpoint": {
+                "name": "Batteri börvärde"
+            }
+        },
+        "binary_sensor": {
+            "latestdata_inverter_over_temperature": {
+                "name": "Växelriktare övertemperatur"
+            },
+            "latestdata_critical_bms_alarm": {
+                "name": "Kritiskt BMS-larm"
+            },
+            "latestdata_hw_shutdown": {
+                "name": "Hårdvaruavstängning"
+            },
+            "latestdata_grid_abnormal": {
+                "name": "Nätfel"
+            },
+            "latestdata_grid_detached": {
+                "name": "Nät frånkopplat"
+            },
+            "latestdata_full_charge_request": {
+                "name": "Full laddning begärd"
+            }
+        }
+    },
+    "services": {
+        "set_operating_mode": {
+            "name": "Sätt driftläge",
+            "description": "Ställer in driftläget för Sonnenbatterie",
+            "fields": {
+                "device_id": {
+                    "description": "Home Assistant-ID för målenheten",
+                    "example": "1234567890",
+                    "name": "Enhets-ID"
+                },
+                "mode": {
+                    "description": "Driftläge att sätta ('manual', 'automatic', 'timeofuse')",
+                    "name": "Driftläge",
+                    "example": "automatic"
+                }
+            }
+        },
+        "set_operating_mode_num": {
+            "name": "Sätt driftläge (numeriskt)",
+            "description": "Ställer in det numeriska driftläget för Sonnenbatterie",
+            "fields": {
+                "device_id": {
+                    "description": "Home Assistant-ID för målenheten",
+                    "name": "Enhets-ID",
+                    "example": "1234567890"
+                },
+                "mode": {
+                    "description": "Driftläge att sätta ('1', '2', '10')",
+                    "name": "Driftläge",
+                    "example": "2"
+                }
+            }
+        },
+        "charge_battery": {
+            "name": "Ladda batteri",
+            "description": "Tvingar Sonnenbatterie att ladda med angiven effekt i W",
+            "fields": {
+                "device_id": {
+                    "description": "Home Assistant-ID för målenheten",
+                    "name": "Enhets-ID",
+                    "example": "1234567890"
+                },
+                "power": {
+                    "name": "Laddeffekt",
+                    "description": "Effekt att ladda Sonnenbatterie med",
+                    "example": "1000"
+                }
+            }
+        },
+        "discharge_battery": {
+            "name": "Ladda ur batteri",
+            "description": "Tvingar Sonnenbatterie att ladda ur med angiven effekt",
+            "fields": {
+                "device_id": {
+                    "description": "Home Assistant-ID för målenheten",
+                    "name": "Enhets-ID",
+                    "example": "1234567890"
+                },
+                "power": {
+                    "name": "Urladdningseffekt",
+                    "description": "Effekt att ladda ur Sonnenbatterie med",
+                    "example": "1234"
+                }
+            }
+        },
+        "set_battery_reserve": {
+            "name": "Sätt reservkapacitet",
+            "description": "Ställer in hur stor del av kapaciteten Sonnenbatterie sparar som reserv, i procent av totalen",
+            "fields": {
+                "device_id": {
+                    "description": "Home Assistant-ID för målenheten",
+                    "name": "Enhets-ID",
+                    "example": "1234567890"
+                },
+                "value": {
+                    "name": "Sparad reservkapacitet",
+                    "description": "Procentandel av totalkapaciteten som ska sparas som reserv",
+                    "example": "10"
+                }
+            }
+        },
+        "set_config_item": {
+            "name": "Sätt en konfigurationsparameter",
+            "description": "Tillåter ändring av vissa av Sonnenbatteries driftparametrar",
+            "fields": {
+                "device_id": {
+                    "description": "Home Assistant-ID för målenheten",
+                    "name": "Enhets-ID",
+                    "example": "1234567890"
+                },
+                "item": {
+                    "name": "Parameternamn",
+                    "description": "Namnet på parametern som ska sättas",
+                    "example": "EM_USOC"
+                },
+                "value": {
+                    "name": "Parametervärde",
+                    "description": "Värdet parametern ska sättas till. Kan vara ett heltal eller en sträng, beroende på parametern",
+                    "example": "10 (int) eller \"[]\" (tom JSON-sträng)"
+                }
+            }
+        },
+        "set_tou_schedule": {
+            "name": "Sätt laddningsschema",
+            "description": "Tillåter inställning av laddningsscheman som gäller när Sonnenbatterie är i Time-of-Use-läge",
+            "fields": {
+                "device_id": {
+                    "description": "Home Assistant-ID för målenheten",
+                    "name": "Enhets-ID",
+                    "example": "1234567890"
+                },
+                "schedule": {
+                    "name": "Laddningsfönster",
+                    "description": "Ett eller flera laddningsfönster som en sträng innehållande en JSON-array",
+                    "example": "[{start:10:00, stop:11:00, threshold_p_max: 20000}]"
+                }
+            }
+        },
+        "get_tou_schedule": {
+            "name": "Hämta laddningsschema",
+            "description": "Returnerar de laddningsscheman som för närvarande finns lagrade i Sonnenbatteries konfiguration",
+            "fields": {
+                    "device_id": {
+                    "description": "Home Assistant-ID för målenheten",
+                    "name": "Enhets-ID",
+                    "example": "1234567890"
+                }
+            }
+        },
+        "get_battery_reserve": {
+            "name": "Hämta batterireserv",
+            "description": "Returnerar hur stor andel av kapaciteten Sonnenbatterie sparar som reserv.",
+            "fields": {
+                "device_id": {
+                    "description": "Home Assistant-ID för målenheten",
+                    "name": "Enhets-ID",
+                    "example": "1234567890"
+                }
+            }
+        },
+        "get_operating_mode": {
+            "name": "Hämta driftläge",
+            "description": "Returnerar Sonnenbatteries nuvarande driftläge i textform",
+            "fields": {
+                "device_id": {
+                    "description": "Home Assistant-ID för målenheten",
+                    "name": "Enhets-ID",
+                    "example": "1234567890"
+                }
+            }
+        },
+        "get_operating_mode_num": {
+            "name": "Hämta driftläge (numeriskt)",
+            "description": "Returnerar Sonnenbatteries nuvarande driftläge i numerisk form",
+            "fields": {
+                "device_id": {
+                    "description": "Home Assistant-ID för målenheten",
+                    "name": "Enhets-ID",
+                    "example": "1234567890"
+                }
+            }
+        }
+    }
+}

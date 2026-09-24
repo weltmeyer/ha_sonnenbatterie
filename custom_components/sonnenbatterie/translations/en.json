@@ -10,26 +10,62 @@
         },
         "step": {
             "user": {
+                "title": "Configure your Sonnenbatterie",
+                "menu_options": {
+                    "login": "Log in with username and password",
+                    "api_key": "Use an API key only (no login)"
+                }
+            },
+            "login": {
                 "data": {
                     "password": "Password",
                     "username": "User",
                     "ip_address": "IP-Address",
+                    "auth_token": "Auth-Token (optional)",
                     "scan_interval": "Update interval (seconds)",
                     "sonnenbatterie_debug": "Debug mode (more log entries)"
                 },
                 "title": "Configure your Sonnenbatterie",
                 "description": "Normally you find your password on the side of your sonnenbatterie near the main switch."
             },
+            "api_key": {
+                "data": {
+                    "ip_address": "IP-Address",
+                    "auth_token": "Auth-Token",
+                    "scan_interval": "Update interval (seconds)",
+                    "sonnenbatterie_debug": "Debug mode (more log entries)"
+                },
+                "title": "Configure your Sonnenbatterie",
+                "description": "No username/password login is used - the Auth-Token is enough for both reading and controlling the battery. Find it in the Sonnen app/dashboard under Settings -> Integrations -> Software Integration."
+            },
             "reconfigure": {
+                "title": "Configure your Sonnenbatterie",
+                "menu_options": {
+                    "reconfigure_login": "Log in with username and password",
+                    "reconfigure_api_key": "Use an API key only (no login)"
+                }
+            },
+            "reconfigure_login": {
                 "data": {
                     "password": "Password",
                     "username": "User",
                     "ip_address": "IP-Address",
+                    "auth_token": "Auth-Token (optional)",
                     "scan_interval": "Update interval (seconds)",
                     "sonnenbatterie_debug": "Debug mode (more log entries)"
                 },
                 "title": "Configure your Sonnenbatterie",
                 "description": "Normally you find your password on the side of your sonnenbatterie near the main switch."
+            },
+            "reconfigure_api_key": {
+                "data": {
+                    "ip_address": "IP-Address",
+                    "auth_token": "Auth-Token",
+                    "scan_interval": "Update interval (seconds)",
+                    "sonnenbatterie_debug": "Debug mode (more log entries)"
+                },
+                "title": "Configure your Sonnenbatterie",
+                "description": "No username/password login is used - the Auth-Token is enough for both reading and controlling the battery. Find it in the Sonnen app/dashboard under Settings -> Integrations -> Software Integration."
             }
         }
     },
@@ -197,6 +233,18 @@
             },
             "battery_care": {
                 "name": "Battery care active"
+            },
+            "led_status": {
+                "name": "Status LED animation"
+            },
+            "led_brightness": {
+                "name": "Status LED brightness"
+            },
+            "led_status_code": {
+                "name": "Status LED status code"
+            },
+            "state_setpoint": {
+                "name": "Battery setpoint"
             }
         },
         "binary_sensor": {
@@ -214,6 +262,9 @@
             },
             "latestdata_grid_detached": {
                 "name": "Grid detached"
+            },
+            "latestdata_full_charge_request": {
+                "name": "Full charge request"
             }
         }
     },

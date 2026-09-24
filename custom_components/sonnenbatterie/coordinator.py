@@ -13,6 +13,7 @@ from sonnenbatterie import AsyncSonnenBatterie
 
 from custom_components.sonnenbatterie import LOGGER, DOMAIN, ATTR_SONNEN_DEBUG
 from .const import CONF_AUTH_TOKEN
+from .token_client import TokenSonnenBatterie
 
 def _v2_write_class():
     """The v2 (Auth-Token) WRITE-client class, obtained WITHOUT declaring a new
@@ -39,6 +40,10 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
     # so the battery's small embedded webserver isn't saturated with static reads.
     SLOW_POLL_EVERY = 6
 
+    # After a setpoint write the inverter needs a moment (observed: applied
+    # somewhere within 5 s) before latestdata.SetPoint_W shows the new value.
+    SETTLE_DELAY = 6.0
+
     # The lib defaults to sock_read=6 s / total=10 s. The battery's embedded server
     # regularly needs LONGER than 6 s to answer (busy with EM cycles / cloud sync);
     # every such answer became "Timeout on reading data from socket" although the
@@ -60,6 +65,9 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
         self._last_error = None
         self._last_login = 0
         self._cycle_count = 0   # schedules the rarely-changing endpoints
+        self._write_seq = 0     # counts setpoint writes, see after_write()
+        self._settling = False
+        self._settle_task = None
 
         """ public attributes """
         # Serializes ALL device I/O (poll bursts, entity writes, services): the
@@ -70,25 +78,40 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
         self.latestData = {}
         self.name = config_entry.title
         self.serial = serial
-        self.sbconn = AsyncSonnenBatterie(username=self._config_entry.data[CONF_USERNAME],
-                                          password=self._config_entry.data[CONF_PASSWORD],
-                                          ipaddress=self._config_entry.data[CONF_IP_ADDRESS])
 
-        # Optional dedicated write client via a static Auth-Token (no login, no
-        # session-token expiry). Used for setpoint writes when configured;
-        # otherwise writes go through the v1 session client (sbconn.sb2).
-        self._write_v2 = None
+        username = self._config_entry.data.get(CONF_USERNAME)
+        password = self._config_entry.data.get(CONF_PASSWORD)
         token = self._config_entry.data.get(CONF_AUTH_TOKEN)
-        v2_cls = _v2_write_class() if token else None
-        if token and v2_cls is not None:
-            try:
-                self._write_v2 = v2_cls(
-                    self._config_entry.data[CONF_IP_ADDRESS], token)
-                self._relax_timeouts(self._write_v2)
-                LOGGER.info("sonnenbatterie: using static Auth-Token for setpoint writes")
-            except Exception:  # noqa: BLE001 - fall back to the session client
-                LOGGER.warning("sonnenbatterie: Auth-Token write client init failed", exc_info=True)
-                self._write_v2 = None
+        ipaddress = self._config_entry.data[CONF_IP_ADDRESS]
+
+        # No username/password configured -> run entirely off the static
+        # Auth-Token (dashboard -> Software-Integration). No login, no
+        # session-token expiry, so both reads and writes go through it.
+        self._token_only = bool(token) and not (username and password)
+
+        self._write_v2 = None
+        if self._token_only:
+            self.sbconn = TokenSonnenBatterie(ipaddress, token)
+            self._relax_timeouts(self.sbconn, self.sbconn.sb2)
+            self._write_v2 = self.sbconn.sb2
+            LOGGER.info("sonnenbatterie: running token-only (no login)")
+        else:
+            self.sbconn = AsyncSonnenBatterie(username=username,
+                                              password=password,
+                                              ipaddress=ipaddress)
+
+            # Optional dedicated write client via a static Auth-Token (no login, no
+            # session-token expiry). Used for setpoint writes when configured;
+            # otherwise writes go through the v1 session client (sbconn.sb2).
+            v2_cls = _v2_write_class() if token else None
+            if token and v2_cls is not None:
+                try:
+                    self._write_v2 = v2_cls(ipaddress, token)
+                    self._relax_timeouts(self._write_v2)
+                    LOGGER.info("sonnenbatterie: using static Auth-Token for setpoint writes")
+                except Exception:  # noqa: BLE001 - fall back to the session client
+                    LOGGER.warning("sonnenbatterie: Auth-Token write client init failed", exc_info=True)
+                    self._write_v2 = None
 
         super().__init__(hass,
                          LOGGER,
@@ -97,8 +120,15 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
 
     @property
     def device_info(self) -> DeviceInfo:
-        system_data = self.latestData["battery_system"]["battery_system"]
-        system_info = self.latestData["system_data"]
+        # battery_system/system_data are v1-only - unavailable in token-only
+        # mode (the static Auth-Token isn't accepted there), so fall back to
+        # "unknown" instead of crashing.
+        system_data = self.latestData.get("battery_system", {}).get("battery_system", {})
+        system_info = self.latestData.get("system_data", {})
+        configurations = self.latestData.get("configurations", {})
+
+        software_version = system_data.get('software', {}).get('software_version') or configurations.get('DE_Software', 'unknown')
+        firmware_version = system_data.get('software', {}).get('firmware_version', 'unknown')
 
         # noinspection HttpUrlsUsage
         return DeviceInfo(
@@ -108,16 +138,24 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
             model=system_info.get("ERP_ArticleName", "unknown"),
             name=f"{DOMAIN} {self.serial}",
             serial_number=f"{self.serial}",
-            sw_version=f"{system_data.get('software', {}).get('software_version', 'unknown')} ({system_data.get('software', {}).get('firmware_version', 'unknown')})",
+            sw_version=f"{software_version} ({firmware_version})",
             hw_version=f"{system_data.get('system', {}).get('hardware_version', 'unknown')}",
         )
 
     def populate_battery_info(self):
         """ some manually calculated values """
+        # battery_system is v1-only and unavailable in token-only mode - fall
+        # back to the (marketing/nominal) values from "configurations", which
+        # is always available via v2.
+        configurations = self.latestData.get("configurations", {})
         batt_module_capacity = int(
-            self.latestData["battery_system"]["battery_system"].get("system", {}).get("storage_capacity_per_module", 0)
+            self.latestData.get("battery_system", {}).get("battery_system", {}).get("system", {}).get("storage_capacity_per_module")
+            or configurations.get("CM_MarketingModuleCapacity", 0)
         )
-        batt_module_count = int(self.latestData["battery_system"]["modules"])
+        batt_module_count = int(
+            self.latestData.get("battery_system", {}).get("modules")
+            or configurations.get("IC_BatteryModules", 0)
+        )
 
         if self.latestData["status"]["BatteryCharging"]:
             battery_current_state = "charging"
@@ -164,6 +202,9 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
         requests per minute. On any update failure the session is considered
         suspect (self._last_login reset to 0) and renewed on the next attempt.
         """
+        if self._token_only:
+            return  # static token never expires - nothing to log in
+
         if self._last_login == 0:
             # noinspection PyBroadException
             try:
@@ -173,6 +214,15 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
             await self.sbconn.login()
             self._relax_timeouts(self.sbconn, getattr(self.sbconn, "sb2", None))
             self._last_login = time()
+
+    async def _safe_fetch(self, coro):
+        """Await an optional/legacy endpoint fetch without letting it take
+        down the rest of the update cycle."""
+        try:
+            return await coro
+        except Exception:  # noqa: BLE001 - best effort, degrade to empty
+            LOGGER.debug("sonnenbatterie: optional endpoint fetch failed", exc_info=True)
+            return {}
 
     async def _async_update_data(self):
         """Populate self.latestdata"""
@@ -194,15 +244,20 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
             self.latestData["v2_status"] = await self.sbconn.sb2.get_status()
 
             if slow_due:
-                self.latestData["battery_system"] = await self.sbconn.get_batterysystem()
-                self.latestData["system_data"] = await self.sbconn.get_systemdata()
                 self.latestData["configurations"] = await self.sbconn.sb2.get_configurations()
-                self.latestData["api_configuration"] = await self.sbconn.get_api_configuration()
                 # fault flags rarely change; the ~3.3KB payload is the largest of any
                 # endpoint we poll, so keep it on the slow cadence with the other
                 # diagnostic/config data rather than fetching it every cycle
                 self.latestData["latestdata"] = await self.sbconn.sb2.get_latest_data()
-                self.latestData["commissioning_settings"] = await self.sbconn.get_commissioning_settings()
+
+                # Legacy v1-only endpoints (no v2 equivalent): fetched independently
+                # so one of them failing (e.g. rejected by the firmware in
+                # token-only mode) can't prevent the more important data above
+                # from being stored.
+                self.latestData["battery_system"] = await self._safe_fetch(self.sbconn.get_batterysystem())
+                self.latestData["system_data"] = await self._safe_fetch(self.sbconn.get_systemdata())
+                self.latestData["api_configuration"] = await self._safe_fetch(self.sbconn.get_api_configuration())
+                self.latestData["commissioning_settings"] = await self._safe_fetch(self.sbconn.get_commissioning_settings())
 
             self._last_error = None
 
@@ -287,7 +342,41 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
                         if attempt == 2:
                             raise
                         LOGGER.debug(f"setpoint write {key} failed, re-login + retry: {e}")
+        await self.after_write()
+
+    @property
+    def setpoint_settling(self) -> bool:
+        """True from a setpoint write until the read-back has had time to
+        catch up - entities show the value that was just written meanwhile."""
+        return self._settling
+
+    async def after_write(self) -> None:
+        """Refresh right after a setpoint write, and once more when the
+        inverter has had time to apply it (latestdata.SetPoint_W lags the
+        write by up to a few seconds, so the first read can still return the
+        old value). The second refresh runs in the background and is shared by
+        writes that arrive in quick succession (external controllers write
+        every few seconds), so they don't pile up extra requests."""
+        self._write_seq += 1
+        self._settling = True
         await self.refresh_after_write()
+        if self._settle_task is None or self._settle_task.done():
+            self._settle_task = self.hass.async_create_task(self._refresh_after_settle())
+
+    async def _refresh_after_settle(self) -> None:
+        try:
+            while True:
+                seen = self._write_seq
+                await asyncio.sleep(self.SETTLE_DELAY)
+                if self._write_seq == seen:
+                    # last write of a burst: entities switch to the read-back
+                    # value in the update this refresh publishes
+                    self._settling = False
+                await self.refresh_after_write()
+                if self._write_seq == seen:
+                    return
+        finally:
+            self._settling = False
 
     async def refresh_after_write(self):
         """Light refresh after a setpoint/mode write: a few targeted reads instead
@@ -300,6 +389,8 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
                 self.latestData["status"] = await self.sbconn.get_status()
                 self.latestData["v2_status"] = await self.sbconn.sb2.get_status()
                 self.latestData["configurations"] = await self.sbconn.sb2.get_configurations()
+                # SetPoint_W is the read-back of the charge/discharge setpoint
+                self.latestData["latestdata"] = await self.sbconn.sb2.get_latest_data()
         except Exception:  # noqa: BLE001
             LOGGER.debug(traceback.format_exc())
             self._last_login = 0
@@ -311,6 +402,28 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
         """Fetch all config items from Sonnenbatterie."""
         LOGGER.debug(f"Fetching Sonnenbatteries on startup")
         await self._async_update_data()
+
+    async def aclose(self):
+        """Close every open aiohttp session (main client + write client, if
+        separate). Called on config entry unload/reload - without this the
+        underlying ClientSession is only closed by garbage collection, which
+        aiohttp warns about as an "Unclosed client session"."""
+        if self._settle_task is not None and not self._settle_task.done():
+            self._settle_task.cancel()
+        try:
+            await self.sbconn.logout()
+        except Exception:  # noqa: BLE001 - best effort, we're tearing down anyway
+            LOGGER.debug("sonnenbatterie: error closing main session", exc_info=True)
+
+        # In login mode with a separate static-token write client, sbconn.sb2
+        # is a DIFFERENT AsyncSonnenBatterieV2 instance and needs its own
+        # close. In token-only mode self._write_v2 IS sbconn.sb2, already
+        # closed above.
+        if self._write_v2 is not None and self._write_v2 is not getattr(self.sbconn, "sb2", None):
+            try:
+                await self._write_v2.logout()
+            except Exception:  # noqa: BLE001
+                LOGGER.debug("sonnenbatterie: error closing write session", exc_info=True)
 
     def send_all_data_to_log(self):
         """

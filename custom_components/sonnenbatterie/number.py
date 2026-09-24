@@ -42,6 +42,24 @@ class SonnenbatterieNumber(SonnenNumberEntity, NumberEntity):
     def native_max_value(self) -> int:
         return self._max_power
 
+    @property
+    def native_value(self):
+        # Charge and discharge share ONE signed setpoint (latestdata.SetPoint_W:
+        # positive = discharge, negative = charge), so each entity shows its
+        # own direction of it. Right after a write the value that was just
+        # written is shown until the read-back has caught up (the inverter
+        # applies it within a few seconds).
+        coordinator = self.coordinator
+        if not coordinator.setpoint_settling:
+            setpoint = coordinator.latestData.get("latestdata", {}).get("SetPoint_W")
+            if setpoint is not None:
+                key = self.entity_description.key
+                if key == "number_charge":
+                    return max(0, -setpoint)
+                if key == "number_discharge":
+                    return max(0, setpoint)
+        return self._attr_native_value
+
     async def async_set_native_value(self, value):
         LOGGER.debug(f"NUMBER - async_set_native_value: {value} - {type(value)}")
         tag = self.entity_description.tag
