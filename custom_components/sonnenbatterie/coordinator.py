@@ -184,10 +184,11 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
         """
         if self._last_login == 0 or getattr(self.sbconn, "sb2", None) is None:
             async with asyncio.timeout(self.TIMEOUT_TOTAL):
-                # noinspection PyBroadException
+                # not a bare except: that would also swallow the cancellation
+                # asyncio.timeout() uses, and login() would run unbounded
                 try:
                     await self.sbconn.logout()
-                except:
+                except Exception:  # noqa: BLE001
                     pass
                 await self.sbconn.login()
             self._relax_timeouts(self.sbconn, getattr(self.sbconn, "sb2", None))
@@ -228,9 +229,12 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
             LOGGER.info(f"Sonnenbatterie at {self._config_entry.data[CONF_IP_ADDRESS]} not responding, "
                         f"might be maintenance window: {reason}")
 
+        # Cap the exponent, not just the result: during long outages
+        # base * 2**n would overflow timedelta (failure #43 at 30 s). 2**8
+        # times the minimum scan interval already exceeds MAX_BACKOFF_INTERVAL.
         self._failures += 1
         self.update_interval = min(
-            self._base_interval * 2 ** (self._failures - 1),
+            self._base_interval * 2 ** min(self._failures - 1, 8),
             max(self._base_interval, timedelta(seconds=self.MAX_BACKOFF_INTERVAL)))
 
         elapsed = now - self._last_error
