@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Install system packages and Python requirements for development
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+# System libraries Home Assistant's default_config integrations need
+if command -v apt-get >/dev/null 2>&1; then
+    sudo apt-get update
+    sudo apt-get install -y --no-install-recommends ffmpeg libturbojpeg0 libpcap-dev
+fi
+
+python3 -m pip install --upgrade pip
+python3 -m pip install --requirement requirements.txt
