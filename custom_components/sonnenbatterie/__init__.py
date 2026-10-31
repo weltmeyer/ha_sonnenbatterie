@@ -18,6 +18,9 @@ from .service import SonnenbatterieService
 
 SCAN_INTERVAL = timedelta(seconds=DEFAULT_SCAN_INTERVAL)
 
+# set up via config entries (UI) only, no configuration.yaml options
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
 SCHEMA_SET_BATTERY_RESERVE = vol.Schema(
     {
         **cv.ENTITY_SERVICE_FIELDS,
