@@ -4,15 +4,16 @@ import traceback
 from datetime import timedelta
 from time import time
 
+import aiohttp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_SCAN_INTERVAL, CONF_USERNAME, CONF_PASSWORD, CONF_IP_ADDRESS
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from sonnenbatterie import AsyncSonnenBatterie
 
 from custom_components.sonnenbatterie import LOGGER, DOMAIN, ATTR_SONNEN_DEBUG
-from .const import CONF_AUTH_TOKEN
+from .const import CONF_AUTH_TOKEN, DEFAULT_SCAN_INTERVAL, MIN_SCAN_INTERVAL
 
 def _v2_write_class():
     """The v2 (Auth-Token) WRITE-client class, obtained WITHOUT declaring a new
@@ -47,6 +48,14 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
     TIMEOUT_READ = 30
     TIMEOUT_TOTAL = 40
 
+    # The battery is unreachable for a few minutes every day (nightly
+    # maintenance / restart). Failures within this window keep the last known
+    # values; only longer outages mark the entities unavailable.
+    MAINTENANCE_GRACE = 180
+    # While the battery is failing, poll less often (doubling per failed cycle,
+    # capped) instead of hammering its webserver with logins and requests.
+    MAX_BACKOFF_INTERVAL = 300
+
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, serial: str) -> None:
         # Never log secrets (password / Auth-Token) in clear text.
         _safe = {k: ("***" if k in (CONF_PASSWORD, CONF_AUTH_TOKEN) else v)
@@ -58,8 +67,12 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
         self._config_entry = config_entry
         self._fullLogsAlreadySent = False
         self._last_error = None
+        self._failures = 0      # consecutive failed update cycles
         self._last_login = 0
         self._cycle_count = 0   # schedules the rarely-changing endpoints
+        self._base_interval = timedelta(seconds=max(
+            MIN_SCAN_INTERVAL,
+            config_entry.data.get(CONF_SCAN_INTERVAL) or DEFAULT_SCAN_INTERVAL))
 
         """ public attributes """
         # Serializes ALL device I/O (poll bursts, entity writes, services): the
@@ -93,7 +106,7 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
         super().__init__(hass,
                          LOGGER,
                          name=DOMAIN,
-                         update_interval=timedelta(seconds=config_entry.data.get(CONF_SCAN_INTERVAL, 30)))
+                         update_interval=self._base_interval)
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -161,18 +174,67 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
 
         The previous unconditional logout()+login() every 60 s raced writes on
         the SAME connection (their session died mid-request) and added two
-        requests per minute. On any update failure the session is considered
-        suspect (self._last_login reset to 0) and renewed on the next attempt.
+        requests per minute. The session is only renewed after an auth error
+        (self._last_login reset to 0) or a failed login — not after plain
+        connection errors, which would turn every failed cycle during the
+        battery's maintenance window into a full login salvo.
+
+        Some of the lib's login requests run without a timeout (aiohttp
+        default: 5 min), so bound the whole login to not block io_lock for long.
         """
-        if self._last_login == 0:
-            # noinspection PyBroadException
-            try:
-                await self.sbconn.logout()
-            except:
-                pass
-            await self.sbconn.login()
+        if self._last_login == 0 or getattr(self.sbconn, "sb2", None) is None:
+            async with asyncio.timeout(self.TIMEOUT_TOTAL):
+                # noinspection PyBroadException
+                try:
+                    await self.sbconn.logout()
+                except:
+                    pass
+                await self.sbconn.login()
             self._relax_timeouts(self.sbconn, getattr(self.sbconn, "sb2", None))
             self._last_login = time()
+
+    @staticmethod
+    def _is_auth_error(e: Exception) -> bool:
+        """The session token is no longer valid (e.g. after a battery restart)."""
+        return isinstance(e, aiohttp.ClientResponseError) and e.status in (401, 403)
+
+    def _has_data(self) -> bool:
+        """Data needed by populate_battery_info() / device_info is present."""
+        return "status" in self.latestData and "battery_system" in self.latestData
+
+    def _handle_update_success(self):
+        if self._last_error is not None:
+            LOGGER.info(f"Sonnenbatterie at {self._config_entry.data[CONF_IP_ADDRESS]} "
+                        f"is reachable again after {int(time() - self._last_error)} seconds")
+        self._last_error = None
+        self._failures = 0
+        self.update_interval = self._base_interval
+
+    def _handle_update_error(self, e: Exception):
+        """Tolerate the battery's daily maintenance window: keep the last known
+        values for up to MAINTENANCE_GRACE seconds, back off polling meanwhile,
+        and raise UpdateFailed (entities unavailable, logged once by the
+        coordinator) for longer outages or if there's no data to fall back to."""
+        LOGGER.debug(traceback.format_exc())
+        if self._is_auth_error(e):
+            self._last_login = 0    # session token invalid -> fresh login next try
+
+        now = time()
+        if self._last_error is None:
+            self._last_error = now
+            LOGGER.info(f"Sonnenbatterie at {self._config_entry.data[CONF_IP_ADDRESS]} not responding, "
+                        f"might be maintenance window: {e!r}")
+
+        self._failures += 1
+        self.update_interval = min(
+            self._base_interval * 2 ** (self._failures - 1),
+            max(self._base_interval, timedelta(seconds=self.MAX_BACKOFF_INTERVAL)))
+
+        elapsed = now - self._last_error
+        if elapsed > self.MAINTENANCE_GRACE or not self._has_data():
+            raise UpdateFailed(
+                f"Unable to connect to Sonnenbatterie at {self._config_entry.data[CONF_IP_ADDRESS]} "
+                f"for {int(elapsed)} seconds: {e!r}") from e
 
     async def _async_update_data(self):
         """Populate self.latestdata"""
@@ -180,13 +242,12 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
             await self._update_locked()
 
     async def _update_locked(self):
-        await self._ensure_login()
-
         LOGGER.debug(f"COORDINATOR - async_update_data: {self._config_entry.data}")
         slow_due = (not self.latestData
                     or self._cycle_count % self.SLOW_POLL_EVERY == 0)
         self._cycle_count += 1
         try:
+            await self._ensure_login()
             self.latestData["battery"] = await self.sbconn.get_battery()
             self.latestData["inverter"] = await self.sbconn.get_inverter()
             self.latestData["powermeter"] = await self.sbconn.get_powermeter()
@@ -204,19 +265,12 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
                 self.latestData["latestdata"] = await self.sbconn.sb2.get_latest_data()
                 self.latestData["commissioning_settings"] = await self.sbconn.get_commissioning_settings()
 
-            self._last_error = None
-
         except Exception as e:
-            self._last_login = 0    # session is suspect -> fresh login next try
-            LOGGER.debug(traceback.format_exc())
-            if self._last_error is not None:
-                LOGGER.info(traceback.format_exc() + " ... might be maintenance window")
-                elapsed = time() - self._last_error
-                if elapsed > 180:
-                    LOGGER.error(
-                        f"Unable to connecto to Sonnenbatteries at {self._config_entry.data[CONF_IP_ADDRESS]} for {elapsed} seconds. Please check! [{e}]")
-            else:
-                self._last_error = time()
+            # raises UpdateFailed unless within the maintenance grace period,
+            # in which case the last known values are served below
+            self._handle_update_error(e)
+        else:
+            self._handle_update_success()
 
         # Fixup for older models
         if isinstance(self.latestData.get("powermeter"), dict):
@@ -283,7 +337,8 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
                         await _do(sb2)
                         break
                     except Exception as e:  # noqa: BLE001
-                        self._last_login = 0    # session suspect -> fresh login on retry
+                        if self._is_auth_error(e):
+                            self._last_login = 0    # token invalid -> fresh login on retry
                         if attempt == 2:
                             raise
                         LOGGER.debug(f"setpoint write {key} failed, re-login + retry: {e}")
@@ -300,9 +355,10 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
                 self.latestData["status"] = await self.sbconn.get_status()
                 self.latestData["v2_status"] = await self.sbconn.sb2.get_status()
                 self.latestData["configurations"] = await self.sbconn.sb2.get_configurations()
-        except Exception:  # noqa: BLE001
+        except Exception as e:  # noqa: BLE001
             LOGGER.debug(traceback.format_exc())
-            self._last_login = 0
+            if self._is_auth_error(e):
+                self._last_login = 0
             return
         self.populate_battery_info()
         self.async_set_updated_data(self.latestData)
