@@ -58,9 +58,9 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
 
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, serial: str) -> None:
         # Never log secrets (password / Auth-Token) in clear text.
-        _safe = {k: ("***" if k in (CONF_PASSWORD, CONF_AUTH_TOKEN) else v)
-                 for k, v in config_entry.data.items()}
-        LOGGER.info(f"Initializing SonnenbatterieCoordinator: {_safe}")
+        self.safe_config = {k: ("***" if k in (CONF_PASSWORD, CONF_AUTH_TOKEN) else v)
+                             for k, v in config_entry.data.items()}
+        LOGGER.info(f"Initializing SonnenbatterieCoordinator: {self.safe_config}")
 
         """ private attributes """
         self._batt_reserved_factor = 7.0    # fixed value, reseved percentage of total installed power for internal use
@@ -219,11 +219,14 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
         if self._is_auth_error(e):
             self._last_login = 0    # session token invalid -> fresh login next try
 
+        # not repr(e): for aiohttp errors that includes the request headers,
+        # i.e. the Auth-Token
+        reason = f"{type(e).__name__}: {e}"
         now = time()
         if self._last_error is None:
             self._last_error = now
             LOGGER.info(f"Sonnenbatterie at {self._config_entry.data[CONF_IP_ADDRESS]} not responding, "
-                        f"might be maintenance window: {e!r}")
+                        f"might be maintenance window: {reason}")
 
         self._failures += 1
         self.update_interval = min(
@@ -234,7 +237,7 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
         if elapsed > self.MAINTENANCE_GRACE or not self._has_data():
             raise UpdateFailed(
                 f"Unable to connect to Sonnenbatterie at {self._config_entry.data[CONF_IP_ADDRESS]} "
-                f"for {int(elapsed)} seconds: {e!r}") from e
+                f"for {int(elapsed)} seconds: {reason}") from e
 
     async def _async_update_data(self):
         """Populate self.latestdata"""
@@ -242,7 +245,7 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
             await self._update_locked()
 
     async def _update_locked(self):
-        LOGGER.debug(f"COORDINATOR - async_update_data: {self._config_entry.data}")
+        LOGGER.debug(f"COORDINATOR - async_update_data: {self.safe_config}")
         slow_due = (not self.latestData
                     or self._cycle_count % self.SLOW_POLL_EVERY == 0)
         self._cycle_count += 1

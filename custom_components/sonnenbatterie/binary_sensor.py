@@ -13,8 +13,8 @@ from .binary_sensor_list import (
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the binary_sensor platform."""
-    LOGGER.debug(f"BINARY_SENSOR async_setup_entry - {config_entry.data}")
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
+    LOGGER.debug(f"BINARY_SENSOR async_setup_entry - {coordinator.safe_config}")
 
     async_add_entities(
         SonnenbatterieBinarySensor(coordinator=coordinator, entity_description=description)
