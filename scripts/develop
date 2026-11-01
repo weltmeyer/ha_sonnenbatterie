@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Run Home Assistant with this integration loaded from the repository
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+# Make <repo>/custom_components importable while keeping the HA config in
+# <repo>/config, without symlinks
+export PYTHONPATH="${PYTHONPATH}:${PWD}"
+
+python3 -m homeassistant --config "${PWD}/config" --debug

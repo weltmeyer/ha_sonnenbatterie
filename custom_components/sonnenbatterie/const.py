@@ -15,6 +15,8 @@ ATTR_SONNEN_DEBUG = "sonnenbatterie_debug"
 DOMAIN = "sonnenbatterie"
 
 DEFAULT_SCAN_INTERVAL = 30
+# Shorter intervals overload the battery's small embedded webserver
+MIN_SCAN_INTERVAL = 10
 DEFAULT_SONNEN_DEBUG = False
 
 LOGGER = logging.getLogger(__package__)

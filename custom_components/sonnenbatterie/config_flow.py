@@ -31,7 +31,8 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             # Optional static Auth-Token (dashboard -> Software-Integration): when
             # set, setpoint writes use it (no login, no session-token 401s).
             vol.Optional(CONF_AUTH_TOKEN, default=""): str,
-            vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): int,
+            vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): vol.All(
+                vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL)),
             vol.Optional(ATTR_SONNEN_DEBUG, default=DEFAULT_SONNEN_DEBUG): cv.boolean,
         }
     )
@@ -102,8 +103,9 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 ): str,
                 vol.Required(
                     CONF_SCAN_INTERVAL,
-                    default=entry.data.get(CONF_SCAN_INTERVAL) or DEFAULT_SCAN_INTERVAL
-                ): cv.positive_int,
+                    default=max(MIN_SCAN_INTERVAL,
+                                entry.data.get(CONF_SCAN_INTERVAL) or DEFAULT_SCAN_INTERVAL)
+                ): vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL)),
                 vol.Optional(
                     ATTR_SONNEN_DEBUG,
                     default=entry.data.get(ATTR_SONNEN_DEBUG) or DEFAULT_SONNEN_DEBUG)

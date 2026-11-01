@@ -130,3 +130,6 @@ dmypy.json
 
 # PyCharm idea folder
 .idea
+# Home Assistant dev config (only configuration.yaml is tracked)
+config/*
+!config/configuration.yaml
