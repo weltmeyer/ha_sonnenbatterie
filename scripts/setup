@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Install system packages and Python requirements for development
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+# System libraries Home Assistant's default_config integrations need
+if command -v apt-get >/dev/null 2>&1; then
+    sudo apt-get update
+    sudo apt-get install -y --no-install-recommends ffmpeg libturbojpeg0 libpcap-dev
+fi
+
+python3 -m pip install --upgrade pip
+python3 -m pip install --requirement requirements.txt
+
+# default_config depends on go2rtc, which fails to set up inside a container
+# without its binary. Install the version this Home Assistant recommends.
+if ! command -v go2rtc >/dev/null 2>&1; then
+    # read the constant without importing the integration (its deps are
+    # only installed by Home Assistant at runtime)
+    go2rtc_version=$(python3 -c "import homeassistant, pathlib, re; \
+p = pathlib.Path(homeassistant.__file__).parent / 'components/go2rtc/const.py'; \
+print(re.search(r'RECOMMENDED_VERSION = \"(.+?)\"', p.read_text())[1])")
+    case "$(uname -m)" in
+        x86_64) go2rtc_arch=amd64 ;;
+        aarch64 | arm64) go2rtc_arch=arm64 ;;
+        *) go2rtc_arch="" ;;
+    esac
+    if [[ -n "${go2rtc_arch}" ]]; then
+        sudo curl -fsSL -o /usr/local/bin/go2rtc \
+            "https://github.com/AlexxIT/go2rtc/releases/download/v${go2rtc_version}/go2rtc_linux_${go2rtc_arch}"
+        sudo chmod +x /usr/local/bin/go2rtc
+    fi
+fi

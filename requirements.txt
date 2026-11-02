@@ -1,0 +1,4 @@
+# Development requirements (dev container / local venv)
+homeassistant==2026.10.4
+sonnenbatterie>=0.7.3
+ruff

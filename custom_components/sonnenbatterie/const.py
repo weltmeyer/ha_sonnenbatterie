@@ -6,11 +6,17 @@ from homeassistant.const import Platform
 SONNENBATTERIE_ISSUE_URL: Final = "https://github.com/weltmeyer/ha_sonnenbatterie/issues"
 
 CONF_SERIAL_NUMBER = "serial_number"
+# Optional static Auth-Token (battery dashboard -> Software-Integration). When
+# set, setpoint WRITES use the token-based v2 client (no login, no session
+# expiry -> no 401), while polling keeps using the username/password v1 client.
+CONF_AUTH_TOKEN = "auth_token"
 
 ATTR_SONNEN_DEBUG = "sonnenbatterie_debug"
 DOMAIN = "sonnenbatterie"
 
 DEFAULT_SCAN_INTERVAL = 30
+# Shorter intervals overload the battery's small embedded webserver
+MIN_SCAN_INTERVAL = 10
 DEFAULT_SONNEN_DEBUG = False
 
 LOGGER = logging.getLogger(__package__)
@@ -45,7 +51,7 @@ CONF_SERVICE_MODE = "mode"
 CONF_SERVICE_SCHEDULE = "schedule"
 CONF_SERVICE_VALUE = "value"
 
-PLATFORMS = [ Platform.SENSOR, Platform.SELECT, Platform.NUMBER, Platform.BUTTON ]
+PLATFORMS = [ Platform.SENSOR, Platform.BINARY_SENSOR, Platform.SELECT, Platform.NUMBER, Platform.BUTTON ]
 # PLATFORMS = [ Platform.SENSOR ]
 
 SB_OPERATING_MODES: Final = {

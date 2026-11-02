@@ -46,12 +46,17 @@ class SonnenbatterieNumber(SonnenNumberEntity, NumberEntity):
         LOGGER.debug(f"NUMBER - async_set_native_value: {value} - {type(value)}")
         tag = self.entity_description.tag
         if tag.writable:
-            match tag.key:
-                case "number_charge":
-                    await self.coordinator.sbconn.sb2.charge_battery(int(value))
-                case "number_discharge":
-                    await self.coordinator.sbconn.sb2.discharge_battery(int(value))
-                case "battery_reserve":
-                    await self.coordinator.sbconn.sb2.set_battery_reserve(int(value))
-            await self.coordinator.async_request_refresh()
+            # Robust write: serialized (single-request webserver), session-safe
+            # (ensures a session / uses the static Auth-Token), retried once on a
+            # transient 401/timeout, then a LIGHT refresh (external controllers
+            # write every few seconds; a full refresh per write overloads it).
+            await self.coordinator.async_write_setpoint(tag.key, value)
+            # Optimistic state: the sonnen charge/discharge setpoint is WRITE-ONLY
+            # (the API has no read-back of the current target), so without this the
+            # entity kept its class default 0 forever and never reflected a command.
+            # External controllers (e.g. SEA) read the setpoint back for their trace
+            # and logged "invalid number state: unknown" / a stale 0. Only set AFTER
+            # a successful write, so a failing write never fakes a value.
+            self._attr_native_value = value
+            self.async_write_ha_state()
         return None

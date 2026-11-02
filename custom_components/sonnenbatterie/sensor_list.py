@@ -393,6 +393,36 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         ),
     ),
     SonnenbatterieSensorEntityDescription(
+        key="battery_minimum_cell_temperature",
+        icon="mdi:thermometer-low",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="°C",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        suggested_display_precision=2,
+        value_fn=lambda coordinator: (
+            coordinator.latestData.get("battery", {})
+            .get("measurements", {})
+            .get("battery_status", {})
+            .get("minimumcelltemperature")
+        ),
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="battery_maximum_cell_temperature",
+        icon="mdi:thermometer-high",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="°C",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        suggested_display_precision=2,
+        value_fn=lambda coordinator: (
+            coordinator.latestData.get("battery", {})
+            .get("measurements", {})
+            .get("battery_status", {})
+            .get("maximumcelltemperature")
+        ),
+    ),
+    SonnenbatterieSensorEntityDescription(
         key="battery_installed_capacity_total",
         legacy_key="state_total_capacity_real",
         icon="mdi:battery-charging",
@@ -553,7 +583,16 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda coordinator: (coordinator.latestData.get("v2_status", {})
-        .get("dischargeNotAllowed", "false") == "true"),
+        .get("dischargeNotAllowed", False) == True),
         entity_registry_enabled_default=True,
-    )
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="backup_buffer",
+        icon="mdi:battery-20",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        native_unit_of_measurement="%",
+        value_fn=lambda coordinator: int(coordinator.latestData.get("v2_status", {}).get("BackupBuffer", "0")),
+        entity_registry_enabled_default=True,
+    ),
 )

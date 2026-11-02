@@ -55,7 +55,6 @@
             "battery_reserve": {
                 "name": "Set battery reserve (%)"
             }
-
         },
         "select": {
             "select_operating_mode": {
@@ -124,11 +123,20 @@
                     "11": "Optimization"
                 }
             },
+            "backup_buffer": {
+                "name": "Backup buffer"
+            },
             "battery_system_cycles": {
                 "name": "Battery cycles"
             },
             "battery_system_health": {
                 "name": "Battery health"
+            },
+            "battery_minimum_cell_temperature": {
+                "name": "Minimum cell temperature"
+            },
+            "battery_maximum_cell_temperature": {
+                "name": "Maximum cell temperature"
             },
             "battery_installed_capacity_total": {
                 "name": "Battery total installed capacity"
@@ -189,6 +197,23 @@
             },
             "battery_care": {
                 "name": "Battery care active"
+            }
+        },
+        "binary_sensor": {
+            "latestdata_inverter_over_temperature": {
+                "name": "Inverter over temperature"
+            },
+            "latestdata_critical_bms_alarm": {
+                "name": "Critical BMS alarm"
+            },
+            "latestdata_hw_shutdown": {
+                "name": "Hardware shutdown"
+            },
+            "latestdata_grid_abnormal": {
+                "name": "Grid abnormal"
+            },
+            "latestdata_grid_detached": {
+                "name": "Grid detached"
             }
         }
     },
@@ -306,7 +331,7 @@
                 "schedule": {
                     "name": "Charging window(s)",
                     "description": "One or more charging windows as string containing a JSON array",
-                    "example": "\"[{\"start\":\"10:00\", \"stop\":\"11:00\", \"threshold_p_max\": 20000}]\""
+                    "example": "[{start:10:00, stop:11:00, threshold_p_max: 20000}]"
                 }
             }
         },

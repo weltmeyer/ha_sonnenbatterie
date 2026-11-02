@@ -123,11 +123,20 @@
                     "11": "Auto-Optimierung"
                 }
             },
+            "backup_buffer": {
+                "name": "Backup-Puffer"
+            },
             "battery_system_cycles": {
                 "name": "Akku Ladezyklen"
             },
             "battery_system_health": {
                 "name": "Akkuzustand"
+            },
+            "battery_minimum_cell_temperature": {
+                "name": "Minimale Zellentemperatur"
+            },
+            "battery_maximum_cell_temperature": {
+                "name": "Maximale Zellentemperatur"
             },
             "battery_installed_capacity_total": {
                 "name": "Akku installierte Gesamtkapazität"
@@ -188,6 +197,23 @@
             },
             "battery_care": {
                 "name": "Batteriepflege aktiv"
+            }
+        },
+        "binary_sensor": {
+            "latestdata_inverter_over_temperature": {
+                "name": "Wechselrichter Übertemperatur"
+            },
+            "latestdata_critical_bms_alarm": {
+                "name": "Kritischer BMS-Alarm"
+            },
+            "latestdata_hw_shutdown": {
+                "name": "Hardware-Abschaltung"
+            },
+            "latestdata_grid_abnormal": {
+                "name": "Netz anormal"
+            },
+            "latestdata_grid_detached": {
+                "name": "Netz getrennt"
             }
         }
     },
@@ -305,7 +331,7 @@
                 "schedule": {
                     "name": "Zeitfenster (JSON-Array)",
                     "description": "Ein oder mehrere Zeitfenster-Angaben als JSON-Array im String-Format",
-                    "example": "\"[{\"start\":\"10:00\", \"stop\":\"11:00\", \"threshold_p_max\": 20000}]\""
+                    "example": "[{start:10:00, stop:11:00, threshold_p_max: 20000}]"
                 }
             }
         },
