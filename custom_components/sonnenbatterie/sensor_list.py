@@ -497,10 +497,33 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         icon="mdi:battery",
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
+        # all modules of a cascade, not only the master's
         value_fn=lambda coordinator: coordinator.latestData.get(
-            "battery_system", {}
-        ).get("modules"),
+            "battery_info", {}
+        ).get("module_count"),
         entity_registry_enabled_default=False,
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="cascading_role",
+        icon="mdi:battery-sync-outline",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda coordinator: coordinator.latestData.get(
+            "battery_info", {}
+        ).get("cascading_role"),
+        entity_registry_enabled_default=True,
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="max_power",
+        icon="mdi:flash",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="W",
+        device_class=SensorDeviceClass.POWER,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        # max. charge/discharge power: the whole cascade's on a cascade master
+        value_fn=lambda coordinator: coordinator.latestData.get(
+            "battery_info", {}
+        ).get("max_power"),
+        entity_registry_enabled_default=True,
     ),
     SonnenbatterieSensorEntityDescription(
         key="battery_grid_ipv",

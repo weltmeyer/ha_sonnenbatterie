@@ -104,7 +104,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     hass.data[DOMAIN][config_entry.entry_id] = {}
     hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR] = sb_coordinator
 
-    inverter_power = sb_coordinator.latestData['battery_system']['battery_system']['system']['inverter_capacity']
+    # whole cascade's inverter power on a cascade master, see populate_battery_info()
+    inverter_power = sb_coordinator.latestData['battery_info']['max_power']
     max_tou_power = sb_coordinator.latestData.get('commissioning_settings',{}).get('data', {}).get('attributes', {}).get('tou_max_power_limit', '22000')
     LOGGER.debug(f"inverter_power: {inverter_power}, tou_power: {max_tou_power}")
     hass.data[DOMAIN][config_entry.entry_id][CONF_INVERTER_MAX] = inverter_power
