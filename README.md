@@ -140,6 +140,8 @@ An `int` representing the mode that has been set:
 
 - Sets your battery to charge with `<power>` watts
 - Disables discharging to support local consumers while charging
+- `<power>` is an integer value in watts. Plain numbers, numeric strings
+  (e.g. `"1000"`) and templates rendering to a number are all accepted.
 - Supported values for `<power>` are:
   - min. power = 0 (0 = disable functionality)
   - max. power = value of your battery's `inverter_max_power` value.
@@ -154,6 +156,14 @@ action: sonnenbatterie.charge_battery
 data:
   device_id: "<your sb instance's device id>"
   power: 0
+```
+
+Using a template:
+``` yaml
+action: sonnenbatterie.charge_battery
+data:
+  device_id: "<your sb instance's device id>"
+  power: "{{ states('input_number.charge_power') | int }}"
 ```
 
 ##### Response
@@ -171,6 +181,8 @@ otherwise.
 
 - Sets your battery to discharge with `<power>` watts
 - Disables charging of the battery while active
+- `<power>` is an integer value in watts. Plain numbers, numeric strings
+  (e.g. `"1000"`) and templates rendering to a number are all accepted.
 - Supported values for `<power>` are:
   - min. power = 0 (0 = disable functionality)
   - max. power = value of your battery's `inverter_max_power` value.
