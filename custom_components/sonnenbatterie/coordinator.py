@@ -127,10 +127,17 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
 
     def populate_battery_info(self):
         """ some manually calculated values """
-        batt_module_capacity = int(
-            self.latestData["battery_system"]["battery_system"].get("system", {}).get("storage_capacity_per_module", 0)
-        )
-        batt_module_count = int(self.latestData["battery_system"]["modules"])
+        battery_system = self.latestData["battery_system"]
+        system = battery_system["battery_system"].get("system", {})
+        batt_module_capacity = int(system.get("storage_capacity_per_module", 0))
+
+        # In a cascade (several batteries acting as one system) the master's
+        # battery_system also describes the whole cascade: stack_modules (all
+        # modules) and stack_capacity (summed inverter power, W), while
+        # modules / inverter_capacity only cover the master itself. Both stack
+        # values are 0 on a single battery.
+        batt_module_count = int(battery_system.get("stack_modules") or 0) or int(battery_system["modules"])
+        max_power = int(battery_system.get("stack_capacity") or 0) or int(system.get("inverter_capacity") or 0)
 
         if self.latestData["status"]["BatteryCharging"]:
             battery_current_state = "charging"
@@ -141,6 +148,11 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
 
         self.latestData["battery_info"] = {}
         self.latestData["battery_info"]["current_state"] = battery_current_state
+        self.latestData["battery_info"]["cascading_role"] = (
+            self.latestData.get("system_data", {}).get("CN_CascadingRole") or "none"
+        )
+        self.latestData["battery_info"]["module_count"] = batt_module_count
+        self.latestData["battery_info"]["max_power"] = max_power
         self.latestData["battery_info"][
             "total_installed_capacity"
         ] = total_installed_capacity = int(batt_module_count * batt_module_capacity)

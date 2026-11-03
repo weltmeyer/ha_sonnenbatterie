@@ -156,6 +156,12 @@
             "battery_module_count": {
                 "name": "Battery module count"
             },
+            "cascading_role": {
+                "name": "Cascading role"
+            },
+            "max_power": {
+                "name": "Max. charge/discharge power"
+            },
             "battery_grid_ipv": {
                 "name": "Battery system IPV"
             },

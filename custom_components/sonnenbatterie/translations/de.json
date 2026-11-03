@@ -156,6 +156,12 @@
             "battery_module_count": {
                 "name": "Anzahl Batteriemodule"
             },
+            "cascading_role": {
+                "name": "Kaskaden-Rolle"
+            },
+            "max_power": {
+                "name": "Max. Lade-/Entladeleistung"
+            },
             "battery_grid_ipv": {
                 "name": "Akkusystem IPV"
             },
