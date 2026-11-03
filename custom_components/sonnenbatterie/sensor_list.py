@@ -510,12 +510,12 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         value_fn=lambda coordinator: coordinator.latestData.get(
             "battery_info", {}
         ).get("cascading_role"),
-        entity_registry_enabled_default=True,
+        entity_registry_enabled_default=False,
     ),
     SonnenbatterieSensorEntityDescription(
         key="max_power",
         icon="mdi:flash",
-        state_class=SensorStateClass.MEASUREMENT,
+        # static config value: no state_class, long-term statistics are pointless
         native_unit_of_measurement="W",
         device_class=SensorDeviceClass.POWER,
         entity_category=EntityCategory.DIAGNOSTIC,
