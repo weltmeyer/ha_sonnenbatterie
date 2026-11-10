@@ -82,6 +82,7 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
         self._last_login = 0
         self._cycle_count = 0   # schedules the rarely-changing endpoints
         self._discovered = {}   # cascade master: slave serial -> IP a discovery was started for
+        self._v2_inverter_supported = True
         self._base_interval = timedelta(seconds=max(
             MIN_SCAN_INTERVAL,
             config_entry.data.get(CONF_SCAN_INTERVAL) or DEFAULT_SCAN_INTERVAL))
@@ -279,6 +280,28 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
                 f"Unable to connect to Sonnenbatterie at {self._config_entry.data[CONF_IP_ADDRESS]} "
                 f"for {int(elapsed)} seconds: {reason}") from e
 
+    async def _get_v2_inverter(self) -> dict:
+        """Live PV/grid values from /api/v2/inverter: the same fields as
+        battery_system's grid_information (which is only polled every
+        SLOW_POLL_EVERY cycles), as numbers, in a ~3x cheaper request.
+
+        Not every system/firmware may offer it: if the battery says the
+        endpoint doesn't exist, stop asking and let the sensors fall back to
+        grid_information. Other errors (timeouts, 5xx, 401) are handled like
+        any other failed request, so the maintenance window logic applies."""
+        try:
+            data = await self.sbconn.sb2.get_inverter_data()
+        except aiohttp.ClientResponseError as e:
+            if e.status not in (400, 404, 405, 501):
+                raise
+            data = None
+        if isinstance(data, dict):
+            return data
+        LOGGER.info("Sonnenbatterie: /api/v2/inverter not available, "
+                    "PV values are taken from battery_system instead")
+        self._v2_inverter_supported = False
+        return {}
+
     async def _async_update_data(self):
         """Populate self.latestdata"""
         async with self.io_lock:
@@ -341,6 +364,8 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
             self.latestData["powermeter"] = await self.sbconn.get_powermeter()
             self.latestData["status"] = await self.sbconn.get_status()
             self.latestData["v2_status"] = await self.sbconn.sb2.get_status()
+            if self._v2_inverter_supported:
+                self.latestData["v2_inverter"] = await self._get_v2_inverter()
 
             if slow_due:
                 self.latestData["battery_system"] = await self.sbconn.get_batterysystem()

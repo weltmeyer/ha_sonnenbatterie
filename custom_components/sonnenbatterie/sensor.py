@@ -15,7 +15,7 @@ from .entities import SonnenBaseEntity
 
 from .sensor_list import (
     SENSORS,
-    generate_powermeter_sensors, SonnenbatterieSensorEntityDescription
+    generate_powermeter_sensors, generate_pv_string_sensors, SonnenbatterieSensorEntityDescription
 )
 
 
@@ -49,6 +49,11 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             SonnenbatterieSensor(coordinator=coordinator, entity_description=description)
             for description in generate_powermeter_sensors(_coordinator=coordinator)
         )
+
+    async_add_entities(
+        SonnenbatterieSensor(coordinator=coordinator, entity_description=description)
+        for description in generate_pv_string_sensors(_coordinator=coordinator)
+    )
 
     return True
 

@@ -185,6 +185,15 @@
             "battery_grid_tmax": {
                 "name": "Akkusystem maximale Temperatur"
             },
+            "pv_string_current": {
+                "name": "PV-String {string} Strom"
+            },
+            "pv_string_power": {
+                "name": "PV-String {string} Leistung"
+            },
+            "pv_string_voltage": {
+                "name": "PV-String {string} Spannung"
+            },
             "inverter_state_ipv": {
                 "name": "Spannungswandler IPV 1"
             },

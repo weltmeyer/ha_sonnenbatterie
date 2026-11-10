@@ -1,3 +1,5 @@
+import math
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -91,6 +93,59 @@ def generate_powermeter_sensors(_coordinator):
             )
 
     return powermeter_sensors
+
+
+def inverter_value(coordinator, key):
+    """PV/grid value: live from /api/v2/inverter if the battery offers it,
+    else from battery_system's grid_information (same fields, but only polled
+    on the slow cycle and as strings). 'nan' / null -> None (unknown)."""
+    v2_inverter = coordinator.latestData.get("v2_inverter") or {}
+    if key in v2_inverter:
+        value = v2_inverter[key]
+    else:
+        value = coordinator.latestData.get("battery_system", {}).get("grid_information", {}).get(key)
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return None
+    return None if math.isnan(value) else value
+
+
+# (key pattern, quantity, unit, device class, icon, display precision)
+PV_STRING_QUANTITIES = (
+    (re.compile(r"^ipv(\d+)$"), "current", "A", SensorDeviceClass.CURRENT, "mdi:current-dc", 2),
+    (re.compile(r"^ppv(\d+)_dc$"), "power", "W", SensorDeviceClass.POWER, "mdi:solar-power", 0),
+    (re.compile(r"^upv(\d+)$"), "voltage", "V", SensorDeviceClass.VOLTAGE, "mdi:sine-wave", 1),
+)
+
+
+def generate_pv_string_sensors(_coordinator):
+    """Current, DC power and voltage per PV string, for every ipvN, ppvN_dc
+    and upvN the battery reports, instead of a fixed number of strings. The
+    count reflects the API's slots (4 on all systems seen so far, connected
+    or not), so the sensors are disabled by default. Detected at setup: a
+    string appearing later shows up after a reload."""
+    keys = set(_coordinator.latestData.get("v2_inverter") or {}) | set(
+        _coordinator.latestData.get("battery_system", {}).get("grid_information", {})
+    )
+    pv_string_sensors: list[SonnenbatterieSensorEntityDescription] = []
+    for pattern, quantity, unit, device_class, icon, precision in PV_STRING_QUANTITIES:
+        for string, source_key in sorted((int(m.group(1)), key) for key in keys if (m := pattern.match(key))):
+            pv_string_sensors.append(
+                SonnenbatterieSensorEntityDescription(
+                    key=f"pv_string_{string}_{quantity}",
+                    translation_key=f"pv_string_{quantity}",
+                    translation_placeholders={"string": str(string)},
+                    icon=icon,
+                    state_class=SensorStateClass.MEASUREMENT,
+                    native_unit_of_measurement=unit,
+                    device_class=device_class,
+                    suggested_display_precision=precision,
+                    value_fn=lambda coordinator, _key=source_key: inverter_value(coordinator, _key),
+                    entity_registry_enabled_default=False,
+                )
+            )
+    return pv_string_sensors
 
 
 SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
@@ -557,9 +612,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="A",
         device_class=SensorDeviceClass.CURRENT,
-        value_fn=lambda coordinator: coordinator.latestData.get("battery_system", {})
-        .get("grid_information", {})
-        .get("ipv"),
+        value_fn=lambda coordinator: inverter_value(coordinator, "ipv"),
         entity_registry_enabled_default=False,
     ),
     SonnenbatterieSensorEntityDescription(
@@ -568,9 +621,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="W",
         device_class=SensorDeviceClass.POWER,
-        value_fn=lambda coordinator: coordinator.latestData.get("battery_system", {})
-        .get("grid_information", {})
-        .get("ppv"),
+        value_fn=lambda coordinator: inverter_value(coordinator, "ppv"),
         entity_registry_enabled_default=False,
     ),
     SonnenbatterieSensorEntityDescription(
@@ -579,9 +630,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="V",
         device_class=SensorDeviceClass.VOLTAGE,
-        value_fn=lambda coordinator: coordinator.latestData.get("battery_system", {})
-        .get("grid_information", {})
-        .get("upv"),
+        value_fn=lambda coordinator: inverter_value(coordinator, "upv"),
         entity_registry_enabled_default=False,
     ),
     SonnenbatterieSensorEntityDescription(
@@ -591,9 +640,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="°C",
         device_class=SensorDeviceClass.TEMPERATURE,
-        value_fn=lambda coordinator: coordinator.latestData.get("battery_system", {})
-        .get("grid_information", {})
-        .get("tmax"),
+        value_fn=lambda coordinator: inverter_value(coordinator, "tmax"),
         entity_registry_enabled_default=False,
     ),
     ###########################
