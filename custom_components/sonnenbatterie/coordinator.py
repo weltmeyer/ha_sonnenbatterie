@@ -286,13 +286,16 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
         SLOW_POLL_EVERY cycles), as numbers, in a ~3x cheaper request.
 
         Not every system/firmware may offer it: if the battery says the
-        endpoint doesn't exist, stop asking and let the sensors fall back to
-        grid_information. Other errors (timeouts, 5xx, 401) are handled like
-        any other failed request, so the maintenance window logic applies."""
+        endpoint doesn't exist or isn't permitted, stop asking and let the
+        sensors fall back to grid_information. A 403 counts as not permitted:
+        /api/v2/status just succeeded with the same token, so it isn't an
+        expired session (which would mean a re-login and failed update every
+        cycle). Other errors (timeouts, 5xx, 401) are handled like any other
+        failed request, so the maintenance window logic applies."""
         try:
             data = await self.sbconn.sb2.get_inverter_data()
         except aiohttp.ClientResponseError as e:
-            if e.status not in (400, 404, 405, 501):
+            if e.status not in (400, 403, 404, 405, 501):
                 raise
             data = None
         if isinstance(data, dict):

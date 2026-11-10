@@ -19,7 +19,8 @@ class SonnenbatterieSensorEntityDescription(SensorEntityDescription):
     """Describes Sonnebatterie sensor entity."""
     _attr_has_entity_name: bool = True
     legacy_key: str = None
-    # exists_fn: Callable[[SonnenBatterieCoordinator], bool] = lambda _: True
+    # whether to create the sensor at setup; default (None): if it has a value
+    exists_fn: Callable[[SonnenbatterieCoordinator], bool] | None = None
     value_fn: Callable[[SonnenbatterieCoordinator], StateType]
     # False: not created for a cascade's slave, where the value is meaningless
     # (the meters are on the master) or a setting of the whole cascade
@@ -109,6 +110,14 @@ def inverter_value(coordinator, key):
     except (TypeError, ValueError):
         return None
     return None if math.isnan(value) else value
+
+
+def inverter_has_key(coordinator, key):
+    """Whether the battery reports this PV/grid field at all (value may be
+    'nan' / null at the moment), see inverter_value()."""
+    return key in (coordinator.latestData.get("v2_inverter") or {}) or key in (
+        coordinator.latestData.get("battery_system", {}).get("grid_information", {})
+    )
 
 
 # (key pattern, quantity, unit, device class, icon, display precision)
@@ -612,6 +621,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="A",
         device_class=SensorDeviceClass.CURRENT,
+        exists_fn=lambda coordinator: inverter_has_key(coordinator, "ipv"),
         value_fn=lambda coordinator: inverter_value(coordinator, "ipv"),
         entity_registry_enabled_default=False,
     ),
@@ -621,6 +631,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="W",
         device_class=SensorDeviceClass.POWER,
+        exists_fn=lambda coordinator: inverter_has_key(coordinator, "ppv"),
         value_fn=lambda coordinator: inverter_value(coordinator, "ppv"),
         entity_registry_enabled_default=False,
     ),
@@ -630,6 +641,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="V",
         device_class=SensorDeviceClass.VOLTAGE,
+        exists_fn=lambda coordinator: inverter_has_key(coordinator, "upv"),
         value_fn=lambda coordinator: inverter_value(coordinator, "upv"),
         entity_registry_enabled_default=False,
     ),
@@ -640,6 +652,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="°C",
         device_class=SensorDeviceClass.TEMPERATURE,
+        exists_fn=lambda coordinator: inverter_has_key(coordinator, "tmax"),
         value_fn=lambda coordinator: inverter_value(coordinator, "tmax"),
         entity_registry_enabled_default=False,
     ),
@@ -675,6 +688,8 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         # the POWER device class requires a numeric state
         value_fn=lambda coordinator: coordinator.latestData.get("commissioning_settings", {})
                                      .get('data', {}).get('attributes',{}).get('tou_max_power_limit'),
+        # always created, as before (shows unknown if the battery doesn't report it)
+        exists_fn=lambda _: True,
         entity_registry_enabled_default=True,
     ),
     SonnenbatterieSensorEntityDescription(
