@@ -11,6 +11,7 @@ from homeassistant.components.sensor import (
 from homeassistant.const import EntityCategory
 from homeassistant.helpers.typing import StateType
 
+from custom_components.sonnenbatterie.const import ROLE_MASTER
 from custom_components.sonnenbatterie.coordinator import SonnenbatterieCoordinator
 
 
@@ -589,6 +590,9 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         icon="mdi:battery-sync",
         entity_category=EntityCategory.DIAGNOSTIC,
         on_slave=False,
+        # created on every master, also if reading the members failed at
+        # setup (shows unknown until the next successful read)
+        exists_fn=lambda coordinator: coordinator.cascading_role == ROLE_MASTER,
         value_fn=lambda coordinator: (
             len(info.members)
             if (info := coordinator.latestData.get("cascade")) and info.members

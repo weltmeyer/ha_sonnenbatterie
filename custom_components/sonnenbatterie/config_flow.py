@@ -13,12 +13,17 @@ from homeassistant.const import (
 )
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.selector import TextSelector, TextSelectorConfig, TextSelectorType
 
 # pylint: disable=unused-wildcard-import
 from .const import *
 
 # pylint: enable=unused-wildcard-import
 import voluptuous as vol
+
+
+# masked input for fields prefilled with a stored secret
+SECRET = TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))
 
 
 class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
@@ -116,7 +121,7 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             {
                 vol.Required(CONF_USERNAME, default=master_data.get(CONF_USERNAME) or "User"):
                     vol.In(["User", "Installer"]),
-                vol.Required(CONF_PASSWORD, default=master_data.get(CONF_PASSWORD) or ""): str,
+                vol.Required(CONF_PASSWORD, default=master_data.get(CONF_PASSWORD) or ""): SECRET,
                 vol.Optional(CONF_SCAN_INTERVAL,
                              default=master_data.get(CONF_SCAN_INTERVAL) or DEFAULT_SCAN_INTERVAL):
                     vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL)),
@@ -173,11 +178,11 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required(
                     CONF_PASSWORD,
                     default = entry.data.get(CONF_PASSWORD) or ""
-                ): str,
+                ): SECRET,
                 vol.Optional(
                     CONF_AUTH_TOKEN,
                     default = entry.data.get(CONF_AUTH_TOKEN) or ""
-                ): str,
+                ): SECRET,
                 vol.Required(
                     CONF_SCAN_INTERVAL,
                     default=max(MIN_SCAN_INTERVAL,
