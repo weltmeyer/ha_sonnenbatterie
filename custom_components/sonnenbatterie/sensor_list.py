@@ -8,7 +8,7 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import EntityCategory
+from homeassistant.const import EntityCategory, UnitOfEnergy
 from homeassistant.helpers.typing import StateType
 
 from custom_components.sonnenbatterie.const import ROLE_MASTER
@@ -91,6 +91,30 @@ def generate_powermeter_sensors(_coordinator):
                         is not None else None
                     ),
                     entity_registry_enabled_default=False,
+                )
+            )
+
+        # the meter's own energy counters (kWh, keep counting while HA is
+        # down): usable in the energy dashboard as they are. kwh_exported
+        # has been 0 on all meters seen so far, so it starts disabled.
+        for counter, enabled in (("kwh_imported", True), ("kwh_exported", False)):
+            if meter.get(counter) is None:
+                continue
+            powermeter_sensors.append(
+                SonnenbatterieSensorEntityDescription(
+                    key=f"{sensor_prefix_key}_{counter}",
+                    name=f"meter {meter['direction']} {meter['channel']} {counter}",
+                    icon="mdi:meter-electric-outline",
+                    state_class=SensorStateClass.TOTAL_INCREASING,
+                    native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+                    device_class=SensorDeviceClass.ENERGY,
+                    suggested_display_precision=2,
+                    value_fn=lambda coordinator, _index=index, _counter=counter: (
+                        round(val, 3)
+                        if (val := coordinator.latestData.get("powermeter", {})[_index].get(_counter))
+                        is not None else None
+                    ),
+                    entity_registry_enabled_default=enabled,
                 )
             )
 
@@ -713,5 +737,48 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         native_unit_of_measurement="%",
         value_fn=lambda coordinator: int(coordinator.latestData.get("v2_status", {}).get("BackupBuffer", "0")),
         entity_registry_enabled_default=True,
+    ),
+)
+
+
+def _positive(coordinator, field: str, sign: int) -> float | None:
+    """sign * the status power field if positive, else 0; None if missing."""
+    power = coordinator.latestData.get("status", {}).get(field)
+    if power is None:
+        return None
+    return max(sign * float(power), 0.0)
+
+
+# Energy (kWh) integrated from the power the battery reports, for the energy
+# dashboard: the battery has no counters for these. value_fn returns the
+# power in W (>= 0) that SonnenbatterieEnergySensor sums up over time. Not on
+# a cascade's slave: on the master these values cover the whole cascade
+# (meters and Pac_total_W), so a slave's battery energy would be counted twice.
+ENERGY_SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
+    SonnenbatterieSensorEntityDescription(
+        key="energy_grid_import",
+        on_slave=False,
+        icon="mdi:transmission-tower-export",
+        # GridFeedIn_W < 0: drawing from the grid
+        value_fn=lambda coordinator: _positive(coordinator, "GridFeedIn_W", -1),
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="energy_grid_export",
+        on_slave=False,
+        icon="mdi:transmission-tower-import",
+        value_fn=lambda coordinator: _positive(coordinator, "GridFeedIn_W", 1),
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="energy_battery_charge",
+        on_slave=False,
+        icon="mdi:battery-arrow-up",
+        # Pac_total_W < 0: charging
+        value_fn=lambda coordinator: _positive(coordinator, "Pac_total_W", -1),
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="energy_battery_discharge",
+        on_slave=False,
+        icon="mdi:battery-arrow-down",
+        value_fn=lambda coordinator: _positive(coordinator, "Pac_total_W", 1),
     ),
 )

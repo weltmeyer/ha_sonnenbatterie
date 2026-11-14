@@ -226,6 +226,18 @@
             },
             "cascade_members": {
                 "name": "Kaskaden-Mitglieder"
+            },
+            "energy_grid_import": {
+                "name": "Netzbezug (Energie)"
+            },
+            "energy_grid_export": {
+                "name": "Netzeinspeisung (Energie)"
+            },
+            "energy_battery_charge": {
+                "name": "Akku Ladeenergie"
+            },
+            "energy_battery_discharge": {
+                "name": "Akku Entladeenergie"
             }
         },
         "binary_sensor": {

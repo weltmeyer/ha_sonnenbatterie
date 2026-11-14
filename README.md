@@ -71,6 +71,32 @@ are already activated.
 > If you want to dive deeper, just head over to your Sonnenbatterie device
 > settings, click on "Entities" and enable the ones you're interested in.
 
+## Energy dashboard
+The integration provides the energy sensors (kWh) Home Assistant's energy
+dashboard expects, so no Riemann sum (Integral) helpers are needed any more:
+
+| Energy dashboard | Sensor |
+|---|---|
+| Grid consumption | Grid import energy |
+| Return to grid | Grid export energy |
+| Solar production | meter production … kwh_imported |
+| Battery: energy going in | Battery charge energy |
+| Battery: energy coming out | Battery discharge energy |
+
+- The solar production comes from the production meter's own counter, so
+  it's exact and keeps counting while Home Assistant isn't running. The
+  consumption meter's counter (meter consumption … kwh_imported) is there
+  as well.
+- The battery has no counters for the grid and the battery itself. These
+  four sensors add up the reported power over time (like the Integral helper
+  with the "left" method), so they only count while Home Assistant is
+  running and the battery is reachable, and short power peaks between two
+  updates are missed. A shorter scan interval makes them more accurate.
+- They start at 0. Switching the energy dashboard from your own helpers to
+  these sensors starts a new history for those fields; the old one stays.
+- In a cascade, these sensors are only created for the master: its values
+  cover the whole cascade.
+
 ## Cascades
 In a cascade, several batteries act as one system: the master has the meters
 and controls the cascade, the slaves only report their own unit.
