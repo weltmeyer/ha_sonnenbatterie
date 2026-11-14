@@ -95,10 +95,6 @@ and controls the cascade, the slaves only report their own unit.
   out, since a slave has no meters. If a slave was added before this version,
   those entities are removed from it.
 
-Discovering the slaves needs a `sonnenbatterie` library with cascade support;
-with an older library the master and slaves work as described, but slaves
-have to be added by hand.
-
 
 ## Actions
 Since version 2025.01.01 this integration also supports actions you can use to

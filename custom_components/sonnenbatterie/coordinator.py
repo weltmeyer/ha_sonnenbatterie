@@ -287,13 +287,9 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
 
     async def _update_cascade(self):
         """Cascade master: read the members (serials, status, IPs) the
-        battery's dashboard shows. Needs a sonnenbatterie library with
-        get_cascade_info(); without it there's just no cascade data."""
-        get_cascade_info = getattr(self.sbconn, "get_cascade_info", None)
-        if get_cascade_info is None:
-            return
+        battery's dashboard shows."""
         try:
-            self.latestData["cascade"] = await get_cascade_info()
+            self.latestData["cascade"] = await self.sbconn.get_cascade_info()
         except Exception as e:  # optional data, keep the rest of the update
             if self._is_auth_error(e):
                 raise
