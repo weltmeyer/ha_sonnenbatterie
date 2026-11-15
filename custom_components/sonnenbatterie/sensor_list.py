@@ -158,6 +158,10 @@ def generate_pv_string_sensors(_coordinator):
     return pv_string_sensors
 
 
+# EM_OperatingMode values: 1 manual, 2 automatic (self-consumption), 4 testing,
+# 6 battery module extension, 10 time of use, 11 automatic (optimization)
+OPERATING_MODE_OPTIONS = ["1", "2", "4", "6", "10", "11"]
+
 SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     ################################
     ### basic sensors ("status") ###
@@ -363,10 +367,17 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         key="state_operating_mode",
         legacy_key="operating_mode",
         icon="mdi:state-machine",
-        options=["1", "2", "6", "10", "11"],
+        options=OPERATING_MODE_OPTIONS,
         device_class=SensorDeviceClass.ENUM,
-        value_fn=lambda coordinator: coordinator.latestData.get("status", {}).get(
-            "OperatingMode"
+        # created whenever the battery reports a mode, also an unknown one
+        exists_fn=lambda coordinator: "OperatingMode" in coordinator.latestData.get("status", {}),
+        # a mode outside the options (e.g. from a newer firmware) shows as
+        # unknown instead of making HA reject the state on every update
+        value_fn=lambda coordinator: (
+            mode
+            if (mode := str(coordinator.latestData.get("status", {}).get("OperatingMode")))
+            in OPERATING_MODE_OPTIONS
+            else None
         ),
     ),
     ###########################

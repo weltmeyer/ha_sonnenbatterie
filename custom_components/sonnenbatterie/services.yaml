@@ -15,6 +15,7 @@ set_operating_mode:
             - "manual"
             - "automatic"
             - "timeofuse"
+            - "optimizing"
 set_operating_mode_num:
   fields:
     device_id:
@@ -32,6 +33,7 @@ set_operating_mode_num:
             - "1"
             - "2"
             - "10"
+            - "11"
 charge_battery:
   fields:
     device_id:

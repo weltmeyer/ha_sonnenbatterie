@@ -69,7 +69,13 @@
         },
         "select": {
             "select_operating_mode": {
-                "name": "Betriebsmodus"
+                "name": "Betriebsmodus",
+                "state": {
+                    "manual": "Manuell",
+                    "automatic": "Automatisch",
+                    "timeofuse": "Zeitgesteuert",
+                    "optimizing": "Auto-Optimierung"
+                }
             }
         },
         "sensor": {
@@ -249,7 +255,7 @@
     "services": {
         "set_operating_mode": {
             "name": "Setze Sonnenbatterie-Betriebsmodus",
-            "description": "Setzt den Betriebsmodus der Sonnenbatterie ('manual', 'automatic', 'timeofuse')",
+            "description": "Setzt den Betriebsmodus der Sonnenbatterie ('manual', 'automatic', 'timeofuse', 'optimizing')",
             "fields": {
                 "device_id": {
                     "description": "HomeAssistant ID des Geräts",
@@ -273,7 +279,7 @@
                     "example": "1234567890"
                 },
                 "mode": {
-                    "description": "Der zu setzende numerische Betriebsmodus ('1', '2', '10')",
+                    "description": "Der zu setzende numerische Betriebsmodus ('1' manuell, '2' automatisch, '10' zeitgesteuert, '11' Auto-Optimierung)",
                     "name": "Betriebsmodus",
                     "example": "2"
                 }

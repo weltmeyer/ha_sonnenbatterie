@@ -117,6 +117,15 @@ Currently supported actions are:
   - `"timeofuse"`
   - `"optimizing"`
 
+> [!NOTE]
+> Whether a mode can be set is decided by the battery, and a refused mode
+> ends with an error message. According to sonnen, `timeofuse` isn't
+> available in France, `automatic` shouldn't be used on sonnenBatterie 10
+> Hybrid systems, and no mode can be changed while a virtual power plant
+> (VPP) is active. `optimizing` needs a recent firmware: it was refused on
+> 1.30.x and works on 1.40.5. The same applies to `set_operating_mode_num`
+> and the "Operating mode" select.
+
 ##### Code snippet
 ``` yaml
 action: sonnenbatterie.set_operating_mode

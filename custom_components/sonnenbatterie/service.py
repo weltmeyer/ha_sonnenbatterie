@@ -1,5 +1,7 @@
 import json
 
+import aiohttp
+
 from homeassistant.const import ATTR_DEVICE_ID
 from homeassistant.core import ServiceCall, ServiceResponse
 from homeassistant.exceptions import HomeAssistantError
@@ -21,6 +23,26 @@ from custom_components.sonnenbatterie.const import (
     SB_OPERATING_MODES_NUM,
     SONNENBATTERIE_ISSUE_URL,
 )
+
+
+async def async_set_operating_mode(sb_conn: AsyncSonnenBatterie, mode: int) -> int:
+    """Set the operating mode, with a readable error if the battery refuses.
+
+    Writable according to sonnen: 1, 2, 10 and 11 (10 not in France, 2 not
+    for sonnenBatterie 10 Hybrid, 11 only with newer firmware); no mode
+    change at all while a virtual power plant (VPP) is active. The battery
+    decides, so its answer is passed on instead of guessing the region here.
+    """
+    try:
+        return await sb_conn.set_operating_mode(mode)
+    except aiohttp.ClientResponseError as e:
+        if e.status in (401,):
+            raise   # session expired: handled like any other request
+        raise HomeAssistantError(
+            f"The battery refused operating mode {mode} (HTTP {e.status}). Mode changes "
+            "are rejected while a virtual power plant (VPP) is active, and not every "
+            "mode is available in every region or firmware version."
+        ) from e
 
 
 class SonnenbatterieService:
@@ -94,7 +116,7 @@ class SonnenbatterieService:
     async def set_operating_mode(self, call: ServiceCall) -> ServiceResponse:
         mode = SB_OPERATING_MODES.get(call.data.get('mode'))
         sb_conn = self._get_sb_connection(call.data)
-        response = await sb_conn.set_operating_mode(mode)
+        response = await async_set_operating_mode(sb_conn, mode)
         return {
             "mode": SB_OPERATING_MODES_NUM.get(str(response), "UNKNOWN")
         }
@@ -102,7 +124,7 @@ class SonnenbatterieService:
     async def set_operating_mode_num(self, call: ServiceCall) -> ServiceResponse:
         mode = call.data.get('mode')
         sb_conn = self._get_sb_connection(call.data)
-        response = await sb_conn.set_operating_mode(mode)
+        response = await async_set_operating_mode(sb_conn, int(mode))
         return {
             "mode": response
         }

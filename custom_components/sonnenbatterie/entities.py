@@ -212,7 +212,7 @@ SELECT_ENTITIES = [
         icon="mdi:solar-power",
         entity_category=EntityCategory.CONFIG,
         tag=Tag.OPERATING_MODE,
-        options=["manual", "automatic", "timeofuse"],
+        options=["manual", "automatic", "timeofuse", "optimizing"],
     ),
 ]
 
