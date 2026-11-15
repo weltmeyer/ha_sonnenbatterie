@@ -342,16 +342,24 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
                       CONF_MASTER_ENTRY_ID: self._config_entry.entry_id})
         self._link_slave_devices(set(slaves))
 
+    @staticmethod
+    def _entry_device(dev_reg: dr.DeviceRegistry, entry_id: str) -> dr.DeviceEntry | None:
+        """The device of one of our config entries (identifier: the entry id).
+        Not dev_reg.async_get_device(): deprecated since HA 2026.11 (breaks in
+        2027.8), and its replacement doesn't exist in older versions."""
+        return next((device for device in dr.async_entries_for_config_entry(dev_reg, entry_id)
+                     if (DOMAIN, entry_id) in device.identifiers), None)
+
     @callback
     def _link_slave_devices(self, serials: set) -> None:
         dev_reg = dr.async_get(self.hass)
-        master = dev_reg.async_get_device(identifiers={(DOMAIN, self._config_entry.entry_id)})
+        master = self._entry_device(dev_reg, self._config_entry.entry_id)
         if master is None:      # entities (and so the device) not set up yet
             return
         for entry in self.hass.config_entries.async_entries(DOMAIN):
             if entry.data.get(CONF_SERIAL_NUMBER) not in serials:
                 continue
-            device = dev_reg.async_get_device(identifiers={(DOMAIN, entry.entry_id)})
+            device = self._entry_device(dev_reg, entry.entry_id)
             if device is not None and device.via_device_id != master.id:
                 dev_reg.async_update_device(device.id, via_device_id=master.id)
 
