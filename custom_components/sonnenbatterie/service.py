@@ -53,7 +53,7 @@ class SonnenbatterieService:
     # service definitions
     async def charge_battery(self, call: ServiceCall) -> ServiceResponse:
         LOGGER.debug(f"_charge_battery: {call.data}")
-        power = int(call.data.get(CONF_CHARGE_WATT))
+        power = call.data.get(CONF_CHARGE_WATT)
         if power < 0:
             power = 0
         # Make sure we have an sb2 object
@@ -65,7 +65,7 @@ class SonnenbatterieService:
 
     async def discharge_battery(self, call: ServiceCall) -> ServiceResponse:
         LOGGER.debug(f"_discharge_battery: {call.data}")
-        power = int(call.data.get(CONF_CHARGE_WATT))
+        power = call.data.get(CONF_CHARGE_WATT)
         if power < 0:
             power = 0
         sb_conn = self._get_sb_connection(call.data)
