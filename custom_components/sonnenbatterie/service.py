@@ -63,12 +63,8 @@ class SonnenbatterieService:
             device_registry = dr_async_get(self._hass)
             if not (device_entry := device_registry.async_get(device_id)):
                 raise HomeAssistantError(f"No device found for device_id: {device_id}")
-            # config_entry_id since HA 2026.10 (a device belongs to a single
-            # entry); primary_config_entry is deprecated there and removed in
-            # HA 2027.10, but the only option on older versions
-            entry_id = (getattr(device_entry, "config_entry_id", None)
-                        or device_entry.primary_config_entry)
-            if not (sb_config := self._hass.data.get(DOMAIN, {}).get(entry_id)):
+            # a device belongs to a single config entry (HA >= 2026.10)
+            if not (sb_config := self._hass.data.get(DOMAIN, {}).get(device_entry.config_entry_id)):
                 raise HomeAssistantError(f"Unable to find config for device_id: {device_id} ({device_entry.name})")
             if sb_config.get(CONF_COORDINATOR):
                 return sb_config.get("coordinator").sbconn

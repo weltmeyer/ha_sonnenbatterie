@@ -17,6 +17,9 @@ that should work with current versions of Sonnenbatterie.
 
 ## Installation
 
+Requires **Home Assistant 2026.10** or newer. On older versions HACS keeps the
+last release that supports them and doesn't offer newer ones.
+
 ### 1) via HACS
 > [!IMPORTANT] 
 > This is a **HACS _integration_**, not a **HASS-IO _AddOn_**, so you <ins>need to have [HACS](https://hacs.xyz) installed</ins>,
