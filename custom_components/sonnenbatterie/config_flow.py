@@ -13,12 +13,17 @@ from homeassistant.const import (
 )
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.selector import TextSelector, TextSelectorConfig, TextSelectorType
 
 # pylint: disable=unused-wildcard-import
 from .const import *
 
 # pylint: enable=unused-wildcard-import
 import voluptuous as vol
+
+
+# masked input for fields prefilled with a stored secret
+SECRET = TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))
 
 
 class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
@@ -81,6 +86,83 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             last_step=True,
         )
 
+    async def async_step_integration_discovery(self, discovery_info):
+        """A cascade master found one of its slaves (see the coordinator).
+        Known slave: keep its IP up to date (the master's list is the source,
+        the IPs come from DHCP). New slave: ask for its credentials."""
+        serial = discovery_info[CONF_SERIAL_NUMBER]
+        ipaddress = discovery_info[CONF_IP_ADDRESS]
+        for entry in self._async_current_entries(include_ignore=False):
+            if entry.data.get(CONF_SERIAL_NUMBER) != serial:
+                continue
+            if entry.data.get(CONF_IP_ADDRESS) != ipaddress:
+                LOGGER.info(f"cascade slave {serial} moved to a new IP address, updating its entry")
+                self.hass.config_entries.async_update_entry(
+                    entry, data={**entry.data, CONF_IP_ADDRESS: ipaddress},
+                    title=f"{ipaddress} ({serial})")
+                self.hass.config_entries.async_schedule_reload(entry.entry_id)
+            return self.async_abort(reason="already_configured")
+
+        await self.async_set_unique_id(f"{DOMAIN}-{serial}")
+        self._abort_if_unique_id_configured()   # also when the user ignored it
+        self._discovery = discovery_info
+        self.context["title_placeholders"] = {"serial": serial}
+        return await self.async_step_discovery_confirm()
+
+    async def async_step_discovery_confirm(self, user_input=None):
+        """Credentials for a discovered slave, the master's as defaults. One
+        login per submit: failed logins make the battery block further ones."""
+        serial = self._discovery[CONF_SERIAL_NUMBER]
+        ipaddress = self._discovery[CONF_IP_ADDRESS]
+        master = self.hass.config_entries.async_get_entry(
+            self._discovery.get(CONF_MASTER_ENTRY_ID, ""))
+        master_data = master.data if master is not None else {}
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_USERNAME, default=master_data.get(CONF_USERNAME) or "User"):
+                    vol.In(["User", "Installer"]),
+                vol.Required(CONF_PASSWORD, default=master_data.get(CONF_PASSWORD) or ""): SECRET,
+                vol.Optional(CONF_SCAN_INTERVAL,
+                             default=master_data.get(CONF_SCAN_INTERVAL) or DEFAULT_SCAN_INTERVAL):
+                    vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL)),
+            }
+        )
+        placeholders = {"serial": serial, "ip_address": ipaddress}
+        errors = {}
+        if user_input is not None:
+            # noinspection PyBroadException
+            try:
+                my_serial = await self.hass.async_add_executor_job(
+                    self._internal_setup,
+                    user_input[CONF_USERNAME], user_input[CONF_PASSWORD], ipaddress)
+                sb_serial = await my_serial
+            except Exception as e:  # noqa: BLE001
+                LOGGER.warning(f"Unable to log in to cascade slave {serial}: {type(e).__name__}: {e}")
+                LOGGER.debug(traceback.format_exc())
+                errors["base"] = "connection_error"
+            else:
+                if str(sb_serial) != str(serial):
+                    return self.async_abort(reason="wrong_device")
+                return self.async_create_entry(
+                    title=f"{ipaddress} ({serial})",
+                    data={
+                        CONF_USERNAME: user_input[CONF_USERNAME],
+                        CONF_PASSWORD: user_input[CONF_PASSWORD],
+                        CONF_IP_ADDRESS: ipaddress,
+                        CONF_AUTH_TOKEN: "",
+                        CONF_SCAN_INTERVAL: user_input[CONF_SCAN_INTERVAL],
+                        ATTR_SONNEN_DEBUG: DEFAULT_SONNEN_DEBUG,
+                        CONF_SERIAL_NUMBER: serial,
+                    },
+                )
+
+        return self.async_show_form(
+            step_id="discovery_confirm",
+            data_schema=schema,
+            description_placeholders=placeholders,
+            errors=errors,
+        )
+
     async def async_step_reconfigure(self, user_input):
         entry = self._get_reconfigure_entry()
         schema_reconf = vol.Schema(
@@ -96,11 +178,11 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required(
                     CONF_PASSWORD,
                     default = entry.data.get(CONF_PASSWORD) or ""
-                ): str,
+                ): SECRET,
                 vol.Optional(
                     CONF_AUTH_TOKEN,
                     default = entry.data.get(CONF_AUTH_TOKEN) or ""
-                ): str,
+                ): SECRET,
                 vol.Required(
                     CONF_SCAN_INTERVAL,
                     default=max(MIN_SCAN_INTERVAL,
@@ -154,10 +236,12 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     async def _internal_setup(_username, _password, _ipaddress):
         sb_test = AsyncSonnenBatterie(_username, _password, _ipaddress)
-        await sb_test.login()
-        result = (await sb_test.get_systemdata()).get("DE_Ticket_Number", "Unknown")
-        await sb_test.logout()
-        return result
+        try:
+            await sb_test.login()
+            return (await sb_test.get_systemdata()).get("DE_Ticket_Number", "Unknown")
+        finally:
+            # also after a failed login: closes the HTTP session
+            await sb_test.logout()
 
     @callback
     def _show_form(self, errors=None):

@@ -1,7 +1,9 @@
 {
     "config": {
         "abort": {
-            "single_instance_allowed": "Only one Sonnenbatterie configuration allowed."
+            "single_instance_allowed": "Only one Sonnenbatterie configuration allowed.",
+            "already_configured": "This Sonnenbatterie is already configured.",
+            "wrong_device": "The battery at this address has a different serial number than the one the cascade master listed."
         },
         "error": {
             "connection_error": "No connection to the Sonnenbatterie could be established",
@@ -30,6 +32,15 @@
                 },
                 "title": "Configure your Sonnenbatterie",
                 "description": "Normally you find your password on the side of your sonnenbatterie near the main switch."
+            },
+            "discovery_confirm": {
+                "title": "Battery {serial} of your cascade",
+                "description": "The cascade master lists the battery {serial} at {ip_address}. Add it to see its own values (state of charge, power, cycles, temperatures). It is controlled by the master, so it gets no controls.\n\nEach attempt is one login: after failed logins the battery blocks further ones for a while.",
+                "data": {
+                    "username": "User",
+                    "password": "Password",
+                    "scan_interval": "Update interval (seconds)"
+                }
             }
         }
     },
@@ -174,6 +185,15 @@
             "battery_grid_tmax": {
                 "name": "Battery system max temperature"
             },
+            "pv_string_current": {
+                "name": "PV string {string} current"
+            },
+            "pv_string_power": {
+                "name": "PV string {string} power"
+            },
+            "pv_string_voltage": {
+                "name": "PV string {string} voltage"
+            },
             "inverter_state_ipv": {
                 "name": "Inverter IPV 1"
             },
@@ -203,6 +223,9 @@
             },
             "battery_care": {
                 "name": "Battery care active"
+            },
+            "cascade_members": {
+                "name": "Cascade members"
             }
         },
         "binary_sensor": {

@@ -1,7 +1,9 @@
 {
     "config": {
         "abort": {
-            "single_instance_allowed": "Es ist nur eine einzige Konfiguration von Sonnenbatterie erlaubt."
+            "single_instance_allowed": "Es ist nur eine einzige Konfiguration von Sonnenbatterie erlaubt.",
+            "already_configured": "Diese Sonnenbatterie ist bereits eingerichtet.",
+            "wrong_device": "Die Batterie unter dieser Adresse hat eine andere Seriennummer als die vom Kaskaden-Master genannte."
         },
         "error": {
             "connection_error": "Es kann keine Verbindung zur Sonnenbatterie hergestellt werden.",
@@ -30,6 +32,15 @@
                 },
                 "title": "Sonnenbatterie-Konfiguration",
                 "description": "Dein Passwort findest du normalerweise an der Seite deiner Sonnenbatterie in der Nähe des Hauptschalters."
+            },
+            "discovery_confirm": {
+                "title": "Batterie {serial} deiner Kaskade",
+                "description": "Der Kaskaden-Master nennt die Batterie {serial} unter {ip_address}. Füge sie hinzu, um ihre eigenen Werte zu sehen (Ladestand, Leistung, Zyklen, Temperaturen). Sie wird vom Master gesteuert und bekommt daher keine Bedienelemente.\n\nJeder Versuch ist eine Anmeldung: nach fehlgeschlagenen Anmeldungen sperrt die Batterie weitere für eine Weile.",
+                "data": {
+                    "username": "Benutzer",
+                    "password": "Passwort",
+                    "scan_interval": "Aktualisierungsintervall (Sekunden)"
+                }
             }
         }
     },
@@ -174,6 +185,15 @@
             "battery_grid_tmax": {
                 "name": "Akkusystem maximale Temperatur"
             },
+            "pv_string_current": {
+                "name": "PV-String {string} Strom"
+            },
+            "pv_string_power": {
+                "name": "PV-String {string} Leistung"
+            },
+            "pv_string_voltage": {
+                "name": "PV-String {string} Spannung"
+            },
             "inverter_state_ipv": {
                 "name": "Spannungswandler IPV 1"
             },
@@ -203,6 +223,9 @@
             },
             "battery_care": {
                 "name": "Batteriepflege aktiv"
+            },
+            "cascade_members": {
+                "name": "Kaskaden-Mitglieder"
             }
         },
         "binary_sensor": {

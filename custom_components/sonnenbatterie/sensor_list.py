@@ -1,3 +1,5 @@
+import math
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -9,6 +11,7 @@ from homeassistant.components.sensor import (
 from homeassistant.const import EntityCategory
 from homeassistant.helpers.typing import StateType
 
+from custom_components.sonnenbatterie.const import ROLE_MASTER
 from custom_components.sonnenbatterie.coordinator import SonnenbatterieCoordinator
 
 
@@ -17,8 +20,13 @@ class SonnenbatterieSensorEntityDescription(SensorEntityDescription):
     """Describes Sonnebatterie sensor entity."""
     _attr_has_entity_name: bool = True
     legacy_key: str = None
-    # exists_fn: Callable[[SonnenBatterieCoordinator], bool] = lambda _: True
+    # whether to create the sensor at setup; default (None): if it has a value
+    exists_fn: Callable[[SonnenbatterieCoordinator], bool] | None = None
     value_fn: Callable[[SonnenbatterieCoordinator], StateType]
+    # False: not created for a cascade's slave, where the value is meaningless
+    # (the meters are on the master) or a setting of the whole cascade
+    on_slave: bool = True
+    attrs_fn: Callable[[SonnenbatterieCoordinator], dict | None] | None = None
 
 def generate_powermeter_sensors(_coordinator):
     powermeter_sensors: list[SonnenbatterieSensorEntityDescription] = []
@@ -89,6 +97,67 @@ def generate_powermeter_sensors(_coordinator):
     return powermeter_sensors
 
 
+def inverter_value(coordinator, key):
+    """PV/grid value: live from /api/v2/inverter if the battery offers it,
+    else from battery_system's grid_information (same fields, but only polled
+    on the slow cycle and as strings). 'nan' / null -> None (unknown)."""
+    v2_inverter = coordinator.latestData.get("v2_inverter") or {}
+    if key in v2_inverter:
+        value = v2_inverter[key]
+    else:
+        value = coordinator.latestData.get("battery_system", {}).get("grid_information", {}).get(key)
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return None
+    return None if math.isnan(value) else value
+
+
+def inverter_has_key(coordinator, key):
+    """Whether the battery reports this PV/grid field at all (value may be
+    'nan' / null at the moment), see inverter_value()."""
+    return key in (coordinator.latestData.get("v2_inverter") or {}) or key in (
+        coordinator.latestData.get("battery_system", {}).get("grid_information", {})
+    )
+
+
+# (key pattern, quantity, unit, device class, icon, display precision)
+PV_STRING_QUANTITIES = (
+    (re.compile(r"^ipv(\d+)$"), "current", "A", SensorDeviceClass.CURRENT, "mdi:current-dc", 2),
+    (re.compile(r"^ppv(\d+)_dc$"), "power", "W", SensorDeviceClass.POWER, "mdi:solar-power", 0),
+    (re.compile(r"^upv(\d+)$"), "voltage", "V", SensorDeviceClass.VOLTAGE, "mdi:sine-wave", 1),
+)
+
+
+def generate_pv_string_sensors(_coordinator):
+    """Current, DC power and voltage per PV string, for every ipvN, ppvN_dc
+    and upvN the battery reports, instead of a fixed number of strings. The
+    count reflects the API's slots (4 on all systems seen so far, connected
+    or not), so the sensors are disabled by default. Detected at setup: a
+    string appearing later shows up after a reload."""
+    keys = set(_coordinator.latestData.get("v2_inverter") or {}) | set(
+        _coordinator.latestData.get("battery_system", {}).get("grid_information", {})
+    )
+    pv_string_sensors: list[SonnenbatterieSensorEntityDescription] = []
+    for pattern, quantity, unit, device_class, icon, precision in PV_STRING_QUANTITIES:
+        for string, source_key in sorted((int(m.group(1)), key) for key in keys if (m := pattern.match(key))):
+            pv_string_sensors.append(
+                SonnenbatterieSensorEntityDescription(
+                    key=f"pv_string_{string}_{quantity}",
+                    translation_key=f"pv_string_{quantity}",
+                    translation_placeholders={"string": str(string)},
+                    icon=icon,
+                    state_class=SensorStateClass.MEASUREMENT,
+                    native_unit_of_measurement=unit,
+                    device_class=device_class,
+                    suggested_display_precision=precision,
+                    value_fn=lambda coordinator, _key=source_key: inverter_value(coordinator, _key),
+                    entity_registry_enabled_default=False,
+                )
+            )
+    return pv_string_sensors
+
+
 SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     ################################
     ### basic sensors ("status") ###
@@ -107,6 +176,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     # consumption
     SonnenbatterieSensorEntityDescription(
         key="state_consumption_current",
+        on_slave=False,
         legacy_key="consumption_w",
         icon="mdi:home-lightning-bolt",
         state_class=SensorStateClass.MEASUREMENT,
@@ -118,6 +188,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     ),
     SonnenbatterieSensorEntityDescription(
         key="state_consumption_avg",
+        on_slave=False,
         legacy_key="consumption_avg",
         icon="mdi:home-lightning-bolt",
         state_class=SensorStateClass.MEASUREMENT,
@@ -132,6 +203,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     # production
     SonnenbatterieSensorEntityDescription(
         key="state_production",
+        on_slave=False,
         legacy_key="production_w",
         icon="mdi:solar-power",
         state_class=SensorStateClass.MEASUREMENT,
@@ -153,6 +225,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     # grid
     SonnenbatterieSensorEntityDescription(
         key="state_grid_inout",
+        on_slave=False,
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:transmission-tower",
         native_unit_of_measurement="W",
@@ -163,6 +236,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     ),
     SonnenbatterieSensorEntityDescription(
         key="state_grid_in",
+        on_slave=False,
         legacy_key="state_grid_input",
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:transmission-tower-export",
@@ -180,6 +254,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     ),
     SonnenbatterieSensorEntityDescription(
         key="state_grid_out",
+        on_slave=False,
         legacy_key="state_grid_output",
         icon="mdi:transmission-tower-import",
         state_class=SensorStateClass.MEASUREMENT,
@@ -426,7 +501,6 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         key="battery_installed_capacity_total",
         legacy_key="state_total_capacity_real",
         icon="mdi:battery-charging",
-        state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="Wh",
         device_class=SensorDeviceClass.ENERGY_STORAGE,
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -439,7 +513,6 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         key="battery_installed_capacity_usable",
         legacy_key="state_total_capacity_usable",
         icon="mdi:battery-charging",
-        state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="Wh",
         device_class=SensorDeviceClass.ENERGY_STORAGE,
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -481,7 +554,6 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         key="battery_storage_capacity_per_module",
         legacy_key="module_capacity",
         icon="mdi:battery-charging",
-        state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="Wh",
         device_class=SensorDeviceClass.ENERGY_STORAGE,
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -495,7 +567,6 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         key="battery_module_count",
         legacy_key="module_count",
         icon="mdi:battery",
-        state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
         # all modules of a cascade, not only the master's
         value_fn=lambda coordinator: coordinator.latestData.get(
@@ -513,7 +584,30 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         entity_registry_enabled_default=False,
     ),
     SonnenbatterieSensorEntityDescription(
+        # cascade master: number of units in the cascade, with their serials
+        # and status ("WORKING") as attributes
+        key="cascade_members",
+        icon="mdi:battery-sync",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        on_slave=False,
+        # created on every master, also if reading the members failed at
+        # setup (shows unknown until the next successful read)
+        exists_fn=lambda coordinator: coordinator.cascading_role == ROLE_MASTER,
+        value_fn=lambda coordinator: (
+            len(info.members)
+            if (info := coordinator.latestData.get("cascade")) and info.members
+            else None
+        ),
+        attrs_fn=lambda coordinator: (
+            {"members": [{"serial": m.serial, "role": m.role, "status": m.status}
+                         for m in info.members]}
+            if (info := coordinator.latestData.get("cascade"))
+            else None
+        ),
+    ),
+    SonnenbatterieSensorEntityDescription(
         key="max_power",
+        on_slave=False,
         icon="mdi:flash",
         # static config value: no state_class, long-term statistics are pointless
         native_unit_of_measurement="W",
@@ -531,9 +625,8 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="A",
         device_class=SensorDeviceClass.CURRENT,
-        value_fn=lambda coordinator: coordinator.latestData.get("battery_system", {})
-        .get("grid_information", {})
-        .get("ipv"),
+        exists_fn=lambda coordinator: inverter_has_key(coordinator, "ipv"),
+        value_fn=lambda coordinator: inverter_value(coordinator, "ipv"),
         entity_registry_enabled_default=False,
     ),
     SonnenbatterieSensorEntityDescription(
@@ -542,9 +635,8 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="W",
         device_class=SensorDeviceClass.POWER,
-        value_fn=lambda coordinator: coordinator.latestData.get("battery_system", {})
-        .get("grid_information", {})
-        .get("ppv"),
+        exists_fn=lambda coordinator: inverter_has_key(coordinator, "ppv"),
+        value_fn=lambda coordinator: inverter_value(coordinator, "ppv"),
         entity_registry_enabled_default=False,
     ),
     SonnenbatterieSensorEntityDescription(
@@ -553,9 +645,8 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="V",
         device_class=SensorDeviceClass.VOLTAGE,
-        value_fn=lambda coordinator: coordinator.latestData.get("battery_system", {})
-        .get("grid_information", {})
-        .get("upv"),
+        exists_fn=lambda coordinator: inverter_has_key(coordinator, "upv"),
+        value_fn=lambda coordinator: inverter_value(coordinator, "upv"),
         entity_registry_enabled_default=False,
     ),
     SonnenbatterieSensorEntityDescription(
@@ -565,9 +656,8 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="°C",
         device_class=SensorDeviceClass.TEMPERATURE,
-        value_fn=lambda coordinator: coordinator.latestData.get("battery_system", {})
-        .get("grid_information", {})
-        .get("tmax"),
+        exists_fn=lambda coordinator: inverter_has_key(coordinator, "tmax"),
+        value_fn=lambda coordinator: inverter_value(coordinator, "tmax"),
         entity_registry_enabled_default=False,
     ),
     ###########################
@@ -593,11 +683,17 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
     ),
     SonnenbatterieSensorEntityDescription(
         key="tou_max_power",
+        on_slave=False,
         icon="mdi:transmission-tower-import",
-        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="W",
+        device_class=SensorDeviceClass.POWER,
         entity_category=EntityCategory.DIAGNOSTIC,
+        # numeric string, e.g. '46000'; None (not 'unknown') when missing, as
+        # the POWER device class requires a numeric state
         value_fn=lambda coordinator: coordinator.latestData.get("commissioning_settings", {})
-                                     .get('data', {}).get('attributes',{}).get('tou_max_power_limit', 'unknown'),
+                                     .get('data', {}).get('attributes',{}).get('tou_max_power_limit'),
+        # always created, as before (shows unknown if the battery doesn't report it)
+        exists_fn=lambda _: True,
         entity_registry_enabled_default=True,
     ),
     SonnenbatterieSensorEntityDescription(

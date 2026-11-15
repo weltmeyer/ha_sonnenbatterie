@@ -5,15 +5,26 @@ from datetime import timedelta
 from time import time
 
 import aiohttp
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, SOURCE_INTEGRATION_DISCOVERY
 from homeassistant.const import CONF_SCAN_INTERVAL, CONF_USERNAME, CONF_PASSWORD, CONF_IP_ADDRESS
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import device_registry as dr, discovery_flow
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from sonnenbatterie import AsyncSonnenBatterie
 
 from custom_components.sonnenbatterie import LOGGER, DOMAIN, ATTR_SONNEN_DEBUG
-from .const import CONF_AUTH_TOKEN, DEFAULT_SCAN_INTERVAL, MIN_SCAN_INTERVAL
+from .const import (
+    CASCADE_ROLES,
+    CONF_AUTH_TOKEN,
+    CONF_MASTER_ENTRY_ID,
+    CONF_SERIAL_NUMBER,
+    DEFAULT_SCAN_INTERVAL,
+    MIN_SCAN_INTERVAL,
+    ROLE_MASTER,
+    ROLE_NONE,
+    ROLE_SLAVE,
+)
 
 def _v2_write_class():
     """The v2 (Auth-Token) WRITE-client class, obtained WITHOUT declaring a new
@@ -70,6 +81,8 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
         self._failures = 0      # consecutive failed update cycles
         self._last_login = 0
         self._cycle_count = 0   # schedules the rarely-changing endpoints
+        self._discovered = {}   # cascade master: slave serial -> IP a discovery was started for
+        self._v2_inverter_supported = True
         self._base_interval = timedelta(seconds=max(
             MIN_SCAN_INTERVAL,
             config_entry.data.get(CONF_SCAN_INTERVAL) or DEFAULT_SCAN_INTERVAL))
@@ -125,6 +138,20 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
             hw_version=f"{system_data.get('system', {}).get('hardware_version', 'unknown')}",
         )
 
+    @property
+    def cascading_role(self) -> str:
+        """master, slave or none (also for firmware without the field)."""
+        raw = (self.latestData.get("system_data", {}).get("CN_CascadingRole")
+               or self.latestData.get("configurations", {}).get("CN_CascadingRole")
+               or ROLE_NONE)
+        return CASCADE_ROLES.get(str(raw).lower(), ROLE_NONE)
+
+    @property
+    def is_slave(self) -> bool:
+        """A cascade's slave: only reports its own unit (no meters) and is
+        controlled by the master, so its entry is read-only."""
+        return self.cascading_role == ROLE_SLAVE
+
     def populate_battery_info(self):
         """ some manually calculated values """
         battery_system = self.latestData["battery_system"]
@@ -148,9 +175,7 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
 
         self.latestData["battery_info"] = {}
         self.latestData["battery_info"]["current_state"] = battery_current_state
-        self.latestData["battery_info"]["cascading_role"] = (
-            self.latestData.get("system_data", {}).get("CN_CascadingRole") or "none"
-        )
+        self.latestData["battery_info"]["cascading_role"] = self.cascading_role
         self.latestData["battery_info"]["module_count"] = batt_module_count
         self.latestData["battery_info"]["max_power"] = max_power
         self.latestData["battery_info"][
@@ -255,10 +280,80 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
                 f"Unable to connect to Sonnenbatterie at {self._config_entry.data[CONF_IP_ADDRESS]} "
                 f"for {int(elapsed)} seconds: {reason}") from e
 
+    async def _get_v2_inverter(self) -> dict:
+        """Live PV/grid values from /api/v2/inverter: the same fields as
+        battery_system's grid_information (which is only polled every
+        SLOW_POLL_EVERY cycles), as numbers, in a ~3x cheaper request.
+
+        Not every system/firmware may offer it: if the battery says the
+        endpoint doesn't exist or isn't permitted, stop asking and let the
+        sensors fall back to grid_information. A 403 counts as not permitted:
+        /api/v2/status just succeeded with the same token, so it isn't an
+        expired session (which would mean a re-login and failed update every
+        cycle). Other errors (timeouts, 5xx, 401) are handled like any other
+        failed request, so the maintenance window logic applies."""
+        try:
+            data = await self.sbconn.sb2.get_inverter_data()
+        except aiohttp.ClientResponseError as e:
+            if e.status not in (400, 403, 404, 405, 501):
+                raise
+            data = None
+        if isinstance(data, dict):
+            return data
+        LOGGER.info("Sonnenbatterie: /api/v2/inverter not available, "
+                    "PV values are taken from battery_system instead")
+        self._v2_inverter_supported = False
+        return {}
+
     async def _async_update_data(self):
         """Populate self.latestdata"""
         async with self.io_lock:
             await self._update_locked()
+        self._handle_cascade()
+
+    async def _update_cascade(self):
+        """Cascade master: read the members (serials, status, IPs) the
+        battery's dashboard shows."""
+        try:
+            self.latestData["cascade"] = await self.sbconn.get_cascade_info()
+        except Exception as e:  # optional data, keep the rest of the update
+            if self._is_auth_error(e):
+                raise
+            LOGGER.debug(f"cascade info not available: {type(e).__name__}: {e}")
+
+    @callback
+    def _handle_cascade(self) -> None:
+        """Cascade master: offer each slave as a discovered device (or update
+        its IP, see the config flow), and show configured slaves as connected
+        via the master's device."""
+        info = self.latestData.get("cascade")
+        if info is None or self.cascading_role != ROLE_MASTER:
+            return
+        slaves = {m.serial: m.raw.get("ip") for m in info.members
+                  if m.role == ROLE_SLAVE and m.serial}
+        for serial, ip in slaves.items():
+            if not ip or self._discovered.get(serial) == ip:
+                continue
+            self._discovered[serial] = ip
+            discovery_flow.async_create_flow(
+                self.hass, DOMAIN,
+                context={"source": SOURCE_INTEGRATION_DISCOVERY},
+                data={CONF_IP_ADDRESS: ip, CONF_SERIAL_NUMBER: serial,
+                      CONF_MASTER_ENTRY_ID: self._config_entry.entry_id})
+        self._link_slave_devices(set(slaves))
+
+    @callback
+    def _link_slave_devices(self, serials: set) -> None:
+        dev_reg = dr.async_get(self.hass)
+        master = dev_reg.async_get_device(identifiers={(DOMAIN, self._config_entry.entry_id)})
+        if master is None:      # entities (and so the device) not set up yet
+            return
+        for entry in self.hass.config_entries.async_entries(DOMAIN):
+            if entry.data.get(CONF_SERIAL_NUMBER) not in serials:
+                continue
+            device = dev_reg.async_get_device(identifiers={(DOMAIN, entry.entry_id)})
+            if device is not None and device.via_device_id != master.id:
+                dev_reg.async_update_device(device.id, via_device_id=master.id)
 
     async def _update_locked(self):
         LOGGER.debug(f"COORDINATOR - async_update_data: {self.safe_config}")
@@ -272,6 +367,8 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
             self.latestData["powermeter"] = await self.sbconn.get_powermeter()
             self.latestData["status"] = await self.sbconn.get_status()
             self.latestData["v2_status"] = await self.sbconn.sb2.get_status()
+            if self._v2_inverter_supported:
+                self.latestData["v2_inverter"] = await self._get_v2_inverter()
 
             if slow_due:
                 self.latestData["battery_system"] = await self.sbconn.get_batterysystem()
@@ -283,6 +380,8 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
                 # diagnostic/config data rather than fetching it every cycle
                 self.latestData["latestdata"] = await self.sbconn.sb2.get_latest_data()
                 self.latestData["commissioning_settings"] = await self.sbconn.get_commissioning_settings()
+                if self.cascading_role == ROLE_MASTER:
+                    await self._update_cascade()
 
         except Exception as e:
             # raises UpdateFailed unless within the maintenance grace period,

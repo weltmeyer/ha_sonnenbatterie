@@ -71,6 +71,30 @@ are already activated.
 > If you want to dive deeper, just head over to your Sonnenbatterie device
 > settings, click on "Entities" and enable the ones you're interested in.
 
+## Cascades
+In a cascade, several batteries act as one system: the master has the meters
+and controls the cascade, the slaves only report their own unit.
+
+- Set up the integration for the **master**. Its sensors cover the whole
+  cascade (consumption, production, grid, installed capacity, max. power),
+  and the diagnostic sensor "Cascade members" shows the number of units,
+  with their serial numbers and status as attributes. The battery reports
+  its state of charge (relative), full charge capacity and battery power for
+  the whole cascade on the master, so the master's sensors for these show
+  the cascade, not the master unit alone. The master's battery details
+  (cycles, temperatures, cell voltages) are its own.
+- The master's slaves then show up as discovered devices. Add them to see
+  each unit's own values (state of charge, battery power, cycles,
+  temperatures, capacity). The master's username and password are suggested;
+  each attempt is one login, and failed logins make the battery block further
+  ones for a while. A slave's IP address is updated automatically when the
+  master reports a new one.
+- Slaves are read-only: no controls (setpoints, operating mode, buttons) and
+  no actions, as the master controls the cascade. Their consumption,
+  production, grid, power meter and cascade-wide settings sensors are left
+  out, since a slave has no meters. If a slave was added before this version,
+  those entities are removed from it.
+
 
 ## Actions
 Since version 2025.01.01 this integration also supports actions you can use to

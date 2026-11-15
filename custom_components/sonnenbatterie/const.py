@@ -21,6 +21,22 @@ DEFAULT_SONNEN_DEBUG = False
 
 LOGGER = logging.getLogger(__package__)
 
+# Cascades: several batteries acting as one system. The master has the meters
+# and controls the cascade; its slaves only report their own unit. system_data
+# and stacking_status say master/slave, v2/configurations primary/secondary.
+ROLE_MASTER: Final = "master"
+ROLE_SLAVE: Final = "slave"
+ROLE_NONE: Final = "none"
+CASCADE_ROLES: Final = {
+    "master": ROLE_MASTER,
+    "primary": ROLE_MASTER,
+    "slave": ROLE_SLAVE,
+    "secondary": ROLE_SLAVE,
+    "none": ROLE_NONE,
+}
+# discovery of a master's slaves: the master's config entry, for defaults
+CONF_MASTER_ENTRY_ID = "master_entry_id"
+
 """ Limited to those that can be changed safely """
 CONF_CONFIG_ITEMS = [
     "EM_OperatingMode",
