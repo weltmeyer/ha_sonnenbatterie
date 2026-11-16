@@ -59,7 +59,6 @@ class SonnenBatterieSelect(SonnenSelectEntity, SelectEntity):
                 case "configurations":
                     match tag.key:
                         case "select_operating_mode":
-                            await async_set_operating_mode(self.coordinator.sbconn, SB_OPERATING_MODES[option])
-                            await self.coordinator.async_request_refresh()
+                            await async_set_operating_mode(self.coordinator, SB_OPERATING_MODES[option])
 
         return None
