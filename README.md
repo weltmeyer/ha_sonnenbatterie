@@ -100,9 +100,9 @@ dashboard expects, so no Riemann sum (Integral) helpers are needed any more:
   maintenance window are bridged with the last power read. Longer outages,
   and gaps of more than 5 minutes (or 3 scan intervals) while Home Assistant
   wasn't running, aren't counted.
-- Battery charge and discharge only count while the battery reports that
-  it's charging or discharging: the few watts some batteries report in
-  standby aren't counted (unlike an Integral helper).
+- The few watts some batteries report in standby aren't counted as charging
+  or discharging (unlike an Integral helper): up to 50 W only count while the
+  battery also reports that it's charging or discharging.
 - They start at 0. Switching the energy dashboard from your own helpers to
   these sensors starts a new history for those fields; the old one stays.
 - In a cascade, these sensors are only created for the master: its values

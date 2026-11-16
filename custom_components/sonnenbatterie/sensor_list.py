@@ -768,7 +768,7 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
 
 
 def _ic_status(coordinator) -> dict:
-    return coordinator.latestData.get("latestdata", {}).get("ic_status", {}) or {}
+    return (coordinator.latestData.get("latestdata") or {}).get("ic_status") or {}
 
 
 def _battery_care(coordinator) -> bool:
@@ -777,9 +777,13 @@ def _battery_care(coordinator) -> bool:
     charge reason is 'Maintenance' or the LED status reads
     '0x14 - INFO_BATTERY_CARE'."""
     ic_status = _ic_status(coordinator)
+    # any of these may be null on some firmware: value_fn runs at setup, an
+    # exception would keep the whole sensor platform from loading
+    reasons = ic_status.get("Full Charge Reason") or {}
+    led = ic_status.get("Eclipse Led") or {}
     return bool(
-        ic_status.get("Full Charge Reason", {}).get("Maintenance") is True
-        or "BATTERY_CARE" in str(ic_status.get("Eclipse Led", {}).get("Eclipse Status", "")).upper()
+        reasons.get("Maintenance") is True
+        or "BATTERY_CARE" in str(led.get("Eclipse Status") or "").upper()
     )
 
 
@@ -788,26 +792,34 @@ def _battery_care_attrs(coordinator) -> dict | None:
     ic_status = _ic_status(coordinator)
     if not ic_status:
         return None
-    reasons = ic_status.get("Full Charge Reason", {}) or {}
+    reasons = ic_status.get("Full Charge Reason") or {}
     return {
         "full_charge_reason": [k for k, v in reasons.items() if v is True and k != "None"],
-        "led_status": ic_status.get("Eclipse Led", {}).get("Eclipse Status"),
+        "led_status": (ic_status.get("Eclipse Led") or {}).get("Eclipse Status"),
         "seconds_since_full_charge": ic_status.get("secondssincefullcharge"),
     }
 
 
+# standby noise: batteries report a few W of Pac_total_W in standby (-2 to
+# -32 W seen) without the charging/discharging flag
+STANDBY_NOISE_W = 50
+
+
 def _positive(coordinator, field: str, sign: int, flag: str | None = None) -> float | None:
     """sign * the status power field if positive, else 0; None if missing.
-    With flag: 0 unless the battery also sets that status flag, e.g. a few W
-    of Pac_total_W in standby aren't charging (ignored if the flag is
-    missing)."""
+    With flag: up to STANDBY_NOISE_W only counts if the battery also sets
+    that status flag, so standby noise isn't counted as charging. More power
+    always counts: in a cascade, Pac_total_W covers all units, but the
+    master's flags may only describe its own unit."""
     status = coordinator.latestData.get("status", {})
     power = status.get(field)
     if power is None:
         return None
-    if flag is not None and status.get(flag) is not None and not status.get(flag):
+    value = max(sign * float(power), 0.0)
+    if (flag is not None and status.get(flag) is False
+            and value <= STANDBY_NOISE_W):
         return 0.0
-    return max(sign * float(power), 0.0)
+    return value
 
 
 # Energy (kWh) integrated from the power the battery reports, for the energy
