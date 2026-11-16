@@ -20,10 +20,34 @@ that should work with current versions of Sonnenbatterie.
 Requires **Home Assistant 2026.10** or newer. On older versions HACS keeps the
 last release that supports them and doesn't offer newer ones.
 
-### 1) via HACS
-> [!IMPORTANT] 
-> This is a **HACS _integration_**, not a **HASS-IO _AddOn_**, so you <ins>need to have [HACS](https://hacs.xyz) installed</ins>,
-> and you need to add this repository as a custom **integration repository** to HACS.
+This is an **integration**, not an app (add-on). It's installed as a custom
+repository: with Home Assistant 2026.11 or newer through the built-in
+**Marketplace**, on 2026.10 through **HACS**. This button opens the
+repository in either of them:
+
+[![Open your Home Assistant instance and open this repository in the Marketplace / HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)][marketplace_repo]
+
+### 1) via the Marketplace (Home Assistant 2026.11 or newer)
+1. Go to **Settings** > **Marketplace**.
+2. Select **Add from link** in the upper-right corner and enter this repository
+   under **GitHub link**: `https://github.com/weltmeyer/ha_sonnenbatterie`.
+   Select **Add**; if you're asked for the type, choose **Integration**.
+3. Select `sonnenbatterie` in the list and install it. The latest release is
+   selected automatically. Only select a different version if you've been told
+   to do so by one of the maintainers.
+4. Set up the integration (see [Adding or enabling the integration](#adding-or-enabling-the-integration)).
+   If Home Assistant asks for a restart first (**Settings** > **System** >
+   **Repairs**), restart it.
+
+> [!NOTE]
+> Already installed through HACS? Nothing to do: when you update to Home
+> Assistant 2026.11, HACS content moves to the Marketplace automatically and
+> keeps receiving updates.
+
+### 2) via HACS (Home Assistant 2026.10)
+> [!IMPORTANT]
+> You <ins>need to have [HACS](https://hacs.xyz) installed</ins>, and you need to add this
+> repository as a custom **integration repository** to HACS.
 1. [Add a custom **integration** repository](https://www.hacs.xyz/docs/faq/custom_repositories/) to HACS using this as the repository URL:
    `https://github.com/weltmeyer/ha_sonnenbatterie`
 2. Once the repository is added, use the search bar and type `sonnenbatterie`
@@ -34,7 +58,7 @@ last release that supports them and doesn't offer newer ones.
    dependencies required by the integration
 5. Setup the `sonnenbatterie` custom integration
 
-### 2) Manual installation
+### 3) Manual installation
 
 1. Using your tool of choice open the directory (folder) where your HA configuration resides, e.g. where the
    `configuration.yaml` is
@@ -43,7 +67,7 @@ last release that supports them and doesn't offer newer ones.
 4. Download _all_ the files from the `custom_components/sonnenbatterie/` directory (folder) from this repository
 5. Place the files you downloaded in the new directory (folder) `sonnenbatterie` you created
 6. Restart Home Assistant
-7. Setup the sonnenbatterie custom integration as described below (see [Adding or enabling the integration](#adding_or_enabling_the_integration))
+7. Setup the sonnenbatterie custom integration as described below (see [Adding or enabling the integration](#adding-or-enabling-the-integration))
 
 ## Adding or enabling the integration
 
@@ -431,6 +455,7 @@ Please put those logs along with the setting you want monitored into
 
 ---
 [hacs]: https://hacs.xyz
+[marketplace_repo]: https://my.home-assistant.io/redirect/hacs_repository/?owner=weltmeyer&repository=ha_sonnenbatterie&category=integration
 [hacsbadge]: https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge&logo=homeassistantcommunitystore&logoColor=ccc
 
 [hainstall]: https://my.home-assistant.io/redirect/config_flow_start/?domain=sonnenbatterie
