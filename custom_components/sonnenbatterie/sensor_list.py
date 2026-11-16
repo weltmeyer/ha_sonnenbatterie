@@ -28,17 +28,34 @@ class SonnenbatterieSensorEntityDescription(SensorEntityDescription):
     on_slave: bool = True
     attrs_fn: Callable[[SonnenbatterieCoordinator], dict | None] | None = None
 
+def _meter(coordinator, index: int) -> dict | None:
+    """A meter's data, or None while it reports an error: a failed meter
+    reports 0 for every value (#168), which isn't a reading."""
+    try:
+        meter = coordinator.latestData["powermeter"][index]
+    except (KeyError, IndexError, TypeError):
+        return None
+    if meter.get("error") not in (None, 0):
+        return None
+    return meter
+
+
+def _meter_value(coordinator, index: int, key: str) -> float | None:
+    """A meter's voltage, current or power; None (unknown) while it fails."""
+    if (meter := _meter(coordinator, index)) is None or (value := meter.get(key)) is None:
+        return None
+    return round(value, 2)
+
+
 def _meter_counter(coordinator, index: int, counter: str) -> float | None:
     """A meter's lifetime energy counter, or None (unknown) while the meter
     reports an error or the counter reads 0: HA would take a drop to 0 as a
     meter reset and add the whole lifetime total again once the meter is
     back."""
-    try:
-        meter = coordinator.latestData["powermeter"][index]
-    except (KeyError, IndexError, TypeError):
+    if (meter := _meter(coordinator, index)) is None:
         return None
     value = meter.get(counter)
-    if value is None or meter.get("error") not in (None, 0) or value <= 0:
+    if value is None or value <= 0:
         return None
     return round(value, 3)
 
@@ -96,15 +113,8 @@ def generate_powermeter_sensors(_coordinator):
                     device_class=device_class,
                     entity_category=EntityCategory.DIAGNOSTIC,
                     suggested_display_precision=2,
-                    value_fn=lambda coordinator, _index=index, _sensor_meter=sensor_meter: (
-                        round(val, 2)
-                        if (
-                            val := coordinator.latestData.get("powermeter", {})[
-                                _index
-                            ].get(_sensor_meter)
-                        )
-                        is not None else None
-                    ),
+                    value_fn=lambda coordinator, _index=index, _sensor_meter=sensor_meter: _meter_value(
+                        coordinator, _index, _sensor_meter),
                     entity_registry_enabled_default=False,
                 )
             )
