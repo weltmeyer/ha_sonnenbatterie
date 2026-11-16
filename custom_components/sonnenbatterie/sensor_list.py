@@ -763,13 +763,12 @@ def _ic_status(coordinator) -> dict:
 
 def _battery_care(coordinator) -> bool:
     """Battery care (the full charge the battery does for maintenance, e.g.
-    after weeks without one, #132). dischargeNotAllowed isn't set during it
-    on every firmware; latestdata's ic_status is: the full charge reason is
-    'Maintenance' and the LED status reads '0x14 - INFO_BATTERY_CARE'."""
+    after weeks without one, #132), from latestdata's ic_status: the full
+    charge reason is 'Maintenance' or the LED status reads
+    '0x14 - INFO_BATTERY_CARE'."""
     ic_status = _ic_status(coordinator)
     return bool(
-        coordinator.latestData.get("v2_status", {}).get("dischargeNotAllowed") is True
-        or ic_status.get("Full Charge Reason", {}).get("Maintenance") is True
+        ic_status.get("Full Charge Reason", {}).get("Maintenance") is True
         or "BATTERY_CARE" in str(ic_status.get("Eclipse Led", {}).get("Eclipse Status", "")).upper()
     )
 
