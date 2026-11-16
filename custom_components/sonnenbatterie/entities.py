@@ -63,8 +63,8 @@ class Tag(SelectEntry, Enum):
     BATTERY_RESERVE = SelectEntry(
         key="battery_reserve",
         type=Platform.NUMBER,
-        section="status",
-        property="USOC",
+        section="configurations",
+        property="EM_USOC",
         writable=True,
     )
 

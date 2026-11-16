@@ -47,6 +47,18 @@ class SonnenbatterieNumber(SonnenNumberEntity, NumberEntity):
     def native_max_value(self) -> int:
         return self._max_power
 
+    @property
+    def native_value(self):
+        tag = self.entity_description.tag
+        if tag.key == "battery_reserve":
+            # the reserve can be read back from the configurations; before,
+            # the slider started at 0 until it was set from HA
+            try:
+                return int(self.coordinator.latestData.get(tag.section, {})[tag.property])
+            except (KeyError, TypeError, ValueError):
+                return None
+        return self._attr_native_value
+
     async def async_set_native_value(self, value):
         LOGGER.debug(f"NUMBER - async_set_native_value: {value} - {type(value)}")
         tag = self.entity_description.tag
