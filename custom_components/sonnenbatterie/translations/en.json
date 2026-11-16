@@ -168,7 +168,12 @@
                 "name": "Battery module count"
             },
             "cascading_role": {
-                "name": "Cascading role"
+                "name": "Cascading role",
+                "state": {
+                    "master": "Master",
+                    "slave": "Slave",
+                    "none": "Not cascaded"
+                }
             },
             "max_power": {
                 "name": "Max. charge/discharge power"

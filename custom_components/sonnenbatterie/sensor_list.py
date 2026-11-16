@@ -11,7 +11,7 @@ from homeassistant.components.sensor import (
 from homeassistant.const import EntityCategory, UnitOfEnergy
 from homeassistant.helpers.typing import StateType
 
-from custom_components.sonnenbatterie.const import ROLE_MASTER
+from custom_components.sonnenbatterie.const import ROLE_MASTER, ROLE_NONE, ROLE_SLAVE
 from custom_components.sonnenbatterie.coordinator import SonnenbatterieCoordinator
 
 
@@ -602,6 +602,10 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         key="cascading_role",
         icon="mdi:battery-sync-outline",
         entity_category=EntityCategory.DIAGNOSTIC,
+        # a text value: without ENUM, HA takes the sensor for a numeric one
+        # (precision 0 by default) and refuses to add it (#152)
+        device_class=SensorDeviceClass.ENUM,
+        options=[ROLE_MASTER, ROLE_SLAVE, ROLE_NONE],
         value_fn=lambda coordinator: coordinator.latestData.get(
             "battery_info", {}
         ).get("cascading_role"),

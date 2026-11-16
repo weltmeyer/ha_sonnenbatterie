@@ -168,7 +168,12 @@
                 "name": "Anzahl Batteriemodule"
             },
             "cascading_role": {
-                "name": "Kaskaden-Rolle"
+                "name": "Kaskaden-Rolle",
+                "state": {
+                    "master": "Master",
+                    "slave": "Slave",
+                    "none": "Keine Kaskade"
+                }
             },
             "max_power": {
                 "name": "Max. Lade-/Entladeleistung"
