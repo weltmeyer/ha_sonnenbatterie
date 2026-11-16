@@ -28,6 +28,21 @@ class SonnenbatterieSensorEntityDescription(SensorEntityDescription):
     on_slave: bool = True
     attrs_fn: Callable[[SonnenbatterieCoordinator], dict | None] | None = None
 
+def _meter_counter(coordinator, index: int, counter: str) -> float | None:
+    """A meter's lifetime energy counter, or None (unknown) while the meter
+    reports an error or the counter reads 0: HA would take a drop to 0 as a
+    meter reset and add the whole lifetime total again once the meter is
+    back."""
+    try:
+        meter = coordinator.latestData["powermeter"][index]
+    except (KeyError, IndexError, TypeError):
+        return None
+    value = meter.get(counter)
+    if value is None or meter.get("error") not in (None, 0) or value <= 0:
+        return None
+    return round(value, 3)
+
+
 def generate_powermeter_sensors(_coordinator):
     powermeter_sensors: list[SonnenbatterieSensorEntityDescription] = []
 
@@ -109,11 +124,8 @@ def generate_powermeter_sensors(_coordinator):
                     native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
                     device_class=SensorDeviceClass.ENERGY,
                     suggested_display_precision=2,
-                    value_fn=lambda coordinator, _index=index, _counter=counter: (
-                        round(val, 3)
-                        if (val := coordinator.latestData.get("powermeter", {})[_index].get(_counter))
-                        is not None else None
-                    ),
+                    value_fn=lambda coordinator, _index=index, _counter=counter: _meter_counter(
+                        coordinator, _index, _counter),
                     entity_registry_enabled_default=enabled,
                 )
             )
@@ -745,11 +757,17 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
 )
 
 
-def _positive(coordinator, field: str, sign: int) -> float | None:
-    """sign * the status power field if positive, else 0; None if missing."""
-    power = coordinator.latestData.get("status", {}).get(field)
+def _positive(coordinator, field: str, sign: int, flag: str | None = None) -> float | None:
+    """sign * the status power field if positive, else 0; None if missing.
+    With flag: 0 unless the battery also sets that status flag, e.g. a few W
+    of Pac_total_W in standby aren't charging (ignored if the flag is
+    missing)."""
+    status = coordinator.latestData.get("status", {})
+    power = status.get(field)
     if power is None:
         return None
+    if flag is not None and status.get(flag) is not None and not status.get(flag):
+        return 0.0
     return max(sign * float(power), 0.0)
 
 
@@ -777,12 +795,12 @@ ENERGY_SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         on_slave=False,
         icon="mdi:battery-arrow-up",
         # Pac_total_W < 0: charging
-        value_fn=lambda coordinator: _positive(coordinator, "Pac_total_W", -1),
+        value_fn=lambda coordinator: _positive(coordinator, "Pac_total_W", -1, "BatteryCharging"),
     ),
     SonnenbatterieSensorEntityDescription(
         key="energy_battery_discharge",
         on_slave=False,
         icon="mdi:battery-arrow-down",
-        value_fn=lambda coordinator: _positive(coordinator, "Pac_total_W", 1),
+        value_fn=lambda coordinator: _positive(coordinator, "Pac_total_W", 1, "BatteryDischarging"),
     ),
 )

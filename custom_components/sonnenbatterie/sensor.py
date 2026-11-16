@@ -128,10 +128,10 @@ class SonnenbatterieEnergySensor(SonnenbatterieSensor, RestoreSensor):
     of that moment, which is assumed to last until the next report). Failed
     updates and the last known values kept during an outage are skipped; the
     last fresh power is counted up to the next fresh report if that comes
-    within MAX_GAP or a few update intervals (e.g. the nightly maintenance
-    window). Longer gaps (HA not running, a real outage) are not counted,
-    instead of multiplying a stale value. The total is restored after a
-    restart.
+    within MAX_GAP or a few update intervals, after failed updates (e.g. the
+    nightly maintenance window) also allowing for the coordinator's back-off.
+    Longer gaps (HA not running, a real outage) are not counted, instead of
+    multiplying a stale value. The total is restored after a restart.
     """
 
     _attr_device_class = SensorDeviceClass.ENERGY
@@ -141,12 +141,18 @@ class SonnenbatterieEnergySensor(SonnenbatterieSensor, RestoreSensor):
 
     MAX_GAP = 300           # seconds
     MAX_GAP_INTERVALS = 3   # update intervals
+    # after failed polls the coordinator backs off (up to MAX_BACKOFF_INTERVAL)
+    # while keeping the last values (MAINTENANCE_GRACE): the first good poll
+    # after the maintenance window can come that much later; plus some time
+    # for the failed requests' timeouts
+    OUTAGE_SLACK = 60       # seconds
 
     def __init__(self, coordinator, entity_description) -> None:
         super().__init__(coordinator=coordinator, entity_description=entity_description)
         self._energy = 0.0          # kWh
         self._last_power = None     # W, from the previous update
         self._last_time = None      # time.monotonic() of the previous update
+        self._outage = False        # failed/stale updates since then
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
@@ -171,7 +177,15 @@ class SonnenbatterieEnergySensor(SonnenbatterieSensor, RestoreSensor):
     def _max_gap(self) -> float:
         interval = getattr(self.coordinator, "_base_interval", None)
         seconds = interval.total_seconds() if interval else 0
-        return max(self.MAX_GAP, self.MAX_GAP_INTERVALS * seconds)
+        limit = max(self.MAX_GAP, self.MAX_GAP_INTERVALS * seconds)
+        if self._outage:
+            # the battery didn't answer (e.g. maintenance window): allow for
+            # the coordinator's back-off. Without any updates in between (HA
+            # not running) the shorter limit applies.
+            limit = max(limit, getattr(self.coordinator, "MAINTENANCE_GRACE", 0)
+                        + max(seconds, getattr(self.coordinator, "MAX_BACKOFF_INTERVAL", 0))
+                        + self.OUTAGE_SLACK)
+        return limit
 
     def _sample(self, now: float) -> None:
         power = None
@@ -184,11 +198,13 @@ class SonnenbatterieEnergySensor(SonnenbatterieSensor, RestoreSensor):
                 power = None
         if power is None:
             # keep the last fresh sample: a short outage is bridged with it
+            self._outage = True
             return
         if self._last_power is not None and 0 < now - self._last_time <= self._max_gap():
             self._energy += self._last_power * (now - self._last_time) / 3_600_000
         self._last_power = power
         self._last_time = now
+        self._outage = False
 
     @callback
     def _handle_coordinator_update(self) -> None:
