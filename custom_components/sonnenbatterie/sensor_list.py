@@ -741,8 +741,8 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         icon="mdi:wrench-clock",
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda coordinator: (coordinator.latestData.get("v2_status", {})
-        .get("dischargeNotAllowed", False) == True),
+        value_fn=lambda coordinator: _battery_care(coordinator),
+        attrs_fn=lambda coordinator: _battery_care_attrs(coordinator),
         entity_registry_enabled_default=True,
     ),
     SonnenbatterieSensorEntityDescription(
@@ -755,6 +755,36 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         entity_registry_enabled_default=True,
     ),
 )
+
+
+def _ic_status(coordinator) -> dict:
+    return coordinator.latestData.get("latestdata", {}).get("ic_status", {}) or {}
+
+
+def _battery_care(coordinator) -> bool:
+    """Battery care (the full charge the battery does for maintenance, e.g.
+    after weeks without one, #132). dischargeNotAllowed isn't set during it
+    on every firmware; latestdata's ic_status is: the full charge reason is
+    'Maintenance' and the LED status reads '0x14 - INFO_BATTERY_CARE'."""
+    ic_status = _ic_status(coordinator)
+    return bool(
+        coordinator.latestData.get("v2_status", {}).get("dischargeNotAllowed") is True
+        or ic_status.get("Full Charge Reason", {}).get("Maintenance") is True
+        or "BATTERY_CARE" in str(ic_status.get("Eclipse Led", {}).get("Eclipse Status", "")).upper()
+    )
+
+
+def _battery_care_attrs(coordinator) -> dict | None:
+    """Where the battery care state comes from, for the sensor's attributes."""
+    ic_status = _ic_status(coordinator)
+    if not ic_status:
+        return None
+    reasons = ic_status.get("Full Charge Reason", {}) or {}
+    return {
+        "full_charge_reason": [k for k, v in reasons.items() if v is True and k != "None"],
+        "led_status": ic_status.get("Eclipse Led", {}).get("Eclipse Status"),
+        "seconds_since_full_charge": ic_status.get("secondssincefullcharge"),
+    }
 
 
 def _positive(coordinator, field: str, sign: int, flag: str | None = None) -> float | None:
