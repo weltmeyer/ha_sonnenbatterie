@@ -174,7 +174,12 @@
                 "name": "Anzahl Batteriemodule"
             },
             "cascading_role": {
-                "name": "Kaskaden-Rolle"
+                "name": "Kaskaden-Rolle",
+                "state": {
+                    "master": "Master",
+                    "slave": "Slave",
+                    "none": "Keine Kaskade"
+                }
             },
             "max_power": {
                 "name": "Max. Lade-/Entladeleistung"
@@ -232,6 +237,18 @@
             },
             "cascade_members": {
                 "name": "Kaskaden-Mitglieder"
+            },
+            "energy_grid_import": {
+                "name": "Netzbezug (Energie)"
+            },
+            "energy_grid_export": {
+                "name": "Netzeinspeisung (Energie)"
+            },
+            "energy_battery_charge": {
+                "name": "Akku Ladeenergie"
+            },
+            "energy_battery_discharge": {
+                "name": "Akku Entladeenergie"
             }
         },
         "binary_sensor": {

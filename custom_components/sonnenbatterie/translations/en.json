@@ -174,7 +174,12 @@
                 "name": "Battery module count"
             },
             "cascading_role": {
-                "name": "Cascading role"
+                "name": "Cascading role",
+                "state": {
+                    "master": "Master",
+                    "slave": "Slave",
+                    "none": "Not cascaded"
+                }
             },
             "max_power": {
                 "name": "Max. charge/discharge power"
@@ -232,6 +237,18 @@
             },
             "cascade_members": {
                 "name": "Cascade members"
+            },
+            "energy_grid_import": {
+                "name": "Grid import energy"
+            },
+            "energy_grid_export": {
+                "name": "Grid export energy"
+            },
+            "energy_battery_charge": {
+                "name": "Battery charge energy"
+            },
+            "energy_battery_discharge": {
+                "name": "Battery discharge energy"
             }
         },
         "binary_sensor": {
