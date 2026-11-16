@@ -87,6 +87,9 @@ dashboard expects, so no Riemann sum (Integral) helpers are needed any more:
   it's exact and keeps counting while Home Assistant isn't running. The
   consumption meter's counter (meter consumption … kwh_imported) is there
   as well.
+- Each meter also gets a "meter … error" problem sensor (diagnostic). It
+  turns on when the battery reports the meter as faulty; the meter's values
+  and counters can't be trusted then.
 - The battery has no counters for the grid and the battery itself. These
   four sensors add up the reported power over time (like the Integral helper
   with the "left" method), so they only count while Home Assistant is
