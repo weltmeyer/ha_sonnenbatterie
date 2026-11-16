@@ -90,8 +90,10 @@ dashboard expects, so no Riemann sum (Integral) helpers are needed any more:
 - The battery has no counters for the grid and the battery itself. These
   four sensors add up the reported power over time (like the Integral helper
   with the "left" method), so they only count while Home Assistant is
-  running and the battery is reachable, and short power peaks between two
-  updates are missed. A shorter scan interval makes them more accurate.
+  running, and short power peaks between two updates are missed. A shorter
+  scan interval makes them more accurate. Short outages such as the nightly
+  maintenance window are bridged with the last power read; gaps longer than
+  5 minutes (or 3 scan intervals) aren't counted.
 - They start at 0. Switching the energy dashboard from your own helpers to
   these sensors starts a new history for those fields; the old one stays.
 - In a cascade, these sensors are only created for the master: its values

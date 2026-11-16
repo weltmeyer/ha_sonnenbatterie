@@ -125,10 +125,13 @@ class SonnenbatterieEnergySensor(SonnenbatterieSensor, RestoreSensor):
 
     On every coordinator update, the power of the previous update is counted
     for the time since then (left Riemann sum: the battery reports the power
-    of that moment, which is assumed to last until the next report). Gaps
-    longer than MAX_GAP or a few update intervals (HA not running) and
-    intervals around a failed update are not counted, instead of multiplying
-    a stale value. The total is restored after a restart.
+    of that moment, which is assumed to last until the next report). Failed
+    updates and the last known values kept during an outage are skipped; the
+    last fresh power is counted up to the next fresh report if that comes
+    within MAX_GAP or a few update intervals (e.g. the nightly maintenance
+    window). Longer gaps (HA not running, a real outage) are not counted,
+    instead of multiplying a stale value. The total is restored after a
+    restart.
     """
 
     _attr_device_class = SensorDeviceClass.ENERGY
@@ -179,11 +182,13 @@ class SonnenbatterieEnergySensor(SonnenbatterieSensor, RestoreSensor):
                 power = self.entity_description.value_fn(self.coordinator)
             except (TypeError, ValueError):
                 power = None
-        if (power is not None and self._last_power is not None
-                and 0 < now - self._last_time <= self._max_gap()):
+        if power is None:
+            # keep the last fresh sample: a short outage is bridged with it
+            return
+        if self._last_power is not None and 0 < now - self._last_time <= self._max_gap():
             self._energy += self._last_power * (now - self._last_time) / 3_600_000
         self._last_power = power
-        self._last_time = now if power is not None else None
+        self._last_time = now
 
     @callback
     def _handle_coordinator_update(self) -> None:
