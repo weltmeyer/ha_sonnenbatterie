@@ -236,6 +236,13 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
         """The session token is no longer valid (e.g. after a battery restart)."""
         return isinstance(e, aiohttp.ClientResponseError) and e.status in (401, 403)
 
+    @property
+    def has_fresh_data(self) -> bool:
+        """The last update actually read the battery. False after a failed
+        update, also while the last known values are kept during the
+        maintenance window (see _handle_update_error)."""
+        return self.last_update_success and self._last_error is None
+
     def _has_data(self) -> bool:
         """Data needed by populate_battery_info() / device_info is present."""
         return "status" in self.latestData and "battery_system" in self.latestData

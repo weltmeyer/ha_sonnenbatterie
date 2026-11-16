@@ -8,6 +8,7 @@ from .entities import SonnenBaseEntity
 from .binary_sensor_list import (
     BINARY_SENSORS,
     SonnenbatterieBinarySensorEntityDescription,
+    generate_powermeter_binary_sensors,
 )
 
 
@@ -21,6 +22,13 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         for description in BINARY_SENSORS
         if description.value_fn(coordinator) is not None
     )
+
+    # a cascade's slave has no (connected) meters
+    if not coordinator.is_slave:
+        async_add_entities(
+            SonnenbatterieBinarySensor(coordinator=coordinator, entity_description=description)
+            for description in generate_powermeter_binary_sensors(coordinator)
+        )
 
     return True
 

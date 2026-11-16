@@ -8,10 +8,10 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import EntityCategory
+from homeassistant.const import EntityCategory, UnitOfEnergy
 from homeassistant.helpers.typing import StateType
 
-from custom_components.sonnenbatterie.const import ROLE_MASTER
+from custom_components.sonnenbatterie.const import ROLE_MASTER, ROLE_NONE, ROLE_SLAVE
 from custom_components.sonnenbatterie.coordinator import SonnenbatterieCoordinator
 
 
@@ -27,6 +27,38 @@ class SonnenbatterieSensorEntityDescription(SensorEntityDescription):
     # (the meters are on the master) or a setting of the whole cascade
     on_slave: bool = True
     attrs_fn: Callable[[SonnenbatterieCoordinator], dict | None] | None = None
+
+def _meter(coordinator, index: int) -> dict | None:
+    """A meter's data, or None while it reports an error: a failed meter
+    reports 0 for every value (#168), which isn't a reading."""
+    try:
+        meter = coordinator.latestData["powermeter"][index]
+    except (KeyError, IndexError, TypeError):
+        return None
+    if meter.get("error") not in (None, 0):
+        return None
+    return meter
+
+
+def _meter_value(coordinator, index: int, key: str) -> float | None:
+    """A meter's voltage, current or power; None (unknown) while it fails."""
+    if (meter := _meter(coordinator, index)) is None or (value := meter.get(key)) is None:
+        return None
+    return round(value, 2)
+
+
+def _meter_counter(coordinator, index: int, counter: str) -> float | None:
+    """A meter's lifetime energy counter, or None (unknown) while the meter
+    reports an error or the counter reads 0: HA would take a drop to 0 as a
+    meter reset and add the whole lifetime total again once the meter is
+    back."""
+    if (meter := _meter(coordinator, index)) is None:
+        return None
+    value = meter.get(counter)
+    if value is None or value <= 0:
+        return None
+    return round(value, 3)
+
 
 def generate_powermeter_sensors(_coordinator):
     powermeter_sensors: list[SonnenbatterieSensorEntityDescription] = []
@@ -81,16 +113,30 @@ def generate_powermeter_sensors(_coordinator):
                     device_class=device_class,
                     entity_category=EntityCategory.DIAGNOSTIC,
                     suggested_display_precision=2,
-                    value_fn=lambda coordinator, _index=index, _sensor_meter=sensor_meter: (
-                        round(val, 2)
-                        if (
-                            val := coordinator.latestData.get("powermeter", {})[
-                                _index
-                            ].get(_sensor_meter)
-                        )
-                        is not None else None
-                    ),
+                    value_fn=lambda coordinator, _index=index, _sensor_meter=sensor_meter: _meter_value(
+                        coordinator, _index, _sensor_meter),
                     entity_registry_enabled_default=False,
+                )
+            )
+
+        # the meter's own energy counters (kWh, keep counting while HA is
+        # down): usable in the energy dashboard as they are. kwh_exported
+        # has been 0 on all meters seen so far, so it starts disabled.
+        for counter, enabled in (("kwh_imported", True), ("kwh_exported", False)):
+            if meter.get(counter) is None:
+                continue
+            powermeter_sensors.append(
+                SonnenbatterieSensorEntityDescription(
+                    key=f"{sensor_prefix_key}_{counter}",
+                    name=f"meter {meter['direction']} {meter['channel']} {counter}",
+                    icon="mdi:meter-electric-outline",
+                    state_class=SensorStateClass.TOTAL_INCREASING,
+                    native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+                    device_class=SensorDeviceClass.ENERGY,
+                    suggested_display_precision=2,
+                    value_fn=lambda coordinator, _index=index, _counter=counter: _meter_counter(
+                        coordinator, _index, _counter),
+                    entity_registry_enabled_default=enabled,
                 )
             )
 
@@ -578,6 +624,10 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         key="cascading_role",
         icon="mdi:battery-sync-outline",
         entity_category=EntityCategory.DIAGNOSTIC,
+        # a text value: without ENUM, HA takes the sensor for a numeric one
+        # (precision 0 by default) and refuses to add it (#152)
+        device_class=SensorDeviceClass.ENUM,
+        options=[ROLE_MASTER, ROLE_SLAVE, ROLE_NONE],
         value_fn=lambda coordinator: coordinator.latestData.get(
             "battery_info", {}
         ).get("cascading_role"),
@@ -701,8 +751,8 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         icon="mdi:wrench-clock",
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda coordinator: (coordinator.latestData.get("v2_status", {})
-        .get("dischargeNotAllowed", False) == True),
+        value_fn=lambda coordinator: _battery_care(coordinator),
+        attrs_fn=lambda coordinator: _battery_care_attrs(coordinator),
         entity_registry_enabled_default=True,
     ),
     SonnenbatterieSensorEntityDescription(
@@ -713,5 +763,95 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         native_unit_of_measurement="%",
         value_fn=lambda coordinator: int(coordinator.latestData.get("v2_status", {}).get("BackupBuffer", "0")),
         entity_registry_enabled_default=True,
+    ),
+)
+
+
+def _ic_status(coordinator) -> dict:
+    return (coordinator.latestData.get("latestdata") or {}).get("ic_status") or {}
+
+
+def _battery_care(coordinator) -> bool:
+    """Battery care (the full charge the battery does for maintenance, e.g.
+    after weeks without one, #132), from latestdata's ic_status: the full
+    charge reason is 'Maintenance' or the LED status reads
+    '0x14 - INFO_BATTERY_CARE'."""
+    ic_status = _ic_status(coordinator)
+    # any of these may be null on some firmware: value_fn runs at setup, an
+    # exception would keep the whole sensor platform from loading
+    reasons = ic_status.get("Full Charge Reason") or {}
+    led = ic_status.get("Eclipse Led") or {}
+    return bool(
+        reasons.get("Maintenance") is True
+        or "BATTERY_CARE" in str(led.get("Eclipse Status") or "").upper()
+    )
+
+
+def _battery_care_attrs(coordinator) -> dict | None:
+    """Where the battery care state comes from, for the sensor's attributes."""
+    ic_status = _ic_status(coordinator)
+    if not ic_status:
+        return None
+    reasons = ic_status.get("Full Charge Reason") or {}
+    return {
+        "full_charge_reason": [k for k, v in reasons.items() if v is True and k != "None"],
+        "led_status": (ic_status.get("Eclipse Led") or {}).get("Eclipse Status"),
+        "seconds_since_full_charge": ic_status.get("secondssincefullcharge"),
+    }
+
+
+# standby noise: batteries report a few W of Pac_total_W in standby (-2 to
+# -32 W seen) without the charging/discharging flag
+STANDBY_NOISE_W = 50
+
+
+def _positive(coordinator, field: str, sign: int, flag: str | None = None) -> float | None:
+    """sign * the status power field if positive, else 0; None if missing.
+    With flag: up to STANDBY_NOISE_W only counts if the battery also sets
+    that status flag, so standby noise isn't counted as charging. More power
+    always counts: in a cascade, Pac_total_W covers all units, but the
+    master's flags may only describe its own unit."""
+    status = coordinator.latestData.get("status", {})
+    power = status.get(field)
+    if power is None:
+        return None
+    value = max(sign * float(power), 0.0)
+    if (flag is not None and status.get(flag) is False
+            and value <= STANDBY_NOISE_W):
+        return 0.0
+    return value
+
+
+# Energy (kWh) integrated from the power the battery reports, for the energy
+# dashboard: the battery has no counters for these. value_fn returns the
+# power in W (>= 0) that SonnenbatterieEnergySensor sums up over time. Not on
+# a cascade's slave: on the master these values cover the whole cascade
+# (meters and Pac_total_W), so a slave's battery energy would be counted twice.
+ENERGY_SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
+    SonnenbatterieSensorEntityDescription(
+        key="energy_grid_import",
+        on_slave=False,
+        icon="mdi:transmission-tower-export",
+        # GridFeedIn_W < 0: drawing from the grid
+        value_fn=lambda coordinator: _positive(coordinator, "GridFeedIn_W", -1),
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="energy_grid_export",
+        on_slave=False,
+        icon="mdi:transmission-tower-import",
+        value_fn=lambda coordinator: _positive(coordinator, "GridFeedIn_W", 1),
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="energy_battery_charge",
+        on_slave=False,
+        icon="mdi:battery-arrow-up",
+        # Pac_total_W < 0: charging
+        value_fn=lambda coordinator: _positive(coordinator, "Pac_total_W", -1, "BatteryCharging"),
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="energy_battery_discharge",
+        on_slave=False,
+        icon="mdi:battery-arrow-down",
+        value_fn=lambda coordinator: _positive(coordinator, "Pac_total_W", 1, "BatteryDischarging"),
     ),
 )
