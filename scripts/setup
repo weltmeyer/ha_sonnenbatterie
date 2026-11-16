@@ -14,6 +14,12 @@ fi
 python3 -m pip install --upgrade pip
 python3 -m pip install --requirement requirements.txt
 
+# pip installs the tools (e.g. ruff) into ~/.local/bin when not run as
+# root: put it on the PATH for the shells of every editor (VS Code, Zed)
+if [[ "$(id -u)" != "0" ]] && ! grep -q '.local/bin' ~/.bashrc 2>/dev/null; then
+    echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+fi
+
 # default_config depends on go2rtc, which fails to set up inside a container
 # without its binary. Install the version this Home Assistant recommends.
 if ! command -v go2rtc >/dev/null 2>&1; then

@@ -15,7 +15,14 @@
 	// Install Home Assistant and the integration's requirements
 	"postCreateCommand": "scripts/setup",
 
+	// Editors: each one reads its own section and ignores the other.
+	// Zed: "Open in Container" when opening the project, or
+	// "Project: Open Remote" -> "Connect Dev Container"; Python support
+	// (basedpyright, ruff) is built in, project settings are in .zed/settings.json
 	"customizations": {
+		"zed": {
+			"extensions": ["toml"]
+		},
 		"vscode": {
 			"extensions": [
 				"charliermarsh.ruff",
