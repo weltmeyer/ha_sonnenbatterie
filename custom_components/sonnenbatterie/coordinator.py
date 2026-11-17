@@ -444,6 +444,10 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
                 # endpoint we poll, so keep it on the slow cadence with the other
                 # diagnostic/config data rather than fetching it every cycle
                 self.latestData["latestdata"] = await self.sbconn.sb2.get_latest_data()
+                # digital inputs/outputs (/api/v2/io). Optional, and a failed fetch
+                # keeps the last known pin states instead of wiping them.
+                if io_data := await self._safe_fetch(self.sbconn.sb2.get_io_data()):
+                    self.latestData["io"] = io_data
 
                 # Legacy v1-only endpoints (no v2 equivalent): fetched independently
                 # so one of them failing (e.g. rejected by the firmware in
