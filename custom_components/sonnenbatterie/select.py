@@ -16,6 +16,11 @@ async def async_setup_entry(
     LOGGER.debug(f"SELECT async_setup_entry: {config_entry}")
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
 
+    if coordinator.is_slave:
+        # controlled by the cascade's master: read-only
+        LOGGER.info(f"cascade slave {coordinator.serial} - no SELECT entities")
+        return
+
     if coordinator.latestData.get('api_configuration',{}).get('IN_LocalAPIWriteActive', '0') == '1':
         # await coordinator.async_refresh()
 

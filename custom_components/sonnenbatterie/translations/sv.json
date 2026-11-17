@@ -1,7 +1,9 @@
 {
     "config": {
         "abort": {
-            "single_instance_allowed": "Endast en Sonnenbatterie-konfiguration tillåten."
+            "single_instance_allowed": "Endast en Sonnenbatterie-konfiguration tillåten.",
+            "already_configured": "Det här batteriet är redan konfigurerat.",
+            "wrong_device": "Batteriet på den här adressen har ett annat serienummer än det kaskadmastern listade."
         },
         "error": {
             "connection_error": "Det gick inte att ansluta till Sonnenbatterie",
@@ -66,6 +68,15 @@
                 },
                 "title": "Konfigurera din Sonnenbatterie",
                 "description": "Ingen inloggning med användarnamn/lösenord används - Auth-Token räcker för att både läsa av och styra batteriet. Du hittar den i Sonnen-appen/dashboarden under Inställningar -> Integrationer -> Software Integration."
+            },
+            "discovery_confirm": {
+                "title": "Batteri {serial} i din kaskad",
+                "description": "Kaskadmastern listar batteriet {serial} på {ip_address}. Lägg till det för att se dess egna värden (laddningsnivå, effekt, cykler, temperaturer). Det styrs av mastern och får därför inga reglage.\n\nVarje försök är en inloggning: efter misslyckade inloggningar blockerar batteriet nya under en stund.",
+                "data": {
+                    "username": "Användare",
+                    "password": "Lösenord",
+                    "scan_interval": "Uppdateringsintervall (sekunder)"
+                }
             }
         }
     },
@@ -100,7 +111,7 @@
         "sensor": {
             "state_sonnenbatterie": {
                 "name": "Sonnenbatterie",
-                 "state": {
+                "state": {
                     "standby": "Standby",
                     "charging": "Laddar",
                     "discharging": "Laddar ur"
@@ -124,7 +135,7 @@
             "state_grid_out": {
                 "name": "Nät ut-effekt"
             },
-             "state_net_frequency": {
+            "state_net_frequency": {
                 "name": "Nätfrekvens"
             },
             "state_battery_inout": {
@@ -193,7 +204,12 @@
                 "name": "Antal batterimoduler"
             },
             "cascading_role": {
-                "name": "Kaskadroll"
+                "name": "Kaskadroll",
+                "state": {
+                    "master": "Master",
+                    "slave": "Slav",
+                    "none": "Ej kaskad"
+                }
             },
             "max_power": {
                 "name": "Max laddnings-/urladdningseffekt"
@@ -251,6 +267,30 @@
             },
             "state_setpoint": {
                 "name": "Batteri börvärde"
+            },
+            "pv_string_current": {
+                "name": "PV-sträng {string} ström"
+            },
+            "pv_string_power": {
+                "name": "PV-sträng {string} effekt"
+            },
+            "pv_string_voltage": {
+                "name": "PV-sträng {string} spänning"
+            },
+            "cascade_members": {
+                "name": "Kaskadmedlemmar"
+            },
+            "energy_grid_import": {
+                "name": "Nätimport (energi)"
+            },
+            "energy_grid_export": {
+                "name": "Nätexport (energi)"
+            },
+            "energy_battery_charge": {
+                "name": "Batteriladdning (energi)"
+            },
+            "energy_battery_discharge": {
+                "name": "Batteriurladdning (energi)"
             }
         },
         "binary_sensor": {
@@ -396,7 +436,7 @@
             "name": "Hämta laddningsschema",
             "description": "Returnerar de laddningsscheman som för närvarande finns lagrade i Sonnenbatteries konfiguration",
             "fields": {
-                    "device_id": {
+                "device_id": {
                     "description": "Home Assistant-ID för målenheten",
                     "name": "Enhets-ID",
                     "example": "1234567890"

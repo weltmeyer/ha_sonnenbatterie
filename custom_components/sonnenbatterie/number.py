@@ -14,6 +14,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
     # await coordinator.async_refresh()
 
+    if coordinator.is_slave:
+        # controlled by the cascade's master: read-only
+        LOGGER.info(f"cascade slave {coordinator.serial} - no NUMBER entities")
+        return
+
     if coordinator.latestData.get('api_configuration',{}).get('IN_LocalAPIWriteActive', '0') == '1':
 
         max_power = int(hass.data[DOMAIN][config_entry.entry_id][CONF_INVERTER_MAX])

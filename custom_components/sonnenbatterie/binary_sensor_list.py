@@ -90,3 +90,34 @@ BINARY_SENSORS: tuple[SonnenbatterieBinarySensorEntityDescription, ...] = (
         entity_registry_enabled_default=False,
     ),
 )
+
+
+def generate_powermeter_binary_sensors(coordinator: SonnenbatterieCoordinator):
+    """A problem sensor per power meter, from its 'error' field (0 = OK,
+    e.g. -1 when the meter has failed, #168)."""
+    descriptions: list[SonnenbatterieBinarySensorEntityDescription] = []
+    for index, meter in enumerate(coordinator.latestData.get("powermeter") or []):
+        if not isinstance(meter, dict) or meter.get("error") is None:
+            continue
+        prefix = f"meter_{meter['direction']}_{meter['deviceid']}_{meter['channel']}".lower()
+        descriptions.append(
+            SonnenbatterieBinarySensorEntityDescription(
+                key=f"{prefix}_error",
+                name=f"meter {meter['direction']} {meter['channel']} error",
+                icon="mdi:meter-electric-outline",
+                device_class=BinarySensorDeviceClass.PROBLEM,
+                entity_category=EntityCategory.DIAGNOSTIC,
+                value_fn=lambda coordinator, _index=index: _meter_error(coordinator, _index),
+            )
+        )
+    return descriptions
+
+
+def _meter_error(coordinator: SonnenbatterieCoordinator, index: int) -> bool | None:
+    try:
+        error = coordinator.latestData["powermeter"][index]["error"]
+    except (KeyError, IndexError, TypeError):
+        return None
+    if error is None:
+        return None
+    return error != 0

@@ -1,7 +1,9 @@
 {
     "config": {
         "abort": {
-            "single_instance_allowed": "Es ist nur eine einzige Konfiguration von Sonnenbatterie erlaubt."
+            "single_instance_allowed": "Es ist nur eine einzige Konfiguration von Sonnenbatterie erlaubt.",
+            "already_configured": "Diese Sonnenbatterie ist bereits eingerichtet.",
+            "wrong_device": "Die Batterie unter dieser Adresse hat eine andere Seriennummer als die vom Kaskaden-Master genannte."
         },
         "error": {
             "connection_error": "Es kann keine Verbindung zur Sonnenbatterie hergestellt werden.",
@@ -66,6 +68,15 @@
                 },
                 "title": "Sonnenbatterie-Konfiguration",
                 "description": "Es wird keine Anmeldung mit Benutzername/Passwort verwendet - der Auth-Token genügt sowohl zum Lesen als auch zum Steuern der Batterie. Du findest ihn in der Sonnen-App/im Dashboard unter Einstellungen -> Integrationen -> Software-Integration."
+            },
+            "discovery_confirm": {
+                "title": "Batterie {serial} deiner Kaskade",
+                "description": "Der Kaskaden-Master nennt die Batterie {serial} unter {ip_address}. Füge sie hinzu, um ihre eigenen Werte zu sehen (Ladestand, Leistung, Zyklen, Temperaturen). Sie wird vom Master gesteuert und bekommt daher keine Bedienelemente.\n\nJeder Versuch ist eine Anmeldung: nach fehlgeschlagenen Anmeldungen sperrt die Batterie weitere für eine Weile.",
+                "data": {
+                    "username": "Benutzer",
+                    "password": "Passwort",
+                    "scan_interval": "Aktualisierungsintervall (Sekunden)"
+                }
             }
         }
     },
@@ -193,7 +204,12 @@
                 "name": "Anzahl Batteriemodule"
             },
             "cascading_role": {
-                "name": "Kaskaden-Rolle"
+                "name": "Kaskaden-Rolle",
+                "state": {
+                    "master": "Master",
+                    "slave": "Slave",
+                    "none": "Keine Kaskade"
+                }
             },
             "max_power": {
                 "name": "Max. Lade-/Entladeleistung"
@@ -209,6 +225,15 @@
             },
             "battery_grid_tmax": {
                 "name": "Akkusystem maximale Temperatur"
+            },
+            "pv_string_current": {
+                "name": "PV-String {string} Strom"
+            },
+            "pv_string_power": {
+                "name": "PV-String {string} Leistung"
+            },
+            "pv_string_voltage": {
+                "name": "PV-String {string} Spannung"
             },
             "inverter_state_ipv": {
                 "name": "Spannungswandler IPV 1"
@@ -251,6 +276,21 @@
             },
             "state_setpoint": {
                 "name": "Akku Sollwert"
+            },
+            "cascade_members": {
+                "name": "Kaskaden-Mitglieder"
+            },
+            "energy_grid_import": {
+                "name": "Netzbezug (Energie)"
+            },
+            "energy_grid_export": {
+                "name": "Netzeinspeisung (Energie)"
+            },
+            "energy_battery_charge": {
+                "name": "Akku Ladeenergie"
+            },
+            "energy_battery_discharge": {
+                "name": "Akku Entladeenergie"
             }
         },
         "binary_sensor": {

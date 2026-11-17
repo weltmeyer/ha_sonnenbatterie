@@ -81,6 +81,67 @@ are already activated.
 > If you want to dive deeper, just head over to your Sonnenbatterie device
 > settings, click on "Entities" and enable the ones you're interested in.
 
+## Energy dashboard
+The integration provides the energy sensors (kWh) Home Assistant's energy
+dashboard expects, so no Riemann sum (Integral) helpers are needed any more:
+
+| Energy dashboard | Sensor |
+|---|---|
+| Grid consumption | Grid import energy |
+| Return to grid | Grid export energy |
+| Solar production | meter production … kwh_imported |
+| Battery: energy going in | Battery charge energy |
+| Battery: energy coming out | Battery discharge energy |
+
+- The solar production comes from the production meter's own counter, so
+  it's exact and keeps counting while Home Assistant isn't running. The
+  consumption meter's counter (meter consumption … kwh_imported) is there
+  as well.
+- Each meter also gets a "meter … error" problem sensor (diagnostic). It
+  turns on when the battery reports the meter as faulty. All of the meter's
+  values and counters show as unknown meanwhile (a failed meter reports 0
+  for everything), so it doesn't put a spike into the energy dashboard when
+  it comes back.
+- The battery has no counters for the grid and the battery itself. These
+  four sensors add up the reported power over time (like the Integral helper
+  with the "left" method), so they only count while Home Assistant is
+  running, and short power peaks between two updates are missed. A shorter
+  scan interval makes them more accurate. Short outages such as the nightly
+  maintenance window are bridged with the last power read. Longer outages,
+  and gaps of more than 5 minutes (or 3 scan intervals) while Home Assistant
+  wasn't running, aren't counted.
+- The few watts some batteries report in standby aren't counted as charging
+  or discharging (unlike an Integral helper): up to 50 W only count while the
+  battery also reports that it's charging or discharging.
+- They start at 0. Switching the energy dashboard from your own helpers to
+  these sensors starts a new history for those fields; the old one stays.
+- In a cascade, these sensors are only created for the master: its values
+  cover the whole cascade.
+
+## Cascades
+In a cascade, several batteries act as one system: the master has the meters
+and controls the cascade, the slaves only report their own unit.
+
+- Set up the integration for the **master**. Its sensors cover the whole
+  cascade (consumption, production, grid, installed capacity, max. power),
+  and the diagnostic sensor "Cascade members" shows the number of units,
+  with their serial numbers and status as attributes. The battery reports
+  its state of charge (relative), full charge capacity and battery power for
+  the whole cascade on the master, so the master's sensors for these show
+  the cascade, not the master unit alone. The master's battery details
+  (cycles, temperatures, cell voltages) are its own.
+- The master's slaves then show up as discovered devices. Add them to see
+  each unit's own values (state of charge, battery power, cycles,
+  temperatures, capacity). The master's username and password are suggested;
+  each attempt is one login, and failed logins make the battery block further
+  ones for a while. A slave's IP address is updated automatically when the
+  master reports a new one.
+- Slaves are read-only: no controls (setpoints, operating mode, buttons) and
+  no actions, as the master controls the cascade. Their consumption,
+  production, grid, power meter and cascade-wide settings sensors are left
+  out, since a slave has no meters. If a slave was added before this version,
+  those entities are removed from it.
+
 
 ## Actions
 Since version 2025.01.01 this integration also supports actions you can use to

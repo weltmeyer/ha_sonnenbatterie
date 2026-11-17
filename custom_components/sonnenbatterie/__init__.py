@@ -9,11 +9,12 @@ from homeassistant.core import (
     HomeAssistant, SupportsResponse,
 )
 from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import entity_registry as er
 from sonnenbatterie import AsyncSonnenBatterie
 
 from .const import *
 from .coordinator import SonnenbatterieCoordinator
-from .sensor_list import SonnenbatterieSensorEntityDescription
+from .sensor_list import SENSORS, SonnenbatterieSensorEntityDescription
 from .service import SonnenbatterieService
 from .token_client import TokenSonnenBatterie
 
@@ -79,6 +80,23 @@ async def _get_serial_number(config_entry: ConfigEntry) -> str:
     await sb_conn.logout()
     return sysdata.get("DE_Ticket_Number", "sru-unknown")
 
+def _remove_stale_slave_entities(hass: HomeAssistant, config_entry: ConfigEntry, serial: str) -> None:
+    """A cascade's slave gets no controls, meters or cascade-wide sensors.
+    Remove those an earlier version created for it, instead of leaving them
+    behind as unavailable."""
+    ent_reg = er.async_get(hass)
+    skipped = {d.legacy_key or d.key for d in SENSORS if not d.on_slave}
+    prefix = f"sensor.sonnenbatterie_{serial}_"
+    for entity in er.async_entries_for_config_entry(ent_reg, config_entry.entry_id):
+        stale = entity.domain in (Platform.NUMBER, Platform.SELECT, Platform.BUTTON)
+        if entity.domain == Platform.SENSOR and entity.unique_id.startswith(prefix):
+            key = entity.unique_id[len(prefix):]
+            stale = key in skipped or key.startswith("meter_")
+        if stale:
+            LOGGER.info(f"cascade slave {serial}: removing {entity.entity_id}")
+            ent_reg.async_remove(entity.entity_id)
+
+
 # noinspection PyUnusedLocal
 async def async_setup(hass, config):
     """Set up using YAML is not supported by this integration."""
@@ -138,10 +156,17 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     # Initialize our services
     services = SonnenbatterieService(hass, config_entry, sb_coordinator)
 
+    if sb_coordinator.is_slave:
+        _remove_stale_slave_entities(hass, config_entry, serial_number)
+
     # Setup our sensors, services and whatnot
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
 
-    if sb_coordinator.latestData.get('api_configuration',{}).get('IN_LocalAPIWriteActive', '0') == '1':
+    if sb_coordinator.is_slave:
+        # controlled by the cascade's master; registering the services here
+        # would also point them at this slave
+        LOGGER.info(f"cascade slave {serial_number} - read-only, no SERVICE functions")
+    elif sb_coordinator.latestData.get('api_configuration',{}).get('IN_LocalAPIWriteActive', '0') == '1':
         # service registration
         hass.services.async_register(
             DOMAIN,

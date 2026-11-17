@@ -13,6 +13,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     LOGGER.debug(f"BUTTON async_setup_entry - {config_entry}")
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
 
+    if coordinator.is_slave:
+        # controlled by the cascade's master: read-only
+        LOGGER.info(f"cascade slave {coordinator.serial} - no BUTTON entities")
+        return
+
     if coordinator.latestData.get('api_configuration', {}).get('IN_LocalAPIWriteActive', '0') == '1':
         entities = []
         for description in BUTTON_ENTITIES:
