@@ -135,6 +135,19 @@ dashboard expects, so no Riemann sum (Integral) helpers are needed any more:
 - In a cascade, these sensors are only created for the master: its values
   cover the whole cascade.
 
+For the live power flow, the energy dashboard also takes power sensors (W).
+It expects positive = from the grid / out of the battery:
+
+| Energy dashboard | Sensor | Sign |
+|---|---|---|
+| Grid power | Grid in/out power, **inverted** | positive = feeding into the grid, negative = from the grid |
+| Battery power | Battery charge/discharge power | positive = discharging, negative = charging |
+
+Instead of one sensor, both fields also take two, one per direction: "Grid
+in power" (from the grid) and "Grid out power" (into the grid), "Battery
+discharge power" and "Battery charge power". These four are disabled by
+default.
+
 ## Cascades
 In a cascade, several batteries act as one system: the master has the meters
 and controls the cascade, the slaves only report their own unit.
