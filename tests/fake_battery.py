@@ -3,6 +3,7 @@ according to an sb_info report (tests/fixtures), on 127.0.0.1."""
 
 import copy
 import hashlib
+import hmac
 import json
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from aiohttp import web
 
 PASSWORD = "pw-good"
 CHALLENGE = "c0ffee"
+SALT = "5a1t"
 TOKEN = "tok"
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -19,13 +21,33 @@ def load_fixture(name: str) -> dict:
     return json.loads((FIXTURES / f"{name}.json").read_text())
 
 
+def salted_response(password: str, challenge: str, salt: str) -> str:
+    """The login response of current firmware: HMAC-SHA256 of the challenge,
+    keyed with PBKDF2 of the password's SHA-512 and the user's salt."""
+    pw_sha512 = hashlib.sha512(password.encode()).hexdigest()
+    key = hashlib.pbkdf2_hmac("sha512", pw_sha512.encode(), salt.encode(), 7500, 64).hex()
+    return hmac.new(key.encode(), challenge.encode(), hashlib.sha256).hexdigest()
+
+
+def legacy_response(password: str, challenge: str) -> str:
+    """The login response of older firmware (no salt)."""
+    pw_sha512 = hashlib.sha512(password.encode()).hexdigest()
+    return hashlib.pbkdf2_hmac("sha512", pw_sha512.encode(), challenge.encode(), 7500, 64).hex()
+
+
 class FakeBattery:
     """Serves GET /api/<path> from the report's endpoints, logs in with
     PASSWORD (challenge/response like the battery), and handles the writes
-    the integration makes (operating mode, reserve, setpoints)."""
+    the integration makes (operating mode, reserve, setpoints).
 
-    def __init__(self, report: dict) -> None:
+    salted=True: the login of current firmware (salt per user, see
+    salted_response); False: the older one without a salt."""
+
+    def __init__(self, report: dict, salted: bool = True) -> None:
         self.endpoints = copy.deepcopy(report["endpoints"])
+        self.salted = salted
+        self.new_challenge_once = False     # answer the first login with a new challenge
+        self.current_challenge = CHALLENGE
         self.port = None
         self.runner = None
         self.logins = 0
@@ -84,18 +106,31 @@ class FakeBattery:
             self.runner = None
 
     async def _salt(self, request):
-        return web.json_response({"error": "not found"}, status=404)
+        if not self.salted:
+            return web.json_response({"error": "not found"}, status=404)
+        return web.json_response({"salt": SALT})
 
     async def _challenge(self, request):
+        self.current_challenge = CHALLENGE
         return web.json_response(CHALLENGE)
 
     async def _session(self, request):
         form = await request.post()
-        pw = hashlib.sha512(PASSWORD.encode()).hexdigest()
-        expected = hashlib.pbkdf2_hmac("sha512", pw.encode(), CHALLENGE.encode(), 7500, 64).hex()
+        if form.get("challenge") != self.current_challenge:
+            self.failed_logins += 1
+            return web.json_response({"error": "401 Unauthorized"}, status=401)
+        if self.salted:
+            expected = salted_response(PASSWORD, self.current_challenge, SALT)
+        else:
+            expected = legacy_response(PASSWORD, self.current_challenge)
         if form.get("response") != expected:
             self.failed_logins += 1
             return web.json_response({"error": "401 Unauthorized"}, status=401)
+        if self.salted and self.new_challenge_once:
+            # the battery may ask for a second round with a new challenge
+            self.new_challenge_once = False
+            self.current_challenge = "n3wc0ffee"
+            return web.json_response({"new_challenge": self.current_challenge})
         self.logins += 1
         return web.json_response({"authentication_token": TOKEN})
 

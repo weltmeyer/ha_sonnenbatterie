@@ -41,6 +41,26 @@ async def test_wrong_password_shows_error(hass, make_battery):
     assert not hass.config_entries.async_entries(DOMAIN)
 
 
+async def test_older_login_without_salt(hass, make_battery):
+    """Older firmware has no salt (404 on /api/salt): the login without one."""
+    battery = await make_battery("single", salted=False)
+    entry = await setup_battery(hass, battery)
+    assert entry.state is ConfigEntryState.LOADED
+    assert battery.logins >= 1
+    result = await user_flow(hass, await make_battery("single", salted=False), password="wrong")
+    assert result["errors"] == {"base": "connection_error"}
+
+
+async def test_login_with_new_challenge(hass, make_battery):
+    """Current firmware may answer the first login with a new challenge."""
+    battery = await make_battery("single")
+    battery.new_challenge_once = True
+    entry = await setup_battery(hass, battery)
+    assert entry.state is ConfigEntryState.LOADED
+    assert not battery.new_challenge_once
+    assert battery.failed_logins == 0
+
+
 async def test_unreachable_battery_shows_error(hass, make_battery):
     battery = await make_battery("single")
     await battery.stop()

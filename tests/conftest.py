@@ -27,8 +27,9 @@ async def make_battery(hass: HomeAssistant):
     stops the batteries after the test."""
     batteries: list[FakeBattery] = []
 
-    async def make(fixture: str = "single", write_access: bool | None = None) -> FakeBattery:
-        battery = FakeBattery(load_fixture(fixture))
+    async def make(fixture: str = "single", write_access: bool | None = None,
+                   salted: bool = True) -> FakeBattery:
+        battery = FakeBattery(load_fixture(fixture), salted=salted)
         if write_access is not None:
             battery.set_write_access(write_access)
         await battery.start()
