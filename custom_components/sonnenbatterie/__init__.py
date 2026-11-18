@@ -68,6 +68,32 @@ async def _get_serial_number(config_entry: ConfigEntry) -> str:
     await sb_conn.logout()
     return sysdata.get("DE_Ticket_Number", "sru-unknown")
 
+def _migrate_control_unique_ids(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
+    """Up to 2026.3.2 the numbers, the select and the buttons used their
+    (wrongly prefixed) entity id as unique id: "sonnenbatterie.sonnenbatterie_
+    <serial>_<key>". Since 2026.7.0 it is "sonnenbatterie_<serial>_<key>", so
+    an update from an older version left the old entities behind as "no
+    longer provided" and created new ones with new entity ids.
+
+    Give the old entries the new unique id, so they are picked up again and
+    keep their entity id, name and settings. If the new entity already exists
+    (the update to 2026.7.0 or newer happened before this migration), both
+    are left alone: the new one may be in use by now."""
+    ent_reg = er.async_get(hass)
+    old_prefix = f"{DOMAIN}.{DOMAIN}_"
+    for entity in er.async_entries_for_config_entry(ent_reg, config_entry.entry_id):
+        if entity.domain not in (Platform.NUMBER, Platform.SELECT, Platform.BUTTON):
+            continue
+        if not entity.unique_id.startswith(old_prefix):
+            continue
+        new_unique_id = entity.unique_id.removeprefix(f"{DOMAIN}.")
+        if ent_reg.async_get_entity_id(entity.domain, DOMAIN, new_unique_id):
+            LOGGER.debug(f"{entity.entity_id}: not migrated, {new_unique_id} already exists")
+            continue
+        LOGGER.info(f"{entity.entity_id}: migrating unique id to {new_unique_id}")
+        ent_reg.async_update_entity(entity.entity_id, new_unique_id=new_unique_id)
+
+
 def _remove_stale_slave_entities(hass: HomeAssistant, config_entry: ConfigEntry, serial: str) -> None:
     """A cascade's slave gets no controls, meters or cascade-wide sensors.
     Remove those an earlier version created for it, instead of leaving them
@@ -140,6 +166,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     # Initialize our services
     services = SonnenbatterieService(hass, config_entry, sb_coordinator)
+
+    # before the platforms look up their entities
+    _migrate_control_unique_ids(hass, config_entry)
 
     if sb_coordinator.is_slave:
         _remove_stale_slave_entities(hass, config_entry, serial_number)
