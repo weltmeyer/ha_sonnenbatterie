@@ -81,6 +81,7 @@ def _migrate_control_unique_ids(hass: HomeAssistant, config_entry: ConfigEntry) 
     are left alone: the new one may be in use by now."""
     ent_reg = er.async_get(hass)
     old_prefix = f"{DOMAIN}.{DOMAIN}_"
+    left_behind = []
     for entity in er.async_entries_for_config_entry(ent_reg, config_entry.entry_id):
         if entity.domain not in (Platform.NUMBER, Platform.SELECT, Platform.BUTTON):
             continue
@@ -88,10 +89,14 @@ def _migrate_control_unique_ids(hass: HomeAssistant, config_entry: ConfigEntry) 
             continue
         new_unique_id = entity.unique_id.removeprefix(f"{DOMAIN}.")
         if ent_reg.async_get_entity_id(entity.domain, DOMAIN, new_unique_id):
-            LOGGER.debug(f"{entity.entity_id}: not migrated, {new_unique_id} already exists")
+            left_behind.append(entity.entity_id)
             continue
         LOGGER.info(f"{entity.entity_id}: migrating unique id to {new_unique_id}")
         ent_reg.async_update_entity(entity.entity_id, new_unique_id=new_unique_id)
+    if left_behind:
+        LOGGER.info(
+            "These entities from a version before 2026.7.0 are no longer provided, their "
+            f"replacements already exist. They can be removed: {', '.join(sorted(left_behind))}")
 
 
 def _remove_stale_slave_entities(hass: HomeAssistant, config_entry: ConfigEntry, serial: str) -> None:
