@@ -10,15 +10,28 @@ permissions:
 
 jobs:
   pytest:
+    name: "pytest (Home Assistant ${{ matrix.homeassistant }})"
     runs-on: "ubuntu-latest"
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # the version in requirements.txt
+          - homeassistant: "2026.10"
+            python: "3.14"
+            requirements: "requirements_test.txt"
+          # the minimum in hacs.json
+          - homeassistant: "2025.5"
+            python: "3.13"
+            requirements: "requirements_test_min.txt"
     steps:
       - uses: "actions/checkout@v6.0.1"
       - uses: "actions/setup-python@v7.1.0"
         with:
-          python-version: "3.14"
+          python-version: "${{ matrix.python }}"
           cache: "pip"
-          cache-dependency-path: "requirements_test.txt"
+          cache-dependency-path: "${{ matrix.requirements }}"
       - name: Install requirements
-        run: python -m pip install --requirement requirements_test.txt
+        run: python -m pip install --requirement "${{ matrix.requirements }}"
       - name: Run tests
         run: python -m pytest
