@@ -60,6 +60,16 @@ def _meter_counter(coordinator, index: int, counter: str) -> float | None:
     return round(value, 3)
 
 
+def meter_label(meters: list, meter: dict) -> str:
+    """How a meter is named: "<direction> <channel>", plus its device id if
+    another meter has the same direction and channel (e.g. two consumption
+    meters on channel 2), so their sensors don't get the same names."""
+    label = f"{meter['direction']} {meter['channel']}"
+    same = [m for m in meters if isinstance(m, dict)
+            and (m.get("direction"), m.get("channel")) == (meter["direction"], meter["channel"])]
+    return f"{label} (device {meter['deviceid']})" if len(same) > 1 else label
+
+
 def generate_powermeter_sensors(_coordinator):
     powermeter_sensors: list[SonnenbatterieSensorEntityDescription] = []
 
@@ -80,15 +90,16 @@ def generate_powermeter_sensors(_coordinator):
     }
 
     """powermeter values"""
-    for index, meter in enumerate(_coordinator.latestData["powermeter"]):
+    meters = _coordinator.latestData["powermeter"]
+    for index, meter in enumerate(meters):
+        label = meter_label(meters, meter)
         sensor_prefix_key = (
             f"meter_{meter['direction']}_{meter['deviceid']}_{meter['channel']}".lower()
         )
 
         for sensor_meter in generate_sensors_for:
             sensor_key = f"{sensor_prefix_key}_{sensor_meter}"
-            # sensor_name = f"meter {meter['direction']} {sensor_meter}"
-            sensor_name = f"meter {meter['direction']} {meter['channel']} {sensor_meter}"
+            sensor_name = f"meter {label} {sensor_meter}"
             unit = (sensor_meter[0] + "").upper()
             match unit:
                 case "V":
@@ -128,7 +139,7 @@ def generate_powermeter_sensors(_coordinator):
             powermeter_sensors.append(
                 SonnenbatterieSensorEntityDescription(
                     key=f"{sensor_prefix_key}_{counter}",
-                    name=f"meter {meter['direction']} {meter['channel']} {counter}",
+                    name=f"meter {label} {counter}",
                     icon="mdi:meter-electric-outline",
                     state_class=SensorStateClass.TOTAL_INCREASING,
                     native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
