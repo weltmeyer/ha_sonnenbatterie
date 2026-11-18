@@ -466,6 +466,19 @@ Please put those logs along with the setting you want monitored into
 ## Screenshots :)
 ![image](https://user-images.githubusercontent.com/1668465/78452159-ed2d7d80-7689-11ea-9e30-3a66ecc2372a.png)
 
+## Development
+The tests run a real Home Assistant core against simulated batteries
+(`tests/fake_battery.py`), built from real sb_info reports with all serial
+numbers and other identifiers replaced (`tests/fixtures`). They also run on
+GitHub for every push and pull request.
+
+```shell
+python3 -m pip install -r requirements.txt -r requirements_test.txt
+python3 -m pytest
+```
+
+The dev container (`.devcontainer`, for VS Code and Zed) installs both.
+
 ---
 [hacs]: https://hacs.xyz
 [marketplace_repo]: https://my.home-assistant.io/redirect/hacs_repository/?owner=weltmeyer&repository=ha_sonnenbatterie&category=integration
