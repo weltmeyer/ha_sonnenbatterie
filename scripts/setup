@@ -12,7 +12,7 @@ if command -v apt-get >/dev/null 2>&1; then
 fi
 
 python3 -m pip install --upgrade pip
-python3 -m pip install --requirement requirements.txt
+python3 -m pip install --requirement requirements.txt --requirement requirements_test.txt
 
 # pip installs the tools (e.g. ruff) into ~/.local/bin when not run as
 # root: put it on the PATH for the shells of every editor (VS Code, Zed)

@@ -1,0 +1,4 @@
+# Test requirements (pytest, Home Assistant test helpers). The plugin pins the
+# Home Assistant version; keep it in line with requirements.txt.
+pytest-homeassistant-custom-component==0.13.375
+sonnenbatterie==0.8.0
