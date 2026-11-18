@@ -17,12 +17,12 @@ that should work with current versions of Sonnenbatterie.
 
 ## Installation
 
-Requires **Home Assistant 2026.10** or newer. On older versions HACS keeps the
+Requires **Home Assistant 2025.5** or newer. On older versions HACS keeps the
 last release that supports them and doesn't offer newer ones.
 
 This is an **integration**, not an app (add-on). It's installed as a custom
 repository: with Home Assistant 2026.11 or newer through the built-in
-**Marketplace**, on 2026.10 through **HACS**. This button opens the
+**Marketplace**, on older versions through **HACS**. This button opens the
 repository in either of them:
 
 [![Open your Home Assistant instance and open this repository in the Marketplace / HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)][marketplace_repo]
@@ -44,7 +44,7 @@ repository in either of them:
 > Assistant 2026.11, HACS content moves to the Marketplace automatically and
 > keeps receiving updates.
 
-### 2) via HACS (Home Assistant 2026.10)
+### 2) via HACS (Home Assistant 2026.10 or older)
 > [!IMPORTANT]
 > You <ins>need to have [HACS](https://hacs.xyz) installed</ins>, and you need to add this
 > repository as a custom **integration repository** to HACS.

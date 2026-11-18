@@ -35,8 +35,10 @@ async def async_set_operating_mode(coordinator, mode: int) -> int:
     try:
         return await coordinator.async_call("set_operating_mode", mode)
     except aiohttp.ClientResponseError as e:
-        if e.status in (401,):
-            raise   # session expired: handled like any other request
+        if e.status == 401 or not 400 <= e.status < 500:
+            # session expired or a server error (left after the retry):
+            # passed on as is, the battery didn't refuse the mode
+            raise
         raise HomeAssistantError(
             f"The battery refused operating mode {mode} (HTTP {e.status}). Mode changes "
             "are rejected while a virtual power plant (VPP) is active, and not every "
@@ -51,7 +53,7 @@ class SonnenbatterieService:
         self._coordinator = coordinator
         self._tou_max = hass.data[DOMAIN][config.entry_id][CONF_TOU_MAX]
 
-    def _get_coordinator(self, call_data: ReadOnlyDict):
+    def _get_coordinator(self, call_data: ReadOnlyDict, write: bool = True):
         LOGGER.debug(f"_get_coordinator: {call_data}")
         if ATTR_DEVICE_ID in call_data:
             # no idea why, but sometimes it's a list and other times a str
@@ -62,14 +64,16 @@ class SonnenbatterieService:
             device_registry = dr_async_get(self._hass)
             if not (device_entry := device_registry.async_get(device_id)):
                 raise HomeAssistantError(f"No device found for device_id: {device_id}")
-            # a device belongs to a single config entry (HA >= 2026.10)
-            if not (sb_config := self._hass.data.get(DOMAIN, {}).get(device_entry.config_entry_id)):
+            # DeviceEntry.config_entry_id since HA 2026.8, primary_config_entry
+            # before (deprecated since 2026.10)
+            entry_id = getattr(device_entry, "config_entry_id", None) or device_entry.primary_config_entry
+            if not (sb_config := self._hass.data.get(DOMAIN, {}).get(entry_id)):
                 raise HomeAssistantError(f"Unable to find config for device_id: {device_id} ({device_entry.name})")
             if not (coordinator := sb_config.get(CONF_COORDINATOR)):
                 raise HomeAssistantError(f"Invalid config for device_id: {device_id} ({sb_config}). Please report an issue at {SONNENBATTERIE_ISSUE_URL}.")
         else:
             coordinator = self._coordinator
-        if coordinator.is_slave:
+        if write and coordinator.is_slave:
             # read-only like its entities: the cascade's master controls it
             raise HomeAssistantError(
                 f"{coordinator.name} is a cascade slave and is controlled by the cascade's "
@@ -160,7 +164,7 @@ class SonnenbatterieService:
 
     # noinspection PyUnusedLocal
     async def get_tou_schedule(self, call: ServiceCall) -> ServiceResponse:
-        coordinator = self._get_coordinator(call.data)
+        coordinator = self._get_coordinator(call.data, write=False)
         response = await coordinator.async_call("get_tou_schedule_string", write=False)
         return {
             "schedule": response,
@@ -168,21 +172,21 @@ class SonnenbatterieService:
 
     # noinspection PyUnusedLocal
     async def get_battery_reserve(self, call: ServiceCall) -> ServiceResponse:
-        coordinator = self._get_coordinator(call.data)
+        coordinator = self._get_coordinator(call.data, write=False)
         response = await coordinator.async_call("get_battery_reserve", write=False)
         return {
             "backup_reserve": response,
         }
 
     async def get_operating_mode(self, call: ServiceCall) -> ServiceResponse:
-        coordinator = self._get_coordinator(call.data)
+        coordinator = self._get_coordinator(call.data, write=False)
         response = await coordinator.async_call("get_operating_mode", write=False)
         return {
             "operating_mode": SB_OPERATING_MODES_NUM.get(str(response), "UNKNOWN")
         }
 
     async def get_operating_mode_num(self, call: ServiceCall) -> ServiceResponse:
-        coordinator = self._get_coordinator(call.data)
+        coordinator = self._get_coordinator(call.data, write=False)
         response = await coordinator.async_call("get_operating_mode", write=False)
         return {
             "operating_mode": response,
