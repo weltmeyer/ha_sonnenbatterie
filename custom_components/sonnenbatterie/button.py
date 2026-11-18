@@ -39,12 +39,9 @@ class SonnenbatterieButton(SonnenButtonEntity, ButtonEntity):
         tag = self.entity_description.tag
         match tag.key:
             case "button_reset_all":
-                await self.coordinator.sbconn.sb2.charge_battery(0)
-                await self.coordinator.sbconn.sb2.discharge_battery(0)
+                await self.coordinator.async_write_setpoint("number_charge", 0, refresh=False)
+                await self.coordinator.async_write_setpoint("number_discharge", 0)
             case "button_reset_charge":
-                await self.coordinator.sbconn.sb2.charge_battery(0)
+                await self.coordinator.async_write_setpoint("number_charge", 0)
             case "button_reset_discharge":
-                await self.coordinator.sbconn.sb2.discharge_battery(0)
-
-        await self.coordinator.async_request_refresh()
-        return None
+                await self.coordinator.async_write_setpoint("number_discharge", 0)

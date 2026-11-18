@@ -1,11 +1,12 @@
 import json
 
+import aiohttp
+
 from homeassistant.const import ATTR_DEVICE_ID
 from homeassistant.core import ServiceCall, ServiceResponse
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import async_get as dr_async_get
 from homeassistant.util.read_only_dict import ReadOnlyDict
-from sonnenbatterie import AsyncSonnenBatterie
 from timeofuse import TimeofUseSchedule
 
 from custom_components.sonnenbatterie import CONF_COORDINATOR
@@ -23,6 +24,28 @@ from custom_components.sonnenbatterie.const import (
 )
 
 
+async def async_set_operating_mode(coordinator, mode: int) -> int:
+    """Set the operating mode, with a readable error if the battery refuses.
+
+    Writable according to sonnen: 1, 2, 10 and 11 (10 not in France, 2 not
+    for sonnenBatterie 10 Hybrid, 11 only with newer firmware); no mode
+    change at all while a virtual power plant (VPP) is active. The battery
+    decides, so its answer is passed on instead of guessing the region here.
+    """
+    try:
+        return await coordinator.async_call("set_operating_mode", mode)
+    except aiohttp.ClientResponseError as e:
+        if e.status == 401 or not 400 <= e.status < 500:
+            # session expired or a server error (left after the retry):
+            # passed on as is, the battery didn't refuse the mode
+            raise
+        raise HomeAssistantError(
+            f"The battery refused operating mode {mode} (HTTP {e.status}). Mode changes "
+            "are rejected while a virtual power plant (VPP) is active, and not every "
+            "mode is available in every region or firmware version."
+        ) from e
+
+
 class SonnenbatterieService:
     def __init__(self, hass, config, coordinator):
         self._hass = hass
@@ -30,8 +53,8 @@ class SonnenbatterieService:
         self._coordinator = coordinator
         self._tou_max = hass.data[DOMAIN][config.entry_id][CONF_TOU_MAX]
 
-    def _get_sb_connection(self, call_data: ReadOnlyDict) -> AsyncSonnenBatterie:
-        LOGGER.debug(f"_get_sb_connection: {call_data}")
+    def _get_coordinator(self, call_data: ReadOnlyDict, write: bool = True):
+        LOGGER.debug(f"_get_coordinator: {call_data}")
         if ATTR_DEVICE_ID in call_data:
             # no idea why, but sometimes it's a list and other times a str
             if isinstance(call_data[ATTR_DEVICE_ID], list):
@@ -41,14 +64,21 @@ class SonnenbatterieService:
             device_registry = dr_async_get(self._hass)
             if not (device_entry := device_registry.async_get(device_id)):
                 raise HomeAssistantError(f"No device found for device_id: {device_id}")
-            if not (sb_config := self._hass.data[DOMAIN][device_entry.primary_config_entry]):
+            # DeviceEntry.config_entry_id since HA 2026.8, primary_config_entry
+            # before (deprecated since 2026.10)
+            entry_id = getattr(device_entry, "config_entry_id", None) or device_entry.primary_config_entry
+            if not (sb_config := self._hass.data.get(DOMAIN, {}).get(entry_id)):
                 raise HomeAssistantError(f"Unable to find config for device_id: {device_id} ({device_entry.name})")
-            if sb_config.get(CONF_COORDINATOR):
-                return sb_config.get("coordinator").sbconn
-            else:
+            if not (coordinator := sb_config.get(CONF_COORDINATOR)):
                 raise HomeAssistantError(f"Invalid config for device_id: {device_id} ({sb_config}). Please report an issue at {SONNENBATTERIE_ISSUE_URL}.")
         else:
-            return self._coordinator.sbconn
+            coordinator = self._coordinator
+        if write and coordinator.is_slave:
+            # read-only like its entities: the cascade's master controls it
+            raise HomeAssistantError(
+                f"{coordinator.name} is a cascade slave and is controlled by the cascade's "
+                "master. Use the master's device instead.")
+        return coordinator
 
     # service definitions
     async def charge_battery(self, call: ServiceCall) -> ServiceResponse:
@@ -56,9 +86,8 @@ class SonnenbatterieService:
         power = int(call.data.get(CONF_CHARGE_WATT))
         if power < 0:
             power = 0
-        # Make sure we have an sb2 object
-        sb_conn = self._get_sb_connection(call.data)
-        response = await sb_conn.sb2.charge_battery(power)
+        coordinator = self._get_coordinator(call.data)
+        response = await coordinator.async_write_setpoint("number_charge", power)
         return {
             "charge": response,
         }
@@ -68,16 +97,16 @@ class SonnenbatterieService:
         power = int(call.data.get(CONF_CHARGE_WATT))
         if power < 0:
             power = 0
-        sb_conn = self._get_sb_connection(call.data)
-        response = await sb_conn.sb2.discharge_battery(power)
+        coordinator = self._get_coordinator(call.data)
+        response = await coordinator.async_write_setpoint("number_discharge", power)
         return {
             "discharge": response,
         }
 
     async def set_battery_reserve(self, call: ServiceCall) -> ServiceResponse:
         value = call.data.get(CONF_SERVICE_VALUE)
-        sb_conn = self._get_sb_connection(call.data)
-        response = int((await sb_conn.sb2.set_battery_reserve(value))["EM_USOC"])
+        coordinator = self._get_coordinator(call.data)
+        response = int((await coordinator.async_write_setpoint("battery_reserve", value))["EM_USOC"])
         return {
             "battery_reserve": response,
         }
@@ -85,24 +114,24 @@ class SonnenbatterieService:
     async def set_config_item(self, call: ServiceCall) -> ServiceResponse:
         item = call.data.get(CONF_SERVICE_ITEM)
         value = call.data.get(CONF_SERVICE_VALUE)
-        sb_conn = self._get_sb_connection(call.data)
-        response = await sb_conn.sb2.set_config_item(item, value)
+        coordinator = self._get_coordinator(call.data)
+        response = await coordinator.async_call("set_config_item", item, value)
         return {
             "response": response,
         }
 
     async def set_operating_mode(self, call: ServiceCall) -> ServiceResponse:
         mode = SB_OPERATING_MODES.get(call.data.get('mode'))
-        sb_conn = self._get_sb_connection(call.data)
-        response = await sb_conn.set_operating_mode(mode)
+        coordinator = self._get_coordinator(call.data)
+        response = await async_set_operating_mode(coordinator, mode)
         return {
             "mode": SB_OPERATING_MODES_NUM.get(str(response), "UNKNOWN")
         }
 
     async def set_operating_mode_num(self, call: ServiceCall) -> ServiceResponse:
         mode = call.data.get('mode')
-        sb_conn = self._get_sb_connection(call.data)
-        response = await sb_conn.set_operating_mode(mode)
+        coordinator = self._get_coordinator(call.data)
+        response = await async_set_operating_mode(coordinator, int(mode))
         return {
             "mode": response
         }
@@ -127,38 +156,38 @@ class SonnenbatterieService:
         except TypeError as t:
             raise HomeAssistantError(f"Schedule is not a valid schedule: '{schedule}'") from t
 
-        sb_conn = self._get_sb_connection(call.data)
-        response = await sb_conn.sb2.set_tou_schedule_string(schedule)
+        coordinator = self._get_coordinator(call.data)
+        response = await coordinator.async_call("set_tou_schedule_string", schedule)
         return {
             "schedule": response["EM_ToU_Schedule"],
         }
 
     # noinspection PyUnusedLocal
     async def get_tou_schedule(self, call: ServiceCall) -> ServiceResponse:
-        sb_conn = self._get_sb_connection(call.data)
-        response = await sb_conn.sb2.get_tou_schedule_string()
+        coordinator = self._get_coordinator(call.data, write=False)
+        response = await coordinator.async_call("get_tou_schedule_string", write=False)
         return {
             "schedule": response,
         }
 
     # noinspection PyUnusedLocal
     async def get_battery_reserve(self, call: ServiceCall) -> ServiceResponse:
-        sb_conn = self._get_sb_connection(call.data)
-        response = await sb_conn.sb2.get_battery_reserve()
+        coordinator = self._get_coordinator(call.data, write=False)
+        response = await coordinator.async_call("get_battery_reserve", write=False)
         return {
             "backup_reserve": response,
         }
 
     async def get_operating_mode(self, call: ServiceCall) -> ServiceResponse:
-        sb_conn = self._get_sb_connection(call.data)
-        response = await sb_conn.sb2.get_operating_mode()
+        coordinator = self._get_coordinator(call.data, write=False)
+        response = await coordinator.async_call("get_operating_mode", write=False)
         return {
             "operating_mode": SB_OPERATING_MODES_NUM.get(str(response), "UNKNOWN")
         }
 
     async def get_operating_mode_num(self, call: ServiceCall) -> ServiceResponse:
-        sb_conn = self._get_sb_connection(call.data)
-        response = await sb_conn.sb2.get_operating_mode()
+        coordinator = self._get_coordinator(call.data, write=False)
+        response = await coordinator.async_call("get_operating_mode", write=False)
         return {
             "operating_mode": response,
         }

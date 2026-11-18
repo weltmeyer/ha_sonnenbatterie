@@ -63,8 +63,8 @@ class Tag(SelectEntry, Enum):
     BATTERY_RESERVE = SelectEntry(
         key="battery_reserve",
         type=Platform.NUMBER,
-        section="status",
-        property="USOC",
+        section="configurations",
+        property="EM_USOC",
         writable=True,
     )
 
@@ -212,7 +212,7 @@ SELECT_ENTITIES = [
         icon="mdi:solar-power",
         entity_category=EntityCategory.CONFIG,
         tag=Tag.OPERATING_MODE,
-        options=["manual", "automatic", "timeofuse"],
+        options=["manual", "automatic", "timeofuse", "optimizing"],
     ),
 ]
 
