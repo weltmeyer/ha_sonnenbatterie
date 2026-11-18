@@ -1,9 +1,9 @@
 # pylint: disable=no-name-in-module
-from sonnenbatterie import AsyncSonnenBatterie
-
 # pylint: enable=no-name-in-module
 import traceback
 
+# pylint: enable=unused-wildcard-import
+import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import (
     CONF_IP_ADDRESS,
@@ -13,14 +13,16 @@ from homeassistant.const import (
 )
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers.selector import TextSelector, TextSelectorConfig, TextSelectorType
+from homeassistant.helpers.selector import (
+    TextSelector,
+    TextSelectorConfig,
+    TextSelectorType,
+)
+
+from sonnenbatterie import AsyncSonnenBatterie
 
 # pylint: disable=unused-wildcard-import
 from .const import *
-
-# pylint: enable=unused-wildcard-import
-import voluptuous as vol
-
 
 # masked input for fields prefilled with a stored secret
 SECRET = TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))
@@ -54,7 +56,7 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             try:
                 sb_serial = await self._internal_setup(username, password, ipaddress)
 
-            except:
+            except Exception:  # noqa: BLE001 - any failure: show the connection error
                 e = traceback.format_exc()
                 LOGGER.error(f"Unable to connect to sonnenbatterie: {e}")
                 return self._show_form({"base": "connection_error"})
@@ -202,7 +204,7 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     user_input[CONF_IP_ADDRESS]
                 )
 
-            except:
+            except Exception:  # noqa: BLE001 - any failure: show the connection error
                 e = traceback.format_exc()
                 LOGGER.error(f"Unable to connect to sonnenbatterie: {e}")
                 return self.async_show_form(

@@ -1,31 +1,42 @@
 import asyncio
 import sys
 import traceback
+from dataclasses import dataclass
 from datetime import timedelta
 from time import time
 from typing import ClassVar
 
 import aiohttp
-from homeassistant.config_entries import ConfigEntry, SOURCE_INTEGRATION_DISCOVERY
-from homeassistant.const import CONF_SCAN_INTERVAL, CONF_USERNAME, CONF_PASSWORD, CONF_IP_ADDRESS
+from homeassistant.config_entries import SOURCE_INTEGRATION_DISCOVERY, ConfigEntry
+from homeassistant.const import (
+    CONF_IP_ADDRESS,
+    CONF_PASSWORD,
+    CONF_SCAN_INTERVAL,
+    CONF_USERNAME,
+)
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import device_registry as dr, discovery_flow
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import discovery_flow
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
 from sonnenbatterie import AsyncSonnenBatterie
 
-from custom_components.sonnenbatterie import LOGGER, DOMAIN, ATTR_SONNEN_DEBUG
 from .const import (
+    ATTR_SONNEN_DEBUG,
     CASCADE_ROLES,
     CONF_AUTH_TOKEN,
     CONF_MASTER_ENTRY_ID,
     CONF_SERIAL_NUMBER,
     DEFAULT_SCAN_INTERVAL,
+    DOMAIN,
+    LOGGER,
     MIN_SCAN_INTERVAL,
     ROLE_MASTER,
     ROLE_NONE,
     ROLE_SLAVE,
 )
+
 
 def _v2_write_class():
     """The v2 (Auth-Token) WRITE-client class, obtained WITHOUT declaring a new
@@ -40,7 +51,7 @@ def _v2_write_class():
     if cls is None:
         try:  # pragma: no cover - layout fallback
             from sonnenbatterie2.sonnenbatterie2 import AsyncSonnenBatterieV2 as cls
-        except Exception:
+        except ImportError:
             cls = None
     return cls
 
@@ -230,8 +241,8 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
                 # asyncio.timeout() uses, and login() would run unbounded
                 try:
                     await self.sbconn.logout()
-                except Exception:  # noqa: BLE001
-                    pass
+                except Exception as e:  # noqa: BLE001 - the old session may be gone already
+                    LOGGER.debug(f"logout before login failed: {type(e).__name__}: {e}")
                 await self.sbconn.login()
             self._relax_timeouts(self.sbconn, getattr(self.sbconn, "sb2", None))
             self._last_login = time()
@@ -405,7 +416,7 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
                 if self.cascading_role == ROLE_MASTER:
                     await self._update_cascade()
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - every failed update is handled alike
             # raises UpdateFailed unless within the maintenance grace period,
             # in which case the last known values are served below
             self._handle_update_error(e)
@@ -421,9 +432,8 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
                 for index, dictIndex in enumerate(self.latestData["powermeter"]):
                     new_powermeters.append(self.latestData["powermeter"][dictIndex])
                 self.latestData["powermeter"] = new_powermeters
-            except:
-                e = traceback.format_exc()
-                LOGGER.error(e)
+            except Exception:  # noqa: BLE001 - keep the update, log the odd format
+                LOGGER.error(traceback.format_exc())
 
         if self._config_entry.data.get(ATTR_SONNEN_DEBUG, False):
             self.send_all_data_to_log()
@@ -472,7 +482,7 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
                             raise RuntimeError("sonnenbatterie session not established (sb2 is None)")
                     result = await getattr(client, method)(*args)
                     break
-                except Exception as e:  # noqa: BLE001
+                except Exception as e:
                     if attempt == 2 or not self._retryable(e):
                         raise
                     if self._is_auth_error(e) and self._write_v2 is None:
@@ -517,7 +527,7 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
 
     async def fetch_sonnenbatterie_on_startup(self):
         """Fetch all config items from Sonnenbatterie."""
-        LOGGER.debug(f"Fetching Sonnenbatteries on startup")
+        LOGGER.debug("Fetching Sonnenbatteries on startup")
         await self._async_update_data()
 
     def send_all_data_to_log(self):
@@ -534,3 +544,17 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
             LOGGER.warning(f"Battery:\n{self.latestData['battery']}")
             LOGGER.warning(f"API-Config:\n{self.latestData['api_configuration']}")
             self._fullLogsAlreadySent = True
+
+
+@dataclass
+class SonnenbatterieData:
+    """What a set-up entry keeps (config_entry.runtime_data)."""
+
+    coordinator: SonnenbatterieCoordinator
+    # max. power of the inverter (the whole cascade's on a cascade master)
+    inverter_max: int
+    # the battery's limit for time-of-use schedules
+    tou_max: int
+
+
+type SonnenbatterieConfigEntry = ConfigEntry[SonnenbatterieData]

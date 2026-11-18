@@ -1,5 +1,7 @@
 """Writes: sliders, reset buttons and actions, all through the coordinator."""
 
+import json
+
 import pytest
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
@@ -138,3 +140,17 @@ async def test_actions_on_a_cascade_slave(hass, battery_entry, monkeypatch):
     response = await hass.services.async_call(DOMAIN, "get_operating_mode_num", {"device_id": device_id(hass)},
                                               blocking=True, return_response=True)
     assert response == {"operating_mode": int(battery.configurations["EM_OperatingMode"])}
+
+
+async def test_tou_schedule_capped(hass, battery_entry):
+    """Values above the battery's ToU limit are capped, and the capped
+    schedule is what's sent."""
+    battery, entry = battery_entry
+    limit = entry.runtime_data.tou_max
+    schedule = [{"start": "10:00", "stop": "11:00", "threshold_p_max": limit + 1000}]
+    response = await hass.services.async_call(
+        DOMAIN, "set_tou_schedule", {"device_id": device_id(hass), "schedule": json.dumps(schedule)},
+        blocking=True, return_response=True)
+    sent = json.loads(battery.puts[-1]["EM_ToU_Schedule"])
+    assert sent == [{"start": "10:00", "stop": "11:00", "threshold_p_max": limit}]
+    assert json.loads(response["schedule"]) == sent

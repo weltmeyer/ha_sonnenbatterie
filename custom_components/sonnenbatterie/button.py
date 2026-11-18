@@ -4,14 +4,18 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import SonnenbatterieCoordinator
-from .const import CONF_COORDINATOR, DOMAIN, LOGGER
-from .entities import SonnenButtonEntity, SonnenbatterieButtonEntityDescription, BUTTON_ENTITIES
+from .const import LOGGER
+from .coordinator import SonnenbatterieCoordinator
+from .entities import (
+    BUTTON_ENTITIES,
+    SonnenbatterieButtonEntityDescription,
+    SonnenButtonEntity,
+)
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     LOGGER.debug(f"BUTTON async_setup_entry - {config_entry}")
-    coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
+    coordinator = config_entry.runtime_data.coordinator
 
     if coordinator.is_slave:
         # controlled by the cascade's master: read-only
@@ -27,7 +31,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 
         async_add_entities(entities)
     else:
-        LOGGER.info(f"JSON-API write access not enabled - disabling BUTTON functions")
+        LOGGER.info("JSON-API write access not enabled - disabling BUTTON functions")
 
 class SonnenbatterieButton(SonnenButtonEntity, ButtonEntity):
 

@@ -4,17 +4,19 @@ from datetime import timedelta
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_USERNAME, CONF_PASSWORD, CONF_IP_ADDRESS
+from homeassistant.const import CONF_IP_ADDRESS, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import (
-    HomeAssistant, SupportsResponse,
+    HomeAssistant,
+    SupportsResponse,
 )
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import entity_registry as er
+
 from sonnenbatterie import AsyncSonnenBatterie
 
 from .const import *
-from .coordinator import SonnenbatterieCoordinator
-from .sensor_list import SENSORS, SonnenbatterieSensorEntityDescription
+from .coordinator import SonnenbatterieCoordinator, SonnenbatterieData
+from .sensor_list import SENSORS
 from .service import SonnenbatterieService
 
 SCAN_INTERVAL = timedelta(seconds=DEFAULT_SCAN_INTERVAL)
@@ -126,9 +128,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     _safe = {k: ("***" if k in (CONF_PASSWORD, CONF_AUTH_TOKEN) else v)
              for k, v in config_entry.data.items()}
     LOGGER.debug(f"setup_entry: {_safe} | {config_entry.entry_id}")
-    # only initialize if not already present
-    if DOMAIN not in hass.data:
-        hass.data.setdefault(DOMAIN, {})
 
     # Fix missing serial number
     serial_number = config_entry.data.get(CONF_SERIAL_NUMBER)
@@ -149,16 +148,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         raise ConfigEntryNotReady
     else:
         await sb_coordinator.fetch_sonnenbatterie_on_startup()
-    # save coordinator as early as possible
-    hass.data[DOMAIN][config_entry.entry_id] = {}
-    hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR] = sb_coordinator
-
     # whole cascade's inverter power on a cascade master, see populate_battery_info()
     inverter_power = sb_coordinator.latestData['battery_info']['max_power']
     max_tou_power = sb_coordinator.latestData.get('commissioning_settings',{}).get('data', {}).get('attributes', {}).get('tou_max_power_limit', '22000')
     LOGGER.debug(f"inverter_power: {inverter_power}, tou_power: {max_tou_power}")
-    hass.data[DOMAIN][config_entry.entry_id][CONF_INVERTER_MAX] = inverter_power
-    hass.data[DOMAIN][config_entry.entry_id][CONF_TOU_MAX] = int(max_tou_power)
+    config_entry.runtime_data = SonnenbatterieData(
+        coordinator=sb_coordinator, inverter_max=int(inverter_power), tou_max=int(max_tou_power))
 
     # noinspection PyPep8Naming
     SCHEMA_CHARGE_BATTERY = vol.Schema(
@@ -170,7 +165,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     )
 
     # Initialize our services
-    services = SonnenbatterieService(hass, config_entry, sb_coordinator)
+    services = SonnenbatterieService(hass, config_entry)
 
     # before the platforms look up their entities
     _migrate_control_unique_ids(hass, config_entry)
@@ -272,7 +267,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         )
 
     else:
-        LOGGER.info(f"JSON-API write access not enabled - disabling SERVICE functions")
+        LOGGER.info("JSON-API write access not enabled - disabling SERVICE functions")
 
     # Done setting up the entry
     return True
@@ -304,7 +299,7 @@ async def async_unload_entry(hass, entry):
     if unloaded:
         # close the coordinator's HTTP session, otherwise every reload (e.g.
         # a cascade slave's new IP address) leaks one
-        coordinator = hass.data.get(DOMAIN, {}).pop(entry.entry_id, {}).get(CONF_COORDINATOR)
+        coordinator = entry.runtime_data.coordinator
         if coordinator is not None:
             try:
                 await coordinator.sbconn.logout()

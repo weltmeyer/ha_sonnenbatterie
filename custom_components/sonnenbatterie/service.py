@@ -1,7 +1,6 @@
 import json
 
 import aiohttp
-
 from homeassistant.const import ATTR_DEVICE_ID
 from homeassistant.core import ServiceCall, ServiceResponse
 from homeassistant.exceptions import HomeAssistantError
@@ -9,19 +8,18 @@ from homeassistant.helpers.device_registry import async_get as dr_async_get
 from homeassistant.util.read_only_dict import ReadOnlyDict
 from timeofuse import TimeofUseSchedule
 
-from custom_components.sonnenbatterie import CONF_COORDINATOR
 from custom_components.sonnenbatterie.const import (
     CONF_CHARGE_WATT,
     CONF_SERVICE_ITEM,
     CONF_SERVICE_SCHEDULE,
     CONF_SERVICE_VALUE,
-    CONF_TOU_MAX,
     DOMAIN,
     LOGGER,
     SB_OPERATING_MODES,
     SB_OPERATING_MODES_NUM,
     SONNENBATTERIE_ISSUE_URL,
 )
+from custom_components.sonnenbatterie.coordinator import SonnenbatterieData
 
 
 async def async_set_operating_mode(coordinator, mode: int) -> int:
@@ -47,14 +45,17 @@ async def async_set_operating_mode(coordinator, mode: int) -> int:
 
 
 class SonnenbatterieService:
-    def __init__(self, hass, config, coordinator):
+    def __init__(self, hass, config):
         self._hass = hass
         self._config = config
-        self._coordinator = coordinator
-        self._tou_max = hass.data[DOMAIN][config.entry_id][CONF_TOU_MAX]
 
     def _get_coordinator(self, call_data: ReadOnlyDict, write: bool = True):
-        LOGGER.debug(f"_get_coordinator: {call_data}")
+        return self._get_data(call_data, write).coordinator
+
+    def _get_data(self, call_data: ReadOnlyDict, write: bool = True):
+        """The runtime data of the battery the action is called for (the
+        device_id), else of the entry that registered the actions."""
+        LOGGER.debug(f"_get_data: {call_data}")
         if ATTR_DEVICE_ID in call_data:
             # no idea why, but sometimes it's a list and other times a str
             if isinstance(call_data[ATTR_DEVICE_ID], list):
@@ -67,25 +68,26 @@ class SonnenbatterieService:
             # DeviceEntry.config_entry_id since HA 2026.8, primary_config_entry
             # before (deprecated since 2026.10)
             entry_id = getattr(device_entry, "config_entry_id", None) or device_entry.primary_config_entry
-            if not (sb_config := self._hass.data.get(DOMAIN, {}).get(entry_id)):
+            entry = self._hass.config_entries.async_get_entry(entry_id)
+            if entry is None or entry.domain != DOMAIN:
                 raise HomeAssistantError(f"Unable to find config for device_id: {device_id} ({device_entry.name})")
-            if not (coordinator := sb_config.get(CONF_COORDINATOR)):
-                raise HomeAssistantError(f"Invalid config for device_id: {device_id} ({sb_config}). Please report an issue at {SONNENBATTERIE_ISSUE_URL}.")
         else:
-            coordinator = self._coordinator
+            entry = self._config
+        if not isinstance(data := getattr(entry, "runtime_data", None), SonnenbatterieData):
+            raise HomeAssistantError(f"{entry.title} is not loaded. If it should be, please report an issue at {SONNENBATTERIE_ISSUE_URL}.")
+        coordinator = data.coordinator
         if write and coordinator.is_slave:
             # read-only like its entities: the cascade's master controls it
             raise HomeAssistantError(
                 f"{coordinator.name} is a cascade slave and is controlled by the cascade's "
                 "master. Use the master's device instead.")
-        return coordinator
+        return data
 
     # service definitions
     async def charge_battery(self, call: ServiceCall) -> ServiceResponse:
         LOGGER.debug(f"_charge_battery: {call.data}")
         power = int(call.data.get(CONF_CHARGE_WATT))
-        if power < 0:
-            power = 0
+        power = max(power, 0)
         coordinator = self._get_coordinator(call.data)
         response = await coordinator.async_write_setpoint("number_charge", power)
         return {
@@ -95,8 +97,7 @@ class SonnenbatterieService:
     async def discharge_battery(self, call: ServiceCall) -> ServiceResponse:
         LOGGER.debug(f"_discharge_battery: {call.data}")
         power = int(call.data.get(CONF_CHARGE_WATT))
-        if power < 0:
-            power = 0
+        power = max(power, 0)
         coordinator = self._get_coordinator(call.data)
         response = await coordinator.async_write_setpoint("number_discharge", power)
         return {
@@ -143,10 +144,12 @@ class SonnenbatterieService:
         except ValueError as e:
             raise HomeAssistantError(f"Schedule is not a valid JSON string: '{schedule}'") from e
 
+        data = self._get_data(call.data)
         for lp in range(len(json_schedule)):
-            if json_schedule[lp]['threshold_p_max'] > self._tou_max:
-                LOGGER.warning(f"Specified 'threshold_p_max' exceeds configured limit of {self._tou_max}, value capped to {json_schedule[lp]['threshold_p_max']}")
-                json_schedule[lp]['threshold_p_max'] = self._tou_max
+            if json_schedule[lp]['threshold_p_max'] > data.tou_max:
+                LOGGER.warning(f"Specified 'threshold_p_max' {json_schedule[lp]['threshold_p_max']} exceeds the "
+                               f"battery's limit, capped to {data.tou_max}")
+                json_schedule[lp]['threshold_p_max'] = data.tou_max
 
         tou = TimeofUseSchedule()
         try:
@@ -156,8 +159,8 @@ class SonnenbatterieService:
         except TypeError as t:
             raise HomeAssistantError(f"Schedule is not a valid schedule: '{schedule}'") from t
 
-        coordinator = self._get_coordinator(call.data)
-        response = await coordinator.async_call("set_tou_schedule_string", schedule)
+        # the capped schedule: the original string still has the values above the limit
+        response = await data.coordinator.async_call("set_tou_schedule_string", json.dumps(json_schedule))
         return {
             "schedule": response["EM_ToU_Schedule"],
         }
