@@ -3,6 +3,7 @@ import sys
 import traceback
 from datetime import timedelta
 from time import time
+from typing import ClassVar
 
 import aiohttp
 from homeassistant.config_entries import ConfigEntry, SOURCE_INTEGRATION_DISCOVERY
@@ -429,7 +430,7 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
 
         self.populate_battery_info()
 
-    SETPOINT_METHODS = {
+    SETPOINT_METHODS: ClassVar[dict[str, str]] = {
         "number_charge": "charge_battery",
         "number_discharge": "discharge_battery",
         "battery_reserve": "set_battery_reserve",
