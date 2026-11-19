@@ -28,7 +28,7 @@ async def user_flow(hass: HomeAssistant, battery: FakeBattery, username: str = "
 
 
 def coordinator(hass: HomeAssistant, entry: ConfigEntry):
-    return hass.data[DOMAIN][entry.entry_id]["coordinator"]
+    return entry.runtime_data.coordinator
 
 
 async def refresh(hass: HomeAssistant, entry: ConfigEntry, slow: bool = False) -> None:

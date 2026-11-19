@@ -174,3 +174,17 @@ async def test_all_entities_enabled(hass, make_battery, fixture, monkeypatch, ca
     assert all(hass.states.get(e.entity_id) is not None for e in entities)
     errors = [r for r in caplog.records if r.levelname in ("ERROR", "CRITICAL")]
     assert not errors, [r.getMessage() for r in errors]
+
+
+async def test_meter_names_unique(hass, make_battery):
+    """Two consumption meters on channel 2 (device 1 and 2): their sensors
+    get the device id in the name; other meters keep their names."""
+    battery = await make_battery("single")
+    entry = await setup_battery(hass, battery)
+    names = {entity.unique_id.split("sonnenbatterie_100000_", 1)[1]: entity.original_name
+             for entity in entry_entities(hass, entry) if "meter_" in entity.unique_id}
+    assert names["meter_consumption_1_2_kwh_imported"] == "meter consumption 2 (device 1) kwh_imported"
+    assert names["meter_consumption_2_2_kwh_imported"] == "meter consumption 2 (device 2) kwh_imported"
+    assert names["meter_consumption_1_2_error"] == "meter consumption 2 (device 1) error"
+    assert names["meter_production_0_1_kwh_imported"] == "meter production 1 kwh_imported"
+    assert len(set(names.values())) == len(names)

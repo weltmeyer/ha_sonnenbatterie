@@ -1,0 +1,6 @@
+# Test requirements for the minimum Home Assistant version (hacs.json):
+# the plugin release that pins Home Assistant 2025.5.3 (Python 3.13).
+pytest-homeassistant-custom-component==0.13.246
+sonnenbatterie==0.8.0
+# Home Assistant 2025.5's aiodns doesn't work with pycares 5
+pycares<5

@@ -7,25 +7,23 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.const import UnitOfEnergy
-from homeassistant.core import callback
-from homeassistant.config_entries import ConfigEntryState
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.typing import StateType
 
-from . import CONF_COORDINATOR
 from .const import (
-    DOMAIN,
     LOGGER,
 )
-from .coordinator import SonnenbatterieCoordinator
+from .coordinator import SonnenbatterieConfigEntry, SonnenbatterieCoordinator
 from .entities import SonnenBaseEntity
-
 from .sensor_list import (
     ENERGY_SENSORS,
     SENSORS,
-    generate_powermeter_sensors, generate_pv_string_sensors, SonnenbatterieSensorEntityDescription
+    SonnenbatterieSensorEntityDescription,
+    generate_powermeter_sensors,
+    generate_pv_string_sensors,
 )
-
 
 # rustydust_241227: this doesn't seem to be used anywhere
 # async def async_unload_entry(hass, entry):
@@ -35,9 +33,10 @@ from .sensor_list import (
 #     return
 
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
+async def async_setup_entry(hass: HomeAssistant, config_entry: SonnenbatterieConfigEntry,
+                            async_add_entities: AddEntitiesCallback) -> None:
     """Set up the sensor platform."""
-    coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
+    coordinator = config_entry.runtime_data.coordinator
     LOGGER.debug(f"SENSOR async_setup_entry - {coordinator.safe_config}")
 
     # await coordinator.async_refresh()

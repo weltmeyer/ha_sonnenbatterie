@@ -479,6 +479,9 @@ python3 -m pytest
 
 The dev container (`.devcontainer`, for VS Code and Zed) installs both.
 
+GitHub runs them on two Home Assistant versions: the one in `requirements.txt`
+and the minimum in `hacs.json` (`requirements_test_min.txt`, Python 3.13).
+
 ---
 [hacs]: https://hacs.xyz
 [marketplace_repo]: https://my.home-assistant.io/redirect/hacs_repository/?owner=weltmeyer&repository=ha_sonnenbatterie&category=integration
