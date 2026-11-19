@@ -1,11 +1,10 @@
 from homeassistant.components.button import ButtonEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import LOGGER
-from .coordinator import SonnenbatterieCoordinator
+from .coordinator import SonnenbatterieConfigEntry, SonnenbatterieCoordinator
 from .entities import (
     BUTTON_ENTITIES,
     SonnenbatterieButtonEntityDescription,
@@ -13,7 +12,7 @@ from .entities import (
 )
 
 
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
+async def async_setup_entry(hass: HomeAssistant, config_entry: SonnenbatterieConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     LOGGER.debug(f"BUTTON async_setup_entry - {config_entry}")
     coordinator = config_entry.runtime_data.coordinator
 

@@ -154,3 +154,30 @@ async def test_tou_schedule_capped(hass, battery_entry):
     sent = json.loads(battery.puts[-1]["EM_ToU_Schedule"])
     assert sent == [{"start": "10:00", "stop": "11:00", "threshold_p_max": limit}]
     assert json.loads(response["schedule"]) == sent
+
+
+async def test_tou_schedule_string_value(hass, battery_entry):
+    """A number given as a string is accepted and capped like a number."""
+    battery, entry = battery_entry
+    limit = entry.runtime_data.tou_max
+    schedule = [{"start": "10:00", "stop": "11:00", "threshold_p_max": str(limit + 1000)}]
+    await hass.services.async_call(
+        DOMAIN, "set_tou_schedule", {"device_id": device_id(hass), "schedule": json.dumps(schedule)},
+        blocking=True, return_response=True)
+    assert json.loads(battery.puts[-1]["EM_ToU_Schedule"])[0]["threshold_p_max"] == limit
+
+
+@pytest.mark.parametrize("schedule", [
+    [{"start": "10:00", "stop": "11:00"}],                              # no threshold_p_max
+    [{"start": "10:00", "stop": "11:00", "threshold_p_max": "lots"}],   # not a number
+    ["10:00-11:00"],                                                    # not an object
+])
+async def test_tou_schedule_invalid(hass, battery_entry, schedule):
+    """Invalid schedules end in a readable error, and nothing is sent."""
+    battery, _ = battery_entry
+    puts = len(battery.puts)
+    with pytest.raises(HomeAssistantError, match="not a valid schedule"):
+        await hass.services.async_call(
+            DOMAIN, "set_tou_schedule", {"device_id": device_id(hass), "schedule": json.dumps(schedule)},
+            blocking=True, return_response=True)
+    assert len(battery.puts) == puts

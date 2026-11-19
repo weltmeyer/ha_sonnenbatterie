@@ -1,10 +1,9 @@
 from homeassistant.components.select import SelectEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import LOGGER, SB_OPERATING_MODES, SB_OPERATING_MODES_NUM
-from .coordinator import SonnenbatterieCoordinator
+from .coordinator import SonnenbatterieConfigEntry, SonnenbatterieCoordinator
 from .entities import (
     SELECT_ENTITIES,
     SonnenbatterieSelectEntityDescription,
@@ -15,7 +14,7 @@ from .service import async_set_operating_mode
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    config_entry: SonnenbatterieConfigEntry,
     async_entity_cb: AddEntitiesCallback
 ) -> None:
     LOGGER.debug(f"SELECT async_setup_entry: {config_entry}")

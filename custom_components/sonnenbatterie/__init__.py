@@ -15,7 +15,11 @@ from homeassistant.helpers import entity_registry as er
 from sonnenbatterie import AsyncSonnenBatterie
 
 from .const import *
-from .coordinator import SonnenbatterieCoordinator, SonnenbatterieData
+from .coordinator import (
+    SonnenbatterieConfigEntry,
+    SonnenbatterieCoordinator,
+    SonnenbatterieData,
+)
 from .sensor_list import SENSORS
 from .service import SonnenbatterieService
 
@@ -124,7 +128,7 @@ async def async_setup(hass, config):
     return True
 
 
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, config_entry: SonnenbatterieConfigEntry) -> bool:
     _safe = {k: ("***" if k in (CONF_PASSWORD, CONF_AUTH_TOKEN) else v)
              for k, v in config_entry.data.items()}
     LOGGER.debug(f"setup_entry: {_safe} | {config_entry.entry_id}")
@@ -286,7 +290,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 #     # )
 
 
-async def async_unload_entry(hass, entry):
+async def async_unload_entry(hass: HomeAssistant, entry: SonnenbatterieConfigEntry) -> bool:
     """Handle removal of an entry.
 
     Unload ALL platforms (not only SENSOR): otherwise select/number/button stay
@@ -299,11 +303,9 @@ async def async_unload_entry(hass, entry):
     if unloaded:
         # close the coordinator's HTTP session, otherwise every reload (e.g.
         # a cascade slave's new IP address) leaks one
-        coordinator = entry.runtime_data.coordinator
-        if coordinator is not None:
-            try:
-                await coordinator.sbconn.logout()
-            except Exception:  # best effort
-                LOGGER.debug("logout on unload failed", exc_info=True)
+        try:
+            await entry.runtime_data.coordinator.sbconn.logout()
+        except Exception:
+            LOGGER.debug("logout on unload failed", exc_info=True)
     return unloaded
 

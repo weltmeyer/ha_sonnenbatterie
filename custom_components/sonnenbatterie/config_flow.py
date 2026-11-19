@@ -1,8 +1,5 @@
-# pylint: disable=no-name-in-module
-# pylint: enable=no-name-in-module
 import traceback
 
-# pylint: enable=unused-wildcard-import
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import (

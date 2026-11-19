@@ -7,14 +7,15 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.const import UnitOfEnergy
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.typing import StateType
 
 from .const import (
     LOGGER,
 )
-from .coordinator import SonnenbatterieCoordinator
+from .coordinator import SonnenbatterieConfigEntry, SonnenbatterieCoordinator
 from .entities import SonnenBaseEntity
 from .sensor_list import (
     ENERGY_SENSORS,
@@ -32,7 +33,8 @@ from .sensor_list import (
 #     return
 
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
+async def async_setup_entry(hass: HomeAssistant, config_entry: SonnenbatterieConfigEntry,
+                            async_add_entities: AddEntitiesCallback) -> None:
     """Set up the sensor platform."""
     coordinator = config_entry.runtime_data.coordinator
     LOGGER.debug(f"SENSOR async_setup_entry - {coordinator.safe_config}")

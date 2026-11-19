@@ -144,20 +144,20 @@ class SonnenbatterieService:
         except ValueError as e:
             raise HomeAssistantError(f"Schedule is not a valid JSON string: '{schedule}'") from e
 
-        data = self._get_data(call.data)
-        for lp in range(len(json_schedule)):
-            if json_schedule[lp]['threshold_p_max'] > data.tou_max:
-                LOGGER.warning(f"Specified 'threshold_p_max' {json_schedule[lp]['threshold_p_max']} exceeds the "
-                               f"battery's limit, capped to {data.tou_max}")
-                json_schedule[lp]['threshold_p_max'] = data.tou_max
-
+        # validate first: a missing key or a value of the wrong type ends in
+        # the readable error below, not in a raw KeyError/TypeError
         tou = TimeofUseSchedule()
         try:
             tou.load_tou_schedule_from_json(json_schedule)
-        except ValueError as e:
+        except (ValueError, TypeError, AttributeError) as e:
             raise HomeAssistantError(f"Schedule is not a valid schedule: '{schedule}'") from e
-        except TypeError as t:
-            raise HomeAssistantError(f"Schedule is not a valid schedule: '{schedule}'") from t
+
+        data = self._get_data(call.data)
+        for entry in json_schedule:
+            if (max_power := int(entry['threshold_p_max'])) > data.tou_max:
+                LOGGER.warning(f"Specified 'threshold_p_max' {max_power} exceeds the "
+                               f"battery's limit, capped to {data.tou_max}")
+                entry['threshold_p_max'] = data.tou_max
 
         # the capped schedule: the original string still has the values above the limit
         response = await data.coordinator.async_call("set_tou_schedule_string", json.dumps(json_schedule))
