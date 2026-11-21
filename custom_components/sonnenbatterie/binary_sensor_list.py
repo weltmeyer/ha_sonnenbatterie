@@ -8,6 +8,7 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.const import EntityCategory
 
 from custom_components.sonnenbatterie.coordinator import SonnenbatterieCoordinator
+from custom_components.sonnenbatterie.sensor_list import meter_label
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -96,14 +97,15 @@ def generate_powermeter_binary_sensors(coordinator: SonnenbatterieCoordinator):
     """A problem sensor per power meter, from its 'error' field (0 = OK,
     e.g. -1 when the meter has failed, #168)."""
     descriptions: list[SonnenbatterieBinarySensorEntityDescription] = []
-    for index, meter in enumerate(coordinator.latestData.get("powermeter") or []):
+    meters = coordinator.latestData.get("powermeter") or []
+    for index, meter in enumerate(meters):
         if not isinstance(meter, dict) or meter.get("error") is None:
             continue
         prefix = f"meter_{meter['direction']}_{meter['deviceid']}_{meter['channel']}".lower()
         descriptions.append(
             SonnenbatterieBinarySensorEntityDescription(
                 key=f"{prefix}_error",
-                name=f"meter {meter['direction']} {meter['channel']} error",
+                name=f"meter {meter_label(meters, meter)} error",
                 icon="mdi:meter-electric-outline",
                 device_class=BinarySensorDeviceClass.PROBLEM,
                 entity_category=EntityCategory.DIAGNOSTIC,

@@ -1,17 +1,20 @@
 from homeassistant.components.button import ButtonEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import SonnenbatterieCoordinator
-from .const import CONF_COORDINATOR, DOMAIN, LOGGER
-from .entities import SonnenButtonEntity, SonnenbatterieButtonEntityDescription, BUTTON_ENTITIES
+from .const import LOGGER
+from .coordinator import SonnenbatterieConfigEntry, SonnenbatterieCoordinator
+from .entities import (
+    BUTTON_ENTITIES,
+    SonnenbatterieButtonEntityDescription,
+    SonnenButtonEntity,
+)
 
 
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
+async def async_setup_entry(hass: HomeAssistant, config_entry: SonnenbatterieConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     LOGGER.debug(f"BUTTON async_setup_entry - {config_entry}")
-    coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
+    coordinator = config_entry.runtime_data.coordinator
 
     if coordinator.is_slave:
         # controlled by the cascade's master: read-only
@@ -27,7 +30,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 
         async_add_entities(entities)
     else:
-        LOGGER.info(f"JSON-API write access not enabled - disabling BUTTON functions")
+        LOGGER.info("JSON-API write access not enabled - disabling BUTTON functions")
 
 class SonnenbatterieButton(SonnenButtonEntity, ButtonEntity):
 
@@ -39,12 +42,9 @@ class SonnenbatterieButton(SonnenButtonEntity, ButtonEntity):
         tag = self.entity_description.tag
         match tag.key:
             case "button_reset_all":
-                await self.coordinator.sbconn.sb2.charge_battery(0)
-                await self.coordinator.sbconn.sb2.discharge_battery(0)
+                await self.coordinator.async_write_setpoint("number_charge", 0, refresh=False)
+                await self.coordinator.async_write_setpoint("number_discharge", 0)
             case "button_reset_charge":
-                await self.coordinator.sbconn.sb2.charge_battery(0)
+                await self.coordinator.async_write_setpoint("number_charge", 0)
             case "button_reset_discharge":
-                await self.coordinator.sbconn.sb2.discharge_battery(0)
-
-        await self.coordinator.after_write()
-        return None
+                await self.coordinator.async_write_setpoint("number_discharge", 0)

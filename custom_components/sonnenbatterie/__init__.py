@@ -4,17 +4,23 @@ from datetime import timedelta
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_USERNAME, CONF_PASSWORD, CONF_IP_ADDRESS
+from homeassistant.const import CONF_IP_ADDRESS, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import (
-    HomeAssistant, SupportsResponse,
+    HomeAssistant,
+    SupportsResponse,
 )
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import entity_registry as er
+
 from sonnenbatterie import AsyncSonnenBatterie
 
 from .const import *
-from .coordinator import SonnenbatterieCoordinator
-from .sensor_list import SENSORS, SonnenbatterieSensorEntityDescription
+from .coordinator import (
+    SonnenbatterieConfigEntry,
+    SonnenbatterieCoordinator,
+    SonnenbatterieData,
+)
+from .sensor_list import SENSORS
 from .service import SonnenbatterieService
 from .token_client import TokenSonnenBatterie
 
@@ -80,6 +86,37 @@ async def _get_serial_number(config_entry: ConfigEntry) -> str:
     await sb_conn.logout()
     return sysdata.get("DE_Ticket_Number", "sru-unknown")
 
+def _migrate_control_unique_ids(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
+    """Up to 2026.3.2 the numbers, the select and the buttons used their
+    (wrongly prefixed) entity id as unique id: "sonnenbatterie.sonnenbatterie_
+    <serial>_<key>". Since 2026.7.0 it is "sonnenbatterie_<serial>_<key>", so
+    an update from an older version left the old entities behind as "no
+    longer provided" and created new ones with new entity ids.
+
+    Give the old entries the new unique id, so they are picked up again and
+    keep their entity id, name and settings. If the new entity already exists
+    (the update to 2026.7.0 or newer happened before this migration), both
+    are left alone: the new one may be in use by now."""
+    ent_reg = er.async_get(hass)
+    old_prefix = f"{DOMAIN}.{DOMAIN}_"
+    left_behind = []
+    for entity in er.async_entries_for_config_entry(ent_reg, config_entry.entry_id):
+        if entity.domain not in (Platform.NUMBER, Platform.SELECT, Platform.BUTTON):
+            continue
+        if not entity.unique_id.startswith(old_prefix):
+            continue
+        new_unique_id = entity.unique_id.removeprefix(f"{DOMAIN}.")
+        if ent_reg.async_get_entity_id(entity.domain, DOMAIN, new_unique_id):
+            left_behind.append(entity.entity_id)
+            continue
+        LOGGER.info(f"{entity.entity_id}: migrating unique id to {new_unique_id}")
+        ent_reg.async_update_entity(entity.entity_id, new_unique_id=new_unique_id)
+    if left_behind:
+        LOGGER.info(
+            "These entities from a version before 2026.7.0 are no longer provided, their "
+            f"replacements already exist. They can be removed: {', '.join(sorted(left_behind))}")
+
+
 def _remove_stale_slave_entities(hass: HomeAssistant, config_entry: ConfigEntry, serial: str) -> None:
     """A cascade's slave gets no controls, meters or cascade-wide sensors.
     Remove those an earlier version created for it, instead of leaving them
@@ -103,13 +140,10 @@ async def async_setup(hass, config):
     return True
 
 
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, config_entry: SonnenbatterieConfigEntry) -> bool:
     _safe = {k: ("***" if k in (CONF_PASSWORD, CONF_AUTH_TOKEN) else v)
              for k, v in config_entry.data.items()}
     LOGGER.debug(f"setup_entry: {_safe} | {config_entry.entry_id}")
-    # only initialize if not already present
-    if DOMAIN not in hass.data:
-        hass.data.setdefault(DOMAIN, {})
 
     # Fix missing serial number
     serial_number = config_entry.data.get(CONF_SERIAL_NUMBER)
@@ -130,10 +164,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         raise ConfigEntryNotReady
     else:
         await sb_coordinator.fetch_sonnenbatterie_on_startup()
-    # save coordinator as early as possible
-    hass.data[DOMAIN][config_entry.entry_id] = {}
-    hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR] = sb_coordinator
-
     # whole cascade's inverter power on a cascade master, see populate_battery_info()
     # (which also falls back to the v2 "configurations" when v1 is unavailable).
     # Only if no source has it at all, use a generous guess so the
@@ -141,8 +171,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     inverter_power = sb_coordinator.latestData['battery_info']['max_power'] or 25000
     max_tou_power = sb_coordinator.latestData.get('commissioning_settings',{}).get('data', {}).get('attributes', {}).get('tou_max_power_limit', '22000')
     LOGGER.debug(f"inverter_power: {inverter_power}, tou_power: {max_tou_power}")
-    hass.data[DOMAIN][config_entry.entry_id][CONF_INVERTER_MAX] = inverter_power
-    hass.data[DOMAIN][config_entry.entry_id][CONF_TOU_MAX] = int(max_tou_power)
+    config_entry.runtime_data = SonnenbatterieData(
+        coordinator=sb_coordinator, inverter_max=int(inverter_power), tou_max=int(max_tou_power))
 
     # noinspection PyPep8Naming
     SCHEMA_CHARGE_BATTERY = vol.Schema(
@@ -154,7 +184,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     )
 
     # Initialize our services
-    services = SonnenbatterieService(hass, config_entry, sb_coordinator)
+    services = SonnenbatterieService(hass, config_entry)
+
+    # before the platforms look up their entities
+    _migrate_control_unique_ids(hass, config_entry)
 
     if sb_coordinator.is_slave:
         _remove_stale_slave_entities(hass, config_entry, serial_number)
@@ -253,7 +286,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         )
 
     else:
-        LOGGER.info(f"JSON-API write access not enabled - disabling SERVICE functions")
+        LOGGER.info("JSON-API write access not enabled - disabling SERVICE functions")
 
     # Done setting up the entry
     return True
@@ -272,7 +305,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 #     # )
 
 
-async def async_unload_entry(hass, entry):
+async def async_unload_entry(hass: HomeAssistant, entry: SonnenbatterieConfigEntry) -> bool:
     """Handle removal of an entry.
 
     Unload ALL platforms (not only SENSOR): otherwise select/number/button stay
@@ -281,10 +314,13 @@ async def async_unload_entry(hass, entry):
     missing.
     """
     LOGGER.debug(f"Unloading config entry: {entry}")
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    if unload_ok:
-        entry_data = hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
-        if entry_data and entry_data.get(CONF_COORDINATOR):
-            await entry_data[CONF_COORDINATOR].aclose()
-    return unload_ok
+    unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unloaded:
+        # closes both HTTP sessions of the coordinator, otherwise every reload
+        # (e.g. a cascade slave's new IP address) leaks them
+        try:
+            await entry.runtime_data.coordinator.aclose()
+        except Exception:  # noqa: BLE001 - best effort
+            LOGGER.debug("closing the coordinator on unload failed", exc_info=True)
+    return unloaded
 

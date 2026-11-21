@@ -105,7 +105,13 @@
         },
         "select": {
             "select_operating_mode": {
-                "name": "Operating mode"
+                "name": "Operating mode",
+                "state": {
+                    "manual": "Manual",
+                    "automatic": "Automatic",
+                    "timeofuse": "Time of Use",
+                    "optimizing": "Optimization"
+                }
             }
         },
         "sensor": {
@@ -325,7 +331,7 @@
                     "name": "Device Id"
                 },
                 "mode": {
-                    "description": "Operating mode to set ('manual', 'automatic', 'timeofuse')",
+                    "description": "Operating mode to set ('manual', 'automatic', 'timeofuse', 'optimizing')",
                     "name": "Operating mode",
                     "example": "automatic"
                 }
@@ -341,7 +347,7 @@
                     "example": "1234567890"
                 },
                 "mode": {
-                    "description": "Operating mode to set ('1', '2', '10')",
+                    "description": "Operating mode to set ('1' manual, '2' automatic, '10' time of use, '11' optimization)",
                     "name": "Operating mode",
                     "example": "2"
                 }

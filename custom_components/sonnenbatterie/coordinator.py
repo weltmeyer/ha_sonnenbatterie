@@ -1,31 +1,43 @@
 import asyncio
 import sys
 import traceback
+from dataclasses import dataclass
 from datetime import timedelta
 from time import time
+from typing import ClassVar
 
 import aiohttp
-from homeassistant.config_entries import ConfigEntry, SOURCE_INTEGRATION_DISCOVERY
-from homeassistant.const import CONF_SCAN_INTERVAL, CONF_USERNAME, CONF_PASSWORD, CONF_IP_ADDRESS
+from homeassistant.config_entries import SOURCE_INTEGRATION_DISCOVERY, ConfigEntry
+from homeassistant.const import (
+    CONF_IP_ADDRESS,
+    CONF_PASSWORD,
+    CONF_SCAN_INTERVAL,
+    CONF_USERNAME,
+)
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import device_registry as dr, discovery_flow
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import discovery_flow
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
 from sonnenbatterie import AsyncSonnenBatterie
 
-from custom_components.sonnenbatterie import LOGGER, DOMAIN, ATTR_SONNEN_DEBUG
 from .const import (
+    ATTR_SONNEN_DEBUG,
     CASCADE_ROLES,
     CONF_AUTH_TOKEN,
     CONF_MASTER_ENTRY_ID,
     CONF_SERIAL_NUMBER,
     DEFAULT_SCAN_INTERVAL,
+    DOMAIN,
+    LOGGER,
     MIN_SCAN_INTERVAL,
     ROLE_MASTER,
     ROLE_NONE,
     ROLE_SLAVE,
 )
 from .token_client import TokenSonnenBatterie
+
 
 def _v2_write_class():
     """The v2 (Auth-Token) WRITE-client class, obtained WITHOUT declaring a new
@@ -40,7 +52,7 @@ def _v2_write_class():
     if cls is None:
         try:  # pragma: no cover - layout fallback
             from sonnenbatterie2.sonnenbatterie2 import AsyncSonnenBatterieV2 as cls
-        except Exception:
+        except ImportError:
             cls = None
     return cls
 
@@ -102,6 +114,10 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
         # ("Timeout on reading data from socket").
         self.io_lock = asyncio.Lock()
         self.latestData = {}
+        # last charge/discharge setpoint written (the battery has no read-back
+        # for it): charge and discharge share one signed setpoint, so writing
+        # one direction zeroes the other
+        self.setpoints = {"number_charge": 0, "number_discharge": 0}
         self.name = config_entry.title
         self.serial = serial
 
@@ -127,14 +143,14 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
                                               ipaddress=ipaddress)
 
             # Optional dedicated write client via a static Auth-Token (no login, no
-            # session-token expiry). Used for setpoint writes when configured;
-            # otherwise writes go through the v1 session client (sbconn.sb2).
+            # session-token expiry). Used for all writes and on-demand reads when configured;
+            # otherwise they go through the v1 session client (sbconn.sb2).
             v2_cls = _v2_write_class() if token else None
             if token and v2_cls is not None:
                 try:
                     self._write_v2 = v2_cls(ipaddress, token)
                     self._relax_timeouts(self._write_v2)
-                    LOGGER.info("sonnenbatterie: using static Auth-Token for setpoint writes")
+                    LOGGER.info("sonnenbatterie: using static Auth-Token for writes")
                 except Exception:  # noqa: BLE001 - fall back to the session client
                     LOGGER.warning("sonnenbatterie: Auth-Token write client init failed", exc_info=True)
                     self._write_v2 = None
@@ -274,8 +290,8 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
                 # asyncio.timeout() uses, and login() would run unbounded
                 try:
                     await self.sbconn.logout()
-                except Exception:  # noqa: BLE001
-                    pass
+                except Exception as e:  # noqa: BLE001 - the old session may be gone already
+                    LOGGER.debug(f"logout before login failed: {type(e).__name__}: {e}")
                 await self.sbconn.login()
             self._relax_timeouts(self.sbconn, getattr(self.sbconn, "sb2", None))
             self._last_login = time()
@@ -352,15 +368,17 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
 
         Not every system/firmware may offer it: if the battery says the
         endpoint doesn't exist or isn't permitted, stop asking and let the
-        sensors fall back to grid_information. A 403 counts as not permitted:
-        /api/v2/status just succeeded with the same token, so it isn't an
-        expired session (which would mean a re-login and failed update every
-        cycle). Other errors (timeouts, 5xx, 401) are handled like any other
-        failed request, so the maintenance window logic applies."""
+        sensors fall back to grid_information. A 401 or 403 counts as not
+        permitted: /api/v2/status just succeeded with the same token, so it
+        isn't an expired session (treating it as one meant a re-login and a
+        failed update every cycle, and the entry never loaded, #171: some
+        systems answer 401 here). Other errors (timeouts, 5xx) are handled
+        like any other failed request, so the maintenance window logic
+        applies."""
         try:
             data = await self.sbconn.sb2.get_inverter_data()
         except aiohttp.ClientResponseError as e:
-            if e.status not in (400, 403, 404, 405, 501):
+            if e.status not in (400, 401, 403, 404, 405, 501):
                 raise
             data = None
         if isinstance(data, dict):
@@ -407,16 +425,24 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
                       CONF_MASTER_ENTRY_ID: self._config_entry.entry_id})
         self._link_slave_devices(set(slaves))
 
+    @staticmethod
+    def _entry_device(dev_reg: dr.DeviceRegistry, entry_id: str) -> dr.DeviceEntry | None:
+        """The device of one of our config entries (identifier: the entry id).
+        Not dev_reg.async_get_device(): deprecated since HA 2026.11 (breaks in
+        2027.8), and its replacement doesn't exist in older versions."""
+        return next((device for device in dr.async_entries_for_config_entry(dev_reg, entry_id)
+                     if (DOMAIN, entry_id) in device.identifiers), None)
+
     @callback
     def _link_slave_devices(self, serials: set) -> None:
         dev_reg = dr.async_get(self.hass)
-        master = dev_reg.async_get_device(identifiers={(DOMAIN, self._config_entry.entry_id)})
+        master = self._entry_device(dev_reg, self._config_entry.entry_id)
         if master is None:      # entities (and so the device) not set up yet
             return
         for entry in self.hass.config_entries.async_entries(DOMAIN):
             if entry.data.get(CONF_SERIAL_NUMBER) not in serials:
                 continue
-            device = dev_reg.async_get_device(identifiers={(DOMAIN, entry.entry_id)})
+            device = self._entry_device(dev_reg, entry.entry_id)
             if device is not None and device.via_device_id != master.id:
                 dev_reg.async_update_device(device.id, via_device_id=master.id)
 
@@ -467,7 +493,7 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
                 if self.cascading_role == ROLE_MASTER and not self._token_only:
                     await self._update_cascade()
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - every failed update is handled alike
             # raises UpdateFailed unless within the maintenance grace period,
             # in which case the last known values are served below
             self._handle_update_error(e)
@@ -483,68 +509,84 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
                 for index, dictIndex in enumerate(self.latestData["powermeter"]):
                     new_powermeters.append(self.latestData["powermeter"][dictIndex])
                 self.latestData["powermeter"] = new_powermeters
-            except:
-                e = traceback.format_exc()
-                LOGGER.error(e)
+            except Exception:  # noqa: BLE001 - keep the update, log the odd format
+                LOGGER.error(traceback.format_exc())
 
         if self._config_entry.data.get(ATTR_SONNEN_DEBUG, False):
             self.send_all_data_to_log()
 
         self.populate_battery_info()
 
-    async def async_write_setpoint(self, key: str, value) -> None:
-        """Write a charge/discharge/reserve setpoint robustly.
+    SETPOINT_METHODS: ClassVar[dict[str, str]] = {
+        "number_charge": "charge_battery",
+        "number_discharge": "discharge_battery",
+        "battery_reserve": "set_battery_reserve",
+    }
+
+    @classmethod
+    def _retryable(cls, e: Exception) -> bool:
+        """Worth one more try: a dropped session, a server error, a timeout or
+        a lost connection. Not a request the battery rejected (e.g. 400)."""
+        if isinstance(e, aiohttp.ClientResponseError):
+            return cls._is_auth_error(e) or e.status >= 500
+        return isinstance(e, (aiohttp.ClientError, TimeoutError, RuntimeError))
+
+    async def async_call(self, method: str, *args, write: bool = True, refresh: bool = True):
+        """Call a method of the battery's v2 client: for every write and every
+        on-demand read (entities, buttons, actions).
 
         The battery's local API occasionally drops the session (token expiry ->
         401) or answers slowly (socket timeout), and the v1 session client's v2
-        sub-client (sbconn.sb2) is None until the first login — the plain write
-        path crashed with ``'NoneType' object has no attribute
-        'discharge_battery'`` and a single 401 kept failing.
+        sub-client (sbconn.sb2) is None until the first login — calling it
+        directly crashed with ``'NoneType' object has no attribute ...`` and a
+        single 401 kept failing.
 
-        When a static Auth-Token is configured, the dedicated v2 client is used
-        (no login, no session expiry). Otherwise the session client is used with
-        an ensure-login and one re-login+retry on failure. A light refresh
-        confirms the applied value afterwards."""
-        v = int(value)
-
-        async def _do(client) -> None:
-            if key == "number_charge":
-                await client.charge_battery(v)
-            elif key == "number_discharge":
-                await client.discharge_battery(v)
-            elif key == "battery_reserve":
-                await client.set_battery_reserve(v)
-            else:
-                raise ValueError(f"unknown setpoint key {key!r}")
-
+        Serialized with the polls (io_lock). When a static Auth-Token is
+        configured, the dedicated v2 client is used (no login, no session
+        expiry); otherwise the session client, logged in if needed. One retry
+        on a transient failure (after a re-login on an auth error). A write is
+        followed by a light refresh, unless refresh=False (e.g. the first of
+        two writes)."""
         async with self.io_lock:
-            if self._write_v2 is not None:
-                # static token: no login/session — just one retry on a transient
-                # socket timeout (the command usually lands even then).
-                for attempt in (1, 2):
-                    try:
-                        await _do(self._write_v2)
-                        break
-                    except Exception as e:  # noqa: BLE001
-                        if attempt == 2:
-                            raise
-                        LOGGER.debug(f"token setpoint write {key} failed, retry: {e}")
-            else:
-                for attempt in (1, 2):
-                    try:
+            for attempt in (1, 2):
+                try:
+                    if self._write_v2 is not None:
+                        client = self._write_v2
+                    else:
                         await self._ensure_login()
-                        sb2 = getattr(self.sbconn, "sb2", None)
-                        if sb2 is None:
+                        client = getattr(self.sbconn, "sb2", None)
+                        if client is None:
                             raise RuntimeError("sonnenbatterie session not established (sb2 is None)")
-                        await _do(sb2)
-                        break
-                    except Exception as e:  # noqa: BLE001
-                        if self._is_auth_error(e):
-                            self._last_login = 0    # token invalid -> fresh login on retry
-                        if attempt == 2:
-                            raise
-                        LOGGER.debug(f"setpoint write {key} failed, re-login + retry: {e}")
-        await self.after_write()
+                    result = await getattr(client, method)(*args)
+                    break
+                except Exception as e:
+                    if attempt == 2 or not self._retryable(e):
+                        raise
+                    if self._is_auth_error(e) and self._write_v2 is None:
+                        self._last_login = 0    # session invalid -> fresh login on retry
+                    LOGGER.debug(f"{method} failed, retry: {e}")
+        if write and refresh:
+            await self.refresh_after_write()
+        return result
+
+    async def async_write_setpoint(self, key: str, value, refresh: bool = True):
+        """Write a charge/discharge setpoint or the battery reserve."""
+        if (method := self.SETPOINT_METHODS.get(key)) is None:
+            raise ValueError(f"unknown setpoint key {key!r}")
+        value = int(value)
+        result = await self.async_call(method, value, refresh=False)
+        if key in self.setpoints:
+            # only after a successful write, so a failing one never fakes a value
+            self.setpoints = {k: (value if k == key else 0) for k in self.setpoints}
+            self.async_update_listeners()
+        if refresh:
+            # charge/discharge: the read-back (latestdata.SetPoint_W) lags the
+            # write, so also refresh once more after the settle delay
+            if key in self.setpoints:
+                await self.after_write()
+            else:
+                await self.refresh_after_write()
+        return result
 
     @property
     def setpoint_settling(self) -> bool:
@@ -603,7 +645,7 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
 
     async def fetch_sonnenbatterie_on_startup(self):
         """Fetch all config items from Sonnenbatterie."""
-        LOGGER.debug(f"Fetching Sonnenbatteries on startup")
+        LOGGER.debug("Fetching Sonnenbatteries on startup")
         await self._async_update_data()
 
     async def aclose(self):
@@ -642,3 +684,17 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
             LOGGER.warning(f"Battery:\n{self.latestData['battery']}")
             LOGGER.warning(f"API-Config:\n{self.latestData['api_configuration']}")
             self._fullLogsAlreadySent = True
+
+
+@dataclass
+class SonnenbatterieData:
+    """What a set-up entry keeps (config_entry.runtime_data)."""
+
+    coordinator: SonnenbatterieCoordinator
+    # max. power of the inverter (the whole cascade's on a cascade master)
+    inverter_max: int
+    # the battery's limit for time-of-use schedules
+    tou_max: int
+
+
+type SonnenbatterieConfigEntry = ConfigEntry[SonnenbatterieData]

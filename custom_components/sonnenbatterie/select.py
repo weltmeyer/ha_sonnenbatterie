@@ -1,20 +1,24 @@
 from homeassistant.components.select import SelectEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import CONF_COORDINATOR, SonnenbatterieCoordinator, SB_OPERATING_MODES_NUM
-from .const import DOMAIN, LOGGER, SB_OPERATING_MODES
-from .entities import SonnenSelectEntity, SELECT_ENTITIES, SonnenbatterieSelectEntityDescription
+from .const import LOGGER, SB_OPERATING_MODES, SB_OPERATING_MODES_NUM
+from .coordinator import SonnenbatterieConfigEntry, SonnenbatterieCoordinator
+from .entities import (
+    SELECT_ENTITIES,
+    SonnenbatterieSelectEntityDescription,
+    SonnenSelectEntity,
+)
+from .service import async_set_operating_mode
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    config_entry: SonnenbatterieConfigEntry,
     async_entity_cb: AddEntitiesCallback
 ) -> None:
     LOGGER.debug(f"SELECT async_setup_entry: {config_entry}")
-    coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
+    coordinator = config_entry.runtime_data.coordinator
 
     if coordinator.is_slave:
         # controlled by the cascade's master: read-only
@@ -32,7 +36,7 @@ async def async_setup_entry(
         async_entity_cb(entities) if len(entities) > 0 else None
 
     else:
-        LOGGER.info(f"JSON-API write access not enabled - disabling SELECT functions")
+        LOGGER.info("JSON-API write access not enabled - disabling SELECT functions")
 
 class SonnenBatterieSelect(SonnenSelectEntity, SelectEntity):
     def __init__(self, coordinator: SonnenbatterieCoordinator, description: SonnenbatterieSelectEntityDescription):
@@ -41,8 +45,14 @@ class SonnenBatterieSelect(SonnenSelectEntity, SelectEntity):
     @property
     def current_option(self) ->  str | list[str] | None:
         tag = self.entity_description.tag
-        value = self.coordinator.latestData[tag.section][tag.property]
-        return SB_OPERATING_MODES_NUM[value] or "unknown"
+        # the status is read on every update, the configurations only every
+        # few: the status' OperatingMode shows a change right away (both
+        # always change together), the configuration is the fallback
+        value = (self.coordinator.latestData.get("status", {}).get("OperatingMode")
+                 or self.coordinator.latestData.get(tag.section, {}).get(tag.property))
+        # modes that can't be selected (4 testing, 6 module extension) or
+        # unknown ones show as unknown; the operating mode sensor names them
+        return SB_OPERATING_MODES_NUM.get(str(value))
 
     async def async_select_option(self, option: str) -> None:
         tag = self.entity_description.tag
@@ -52,7 +62,5 @@ class SonnenBatterieSelect(SonnenSelectEntity, SelectEntity):
                 case "configurations":
                     match tag.key:
                         case "select_operating_mode":
-                            await self.coordinator.sbconn.sb2.set_operating_mode(SB_OPERATING_MODES[option])
-                            await self.coordinator.async_request_refresh()
+                            await async_set_operating_mode(self.coordinator, SB_OPERATING_MODES[option])
 
-        return None

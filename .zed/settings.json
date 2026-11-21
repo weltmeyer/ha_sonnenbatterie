@@ -1,0 +1,23 @@
+// Zed project settings, the counterpart of the VS Code settings in
+// .devcontainer/devcontainer.json. Used locally and in the dev container.
+{
+  "languages": {
+    "Python": {
+      // ruff as formatter (built into Zed), but no format on save: the code
+      // base isn't ruff-formatted yet, saving a file would reformat all of it
+      "formatter": {
+        "language_server": {
+          "name": "ruff"
+        }
+      },
+      "format_on_save": "off"
+    }
+  },
+  "file_scan_exclusions": [
+    "**/.git",
+    "**/.venv",
+    "**/.ruff_cache",
+    "**/__pycache__",
+    "config/.storage"
+  ]
+}

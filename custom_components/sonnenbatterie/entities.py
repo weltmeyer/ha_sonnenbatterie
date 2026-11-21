@@ -3,14 +3,19 @@ from enum import Enum
 from typing import NamedTuple
 
 from homeassistant.components.button import ButtonEntityDescription
-from homeassistant.components.number import NumberEntityDescription, NumberDeviceClass, NumberMode
+from homeassistant.components.number import (
+    NumberDeviceClass,
+    NumberEntityDescription,
+    NumberMode,
+)
 from homeassistant.components.select import SelectEntityDescription
-from homeassistant.const import Platform, EntityCategory, UnitOfPower
+from homeassistant.const import EntityCategory, Platform, UnitOfPower
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from custom_components.sonnenbatterie import SonnenbatterieSensorEntityDescription, SonnenbatterieCoordinator
-from custom_components.sonnenbatterie.const import DOMAIN
+from .const import DOMAIN
+from .coordinator import SonnenbatterieCoordinator
+from .sensor_list import SonnenbatterieSensorEntityDescription
 
 
 class SelectEntry(NamedTuple):
@@ -63,8 +68,8 @@ class Tag(SelectEntry, Enum):
     BATTERY_RESERVE = SelectEntry(
         key="battery_reserve",
         type=Platform.NUMBER,
-        section="status",
-        property="USOC",
+        section="configurations",
+        property="EM_USOC",
         writable=True,
     )
 
@@ -212,7 +217,7 @@ SELECT_ENTITIES = [
         icon="mdi:solar-power",
         entity_category=EntityCategory.CONFIG,
         tag=Tag.OPERATING_MODE,
-        options=["manual", "automatic", "timeofuse"],
+        options=["manual", "automatic", "timeofuse", "optimizing"],
     ),
 ]
 

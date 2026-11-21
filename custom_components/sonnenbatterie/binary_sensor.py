@@ -1,9 +1,6 @@
 from homeassistant.components.binary_sensor import BinarySensorEntity
-
-from . import CONF_COORDINATOR
-from .const import DOMAIN, LOGGER
-from .coordinator import SonnenbatterieCoordinator
-from .entities import SonnenBaseEntity
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .binary_sensor_list import (
     BINARY_SENSORS,
@@ -11,11 +8,15 @@ from .binary_sensor_list import (
     generate_powermeter_binary_sensors,
     io_pin_description,
 )
+from .const import LOGGER
+from .coordinator import SonnenbatterieConfigEntry, SonnenbatterieCoordinator
+from .entities import SonnenBaseEntity
 
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
+async def async_setup_entry(hass: HomeAssistant, config_entry: SonnenbatterieConfigEntry,
+                            async_add_entities: AddEntitiesCallback) -> None:
     """Set up the binary_sensor platform."""
-    coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
+    coordinator = config_entry.runtime_data.coordinator
     LOGGER.debug(f"BINARY_SENSOR async_setup_entry - {coordinator.safe_config}")
 
     async_add_entities(

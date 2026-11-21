@@ -1,9 +1,6 @@
-# pylint: disable=no-name-in-module
-from sonnenbatterie import AsyncSonnenBatterie
-
-# pylint: enable=no-name-in-module
 import traceback
 
+import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import (
     CONF_IP_ADDRESS,
@@ -13,15 +10,18 @@ from homeassistant.const import (
 )
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers.selector import TextSelector, TextSelectorConfig, TextSelectorType
+from homeassistant.helpers.selector import (
+    TextSelector,
+    TextSelectorConfig,
+    TextSelectorType,
+)
+
+from sonnenbatterie import AsyncSonnenBatterie
 
 # pylint: disable=unused-wildcard-import
 from .const import *
 
-# pylint: enable=unused-wildcard-import
 from .token_client import TokenSonnenBatterie
-import voluptuous as vol
-
 
 # masked input for fields prefilled with a stored secret
 SECRET = TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))
@@ -70,11 +70,9 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
             # noinspection PyBroadException
             try:
-                my_serial = await self.hass.async_add_executor_job(
-                    self._internal_setup, username, password, ipaddress
-                )
+                sb_serial = await self._internal_setup(username, password, ipaddress)
 
-            except:
+            except Exception:  # noqa: BLE001 - any failure: show the connection error
                 e = traceback.format_exc()
                 LOGGER.error(f"Unable to connect to sonnenbatterie: {e}")
                 return self.async_show_form(
@@ -83,8 +81,6 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     errors={"base": "connection_error"},
                 )
 
-            # async is a fickly beast ...
-            sb_serial = await my_serial
             unique_id = f"{DOMAIN}-{sb_serial}"
             await self.async_set_unique_id(unique_id)
             self._abort_if_unique_id_configured()
@@ -196,10 +192,8 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             # noinspection PyBroadException
             try:
-                my_serial = await self.hass.async_add_executor_job(
-                    self._internal_setup,
+                sb_serial = await self._internal_setup(
                     user_input[CONF_USERNAME], user_input[CONF_PASSWORD], ipaddress)
-                sb_serial = await my_serial
             except Exception as e:  # noqa: BLE001
                 LOGGER.warning(f"Unable to log in to cascade slave {serial}: {type(e).__name__}: {e}")
                 LOGGER.debug(traceback.format_exc())
@@ -271,17 +265,15 @@ class SonnenbatterieFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             LOGGER.debug(f"Reconfiguring {entry} (login)")
             # noinspection PyBroadException
             try:
-                my_serial = await self.hass.async_add_executor_job(
-                    self._internal_setup,
+                sb_serial = await self._internal_setup(
                     user_input[CONF_USERNAME],
                     user_input[CONF_PASSWORD],
                     user_input[CONF_IP_ADDRESS]
                 )
-                # async is a fickly beast ... - only used to verify the
-                # connection here, the entry keeps its existing serial number
-                # (changing it would orphan every existing entity's unique_id)
-                await my_serial
-            except:
+                # only used to verify the connection here, the entry keeps its
+                # existing serial number (changing it would orphan every
+                # existing entity's unique_id)
+            except Exception:  # noqa: BLE001 - any failure: show the connection error
                 e = traceback.format_exc()
                 LOGGER.error(f"Unable to connect to sonnenbatterie: {e}")
                 return self.async_show_form(

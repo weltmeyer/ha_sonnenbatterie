@@ -105,7 +105,13 @@
         },
         "select": {
             "select_operating_mode": {
-                "name": "Driftläge"
+                "name": "Driftläge",
+                "state": {
+                    "manual": "Manuell",
+                    "automatic": "Automatisk",
+                    "timeofuse": "Tidsstyrd (Time of Use)",
+                    "optimizing": "Optimering"
+                }
             }
         },
         "sensor": {

@@ -1,17 +1,20 @@
 from homeassistant.components.number import NumberEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import SonnenbatterieCoordinator, CONF_INVERTER_MAX
-from .const import LOGGER, CONF_COORDINATOR, DOMAIN
-from .entities import SonnenNumberEntity, SonnenbatterieNumberEntityDescription, NUMBER_ENTITIES
+from .const import LOGGER
+from .coordinator import SonnenbatterieConfigEntry, SonnenbatterieCoordinator
+from .entities import (
+    NUMBER_ENTITIES,
+    SonnenbatterieNumberEntityDescription,
+    SonnenNumberEntity,
+)
 
 
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
+async def async_setup_entry(hass: HomeAssistant, config_entry: SonnenbatterieConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     LOGGER.debug(f"NUMBER - async_setup_entry: {config_entry}")
-    coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
+    coordinator = config_entry.runtime_data.coordinator
     # await coordinator.async_refresh()
 
     if coordinator.is_slave:
@@ -21,7 +24,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 
     if coordinator.latestData.get('api_configuration',{}).get('IN_LocalAPIWriteActive', '0') == '1':
 
-        max_power = int(hass.data[DOMAIN][config_entry.entry_id][CONF_INVERTER_MAX])
+        max_power = config_entry.runtime_data.inverter_max
         entities = []
         for description in NUMBER_ENTITIES:
             if description.tag.type == Platform.NUMBER:
@@ -30,10 +33,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
         async_add_entities(entities)
 
     else:
-        LOGGER.info(f"JSON-API write access not enabled - disabling NUMBER functions")
+        LOGGER.info("JSON-API write access not enabled - disabling NUMBER functions")
 
 class SonnenbatterieNumber(SonnenNumberEntity, NumberEntity):
-    _attr_native_value: int = 0
 
     def __init__(self, coordinator: SonnenbatterieCoordinator, description: SonnenbatterieNumberEntityDescription, max_power: int) -> None:
         super().__init__(coordinator, description)
@@ -49,6 +51,14 @@ class SonnenbatterieNumber(SonnenNumberEntity, NumberEntity):
 
     @property
     def native_value(self):
+        tag = self.entity_description.tag
+        if tag.key == "battery_reserve":
+            # the reserve can be read back from the configurations; before,
+            # the slider started at 0 until it was set from HA
+            try:
+                return int(self.coordinator.latestData.get(tag.section, {})[tag.property])
+            except (KeyError, TypeError, ValueError):
+                return None
         # Charge and discharge share ONE signed setpoint (latestdata.SetPoint_W:
         # positive = discharge, negative = charge), so each entity shows its
         # own direction of it. Right after a write the value that was just
@@ -58,28 +68,19 @@ class SonnenbatterieNumber(SonnenNumberEntity, NumberEntity):
         if not coordinator.setpoint_settling:
             setpoint = coordinator.latestData.get("latestdata", {}).get("SetPoint_W")
             if setpoint is not None:
-                key = self.entity_description.key
-                if key == "number_charge":
+                if tag.key == "number_charge":
                     return max(0, -setpoint)
-                if key == "number_discharge":
+                if tag.key == "number_discharge":
                     return max(0, setpoint)
-        return self._attr_native_value
+        # no read-back (yet): the last setpoint written (also by the reset
+        # buttons and the actions), 0 before that
+        return coordinator.setpoints.get(tag.key, 0)
 
     async def async_set_native_value(self, value):
         LOGGER.debug(f"NUMBER - async_set_native_value: {value} - {type(value)}")
         tag = self.entity_description.tag
         if tag.writable:
-            # Robust write: serialized (single-request webserver), session-safe
-            # (ensures a session / uses the static Auth-Token), retried once on a
-            # transient 401/timeout, then a LIGHT refresh (external controllers
-            # write every few seconds; a full refresh per write overloads it).
+            # serialized, session-safe, retried once, then a light refresh
+            # (external controllers write every few seconds; a full refresh
+            # per write would overload the battery)
             await self.coordinator.async_write_setpoint(tag.key, value)
-            # Optimistic state: the sonnen charge/discharge setpoint is WRITE-ONLY
-            # (the API has no read-back of the current target), so without this the
-            # entity kept its class default 0 forever and never reflected a command.
-            # External controllers (e.g. SEA) read the setpoint back for their trace
-            # and logged "invalid number state: unknown" / a stale 0. Only set AFTER
-            # a successful write, so a failing write never fakes a value.
-            self._attr_native_value = value
-            self.async_write_ha_state()
-        return None
