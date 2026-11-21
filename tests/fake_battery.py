@@ -149,6 +149,13 @@ class FakeBattery:
         if request.method == "PUT" and path == "v2/configurations":
             return await self._put_configurations(request)
         if request.method == "POST":
+            if path.startswith("v2/setpoint/"):
+                # like the battery: one signed setpoint (positive = discharge,
+                # negative = charge), shown in latestdata.SetPoint_W
+                _, _, direction, watts = path.split("/")
+                latest = self.endpoints.get("v2/latestdata", {}).get("data")
+                if isinstance(latest, dict):
+                    latest["SetPoint_W"] = int(watts) * (-1 if direction == "charge" else 1)
             return web.json_response({})
         if path.startswith("v2/configurations/"):
             item = path.rsplit("/", 1)[1]
