@@ -154,6 +154,46 @@ def generate_powermeter_sensors(_coordinator):
     return powermeter_sensors
 
 
+# Eclipse Led (the battery's front status light) reports its current animation
+# as a set of mutually-exclusive booleans (at most one "Blinking .../Pulsing
+# .../Solid .../Rotating ..." key is true at a time) instead of a single
+# field, so this picks out whichever one is active for a single readable sensor.
+_ECLIPSE_LED_PATTERN_KEYS = (
+    "Blinking Green",
+    "Blinking Red",
+    "Blinking blue",
+    "Blinking purple",
+    "Blinking sonnenGradient",
+    "Pulsing Green",
+    "Pulsing Orange",
+    "Pulsing Red",
+    "Pulsing White",
+    "Pulsing blue",
+    "Pulsing purple",
+    "Rotating sonnenGradient",
+    "Solid Red",
+    "Solid blue",
+    "Solid purple",
+    "Solid sonnenGradient",
+)
+
+
+def _eclipse_led_state(coordinator) -> str | None:
+    led = coordinator.latestData.get("latestdata", {}).get("ic_status", {}).get("Eclipse Led")
+    if led is None:
+        return None
+    for key in _ECLIPSE_LED_PATTERN_KEYS:
+        if led.get(key):
+            return key
+    return "Off"
+
+
+# Sensors whose data only exists in the v1 API. They are not created in
+# API-key-only mode, and registry entries left over from an earlier run are
+# removed there (see async_setup_entry in sensor.py).
+V1_ONLY_SENSOR_KEYS = ("battery_system_health", "tou_max_power")
+
+
 def inverter_value(coordinator, key):
     """PV/grid value: live from /api/v2/inverter if the battery offers it,
     else from battery_system's grid_information (same fields, but only polled
@@ -342,6 +382,10 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
             coordinator.latestData.get("inverter", {}).get("status", {}).get("fac")
             or coordinator.latestData.get("inverter", {}).get("status", {}).get("status", {}).get("fac")
             or coordinator.latestData.get("battery_system", {}).get("grid_information", {}).get("fac")
+            # v2 "inverter"/"status" (token-only mode) report frequency as a flat
+            # "fac"/"Fac" field instead of the nested v1 shape above
+            or coordinator.latestData.get("inverter", {}).get("fac")
+            or coordinator.latestData.get("status", {}).get("Fac")
         ),
     ),
     ###
@@ -519,6 +563,8 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
             .get("measurements", {})
             .get("battery_status", {})
             .get("cyclecount")
+            # v2 "battery" (token-only mode) reports this as a flat field instead
+            or coordinator.latestData.get("battery", {}).get("cyclecount")
         ),
     ),
     SonnenbatterieSensorEntityDescription(
@@ -528,7 +574,10 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         native_unit_of_measurement="%",
         device_class=SensorDeviceClass.BATTERY,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda coordinator: (
+        # v1-only (battery.measurements.battery_status.stateofhealth), no v2
+        # equivalent exists at all - never create this entity in token-only
+        # mode instead of leaving it permanently "unknown".
+        value_fn=lambda coordinator: None if coordinator._token_only else (
             coordinator.latestData.get("battery", {})
             .get("measurements", {})
             .get("battery_status", {})
@@ -548,6 +597,8 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
             .get("measurements", {})
             .get("battery_status", {})
             .get("minimumcelltemperature")
+            # v2 "battery" (token-only mode) reports this as a flat field instead
+            or coordinator.latestData.get("battery", {}).get("minimumcelltemperature")
         ),
     ),
     SonnenbatterieSensorEntityDescription(
@@ -563,6 +614,8 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
             .get("measurements", {})
             .get("battery_status", {})
             .get("maximumcelltemperature")
+            # v2 "battery" (token-only mode) reports this as a flat field instead
+            or coordinator.latestData.get("battery", {}).get("maximumcelltemperature")
         ),
     ),
     SonnenbatterieSensorEntityDescription(
@@ -625,10 +678,15 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         native_unit_of_measurement="Wh",
         device_class=SensorDeviceClass.ENERGY_STORAGE,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda coordinator: coordinator.latestData.get("battery_system", {})
-        .get("battery_system", {})
-        .get("system", {})
-        .get("storage_capacity_per_module"),
+        value_fn=lambda coordinator: (
+            coordinator.latestData.get("battery_system", {})
+            .get("battery_system", {})
+            .get("system", {})
+            .get("storage_capacity_per_module")
+            # v1-only; in token-only mode fall back to the nominal/marketing
+            # per-module capacity from "configurations" (always available)
+            or coordinator.latestData.get("configurations", {}).get("CM_MarketingModuleCapacity")
+        ),
         entity_registry_enabled_default=False,
     ),
     SonnenbatterieSensorEntityDescription(
@@ -636,7 +694,8 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         legacy_key="module_count",
         icon="mdi:battery",
         entity_category=EntityCategory.DIAGNOSTIC,
-        # all modules of a cascade, not only the master's
+        # all modules of a cascade, not only the master's (falls back to the v2
+        # "configurations" in populate_battery_info() when v1 is unavailable)
         value_fn=lambda coordinator: coordinator.latestData.get(
             "battery_info", {}
         ).get("module_count"),
@@ -760,12 +819,17 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         native_unit_of_measurement="W",
         device_class=SensorDeviceClass.POWER,
         entity_category=EntityCategory.DIAGNOSTIC,
-        # numeric string, e.g. '46000'; None (not 'unknown') when missing, as
-        # the POWER device class requires a numeric state
-        value_fn=lambda coordinator: coordinator.latestData.get("commissioning_settings", {})
-                                     .get('data', {}).get('attributes',{}).get('tou_max_power_limit'),
-        # always created, as before (shows unknown if the battery doesn't report it)
-        exists_fn=lambda _: True,
+        # v1-only (commissioning_settings), no v2 equivalent exists at all -
+        # never create this entity in token-only mode instead of leaving it
+        # permanently "unknown". Otherwise a numeric string, e.g. '46000'
+        # (None, not 'unknown', when missing: the POWER device class requires a
+        # numeric state), and always created as before.
+        value_fn=lambda coordinator: (
+            None if coordinator._token_only else
+            coordinator.latestData.get("commissioning_settings", {})
+            .get('data', {}).get('attributes', {}).get('tou_max_power_limit')
+        ),
+        exists_fn=lambda coordinator: not coordinator._token_only,
         entity_registry_enabled_default=True,
     ),
     SonnenbatterieSensorEntityDescription(
@@ -784,6 +848,49 @@ SENSORS: tuple[SonnenbatterieSensorEntityDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         native_unit_of_measurement="%",
         value_fn=lambda coordinator: int(coordinator.latestData.get("v2_status", {}).get("BackupBuffer", "0")),
+        entity_registry_enabled_default=True,
+    ),
+    ###
+    # Eclipse Led (front status light), from /api/v2/latestdata (ic_status.Eclipse Led)
+    SonnenbatterieSensorEntityDescription(
+        key="led_status",
+        icon="mdi:led-on",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_eclipse_led_state,
+        entity_registry_enabled_default=False,
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="led_brightness",
+        icon="mdi:brightness-percent",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="%",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda coordinator: coordinator.latestData.get("latestdata", {})
+        .get("ic_status", {})
+        .get("Eclipse Led", {})
+        .get("Brightness"),
+        entity_registry_enabled_default=False,
+    ),
+    SonnenbatterieSensorEntityDescription(
+        key="led_status_code",
+        icon="mdi:information-outline",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda coordinator: coordinator.latestData.get("latestdata", {})
+        .get("ic_status", {})
+        .get("Eclipse Led", {})
+        .get("Eclipse Status"),
+        entity_registry_enabled_default=False,
+    ),
+    ###
+    # current charge/discharge setpoint, from /api/v2/latestdata (SetPoint_W):
+    # positive = discharge, negative = charge
+    SonnenbatterieSensorEntityDescription(
+        key="state_setpoint",
+        icon="mdi:target",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="W",
+        device_class=SensorDeviceClass.POWER,
+        value_fn=lambda coordinator: coordinator.latestData.get("latestdata", {}).get("SetPoint_W"),
         entity_registry_enabled_default=True,
     ),
 )

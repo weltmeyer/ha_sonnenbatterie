@@ -59,9 +59,22 @@ class SonnenbatterieNumber(SonnenNumberEntity, NumberEntity):
                 return int(self.coordinator.latestData.get(tag.section, {})[tag.property])
             except (KeyError, TypeError, ValueError):
                 return None
-        # the charge/discharge setpoint is write-only: show the last one
-        # written (also by the reset buttons and the actions), 0 before that
-        return self.coordinator.setpoints.get(tag.key, 0)
+        # Charge and discharge share ONE signed setpoint (latestdata.SetPoint_W:
+        # positive = discharge, negative = charge), so each entity shows its
+        # own direction of it. Right after a write the value that was just
+        # written is shown until the read-back has caught up (the inverter
+        # applies it within a few seconds).
+        coordinator = self.coordinator
+        if not coordinator.setpoint_settling:
+            setpoint = coordinator.latestData.get("latestdata", {}).get("SetPoint_W")
+            if setpoint is not None:
+                if tag.key == "number_charge":
+                    return max(0, -setpoint)
+                if tag.key == "number_discharge":
+                    return max(0, setpoint)
+        # no read-back (yet): the last setpoint written (also by the reset
+        # buttons and the actions), 0 before that
+        return coordinator.setpoints.get(tag.key, 0)
 
     async def async_set_native_value(self, value):
         LOGGER.debug(f"NUMBER - async_set_native_value: {value} - {type(value)}")

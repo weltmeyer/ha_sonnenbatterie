@@ -8,11 +8,13 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import UnitOfEnergy
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.typing import StateType
 
 from .const import (
+    DOMAIN,
     LOGGER,
 )
 from .coordinator import SonnenbatterieConfigEntry, SonnenbatterieCoordinator
@@ -20,6 +22,7 @@ from .entities import SonnenBaseEntity
 from .sensor_list import (
     ENERGY_SENSORS,
     SENSORS,
+    V1_ONLY_SENSOR_KEYS,
     SonnenbatterieSensorEntityDescription,
     generate_powermeter_sensors,
     generate_pv_string_sensors,
@@ -40,6 +43,17 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: SonnenbatterieCon
     LOGGER.debug(f"SENSOR async_setup_entry - {coordinator.safe_config}")
 
     # await coordinator.async_refresh()
+
+    if coordinator._token_only:
+        # These sensors are never created in API-key-only mode, but entries from
+        # an earlier run (e.g. login mode) would otherwise stay in the registry
+        # as permanently unavailable entities.
+        registry = er.async_get(hass)
+        for key in V1_ONLY_SENSOR_KEYS:
+            unique_id = f"sensor.sonnenbatterie_{coordinator.serial}_{key}"
+            if entity_id := registry.async_get_entity_id("sensor", DOMAIN, unique_id):
+                LOGGER.debug(f"Removing stale v1-only entity {entity_id}")
+                registry.async_remove(entity_id)
 
     # a cascade's slave has no meters and no cascade-wide settings: skip
     # those sensors and its (unconnected) powermeters
@@ -79,7 +93,6 @@ class SonnenbatterieSensor(SonnenBaseEntity, SensorEntity, RestoreEntity):
     # entity_description: SonnenbatterieSensorEntityDescription
     # _attr_should_poll = False
     # _attr_has_entity_name = True
-    _attr_suggested_display_precision = 0
 
     def __init__(
         self,
@@ -97,8 +110,15 @@ class SonnenbatterieSensor(SonnenBaseEntity, SensorEntity, RestoreEntity):
         #     if (tkey := entity_description.translation_key)
         #   else entity_description.key
         # )
-        if precision := entity_description.suggested_display_precision:
-            self._attr_suggested_display_precision = precision
+        if entity_description.suggested_display_precision is not None:
+            self._attr_suggested_display_precision = entity_description.suggested_display_precision
+        elif entity_description.state_class is not None:
+            # Numeric (measurement) sensors without an explicit precision default
+            # to whole numbers. Sensors with neither a state_class nor a
+            # suggested_display_precision are non-numeric (plain text/enum
+            # values) - forcing a precision on those makes Home Assistant treat
+            # them as numeric and crash when the value isn't a number.
+            self._attr_suggested_display_precision = 0
 
     @property
     def unique_id(self) -> str:

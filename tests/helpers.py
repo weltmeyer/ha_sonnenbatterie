@@ -22,6 +22,8 @@ async def setup_battery(hass: HomeAssistant, battery: FakeBattery, username: str
 async def user_flow(hass: HomeAssistant, battery: FakeBattery, username: str = "User",
                     password: str = PASSWORD) -> dict:
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": "user"})
+    # this fork starts with a menu: log in with user name and password, or API key only
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {"next_step_id": "login"})
     return await hass.config_entries.flow.async_configure(result["flow_id"], {
         "ip_address": battery.address, "username": username, "password": password,
         "auth_token": "", "scan_interval": 30, "sonnenbatterie_debug": False})

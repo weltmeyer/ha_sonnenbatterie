@@ -22,6 +22,7 @@ from .coordinator import (
 )
 from .sensor_list import SENSORS
 from .service import SonnenbatterieService
+from .token_client import TokenSonnenBatterie
 
 SCAN_INTERVAL = timedelta(seconds=DEFAULT_SCAN_INTERVAL)
 
@@ -66,9 +67,20 @@ SCHEMA_SET_TOU_SCHEDULE_STRING = vol.Schema(
 
 
 async def _get_serial_number(config_entry: ConfigEntry) -> str:
-    sb_conn = AsyncSonnenBatterie(config_entry.data.get(CONF_USERNAME),
-                                  config_entry.data.get(CONF_PASSWORD),
-                                  config_entry.data.get(CONF_IP_ADDRESS))
+    username = config_entry.data.get(CONF_USERNAME)
+    password = config_entry.data.get(CONF_PASSWORD)
+    token = config_entry.data.get(CONF_AUTH_TOKEN)
+    ipaddress = config_entry.data.get(CONF_IP_ADDRESS)
+
+    if token and not (username and password):
+        sb_conn = TokenSonnenBatterie(ipaddress, token)
+        try:
+            sysdata = await sb_conn.get_systemdata()
+        finally:
+            await sb_conn.logout()
+        return sysdata.get("DE_Ticket_Number", "sru-unknown")
+
+    sb_conn = AsyncSonnenBatterie(username, password, ipaddress)
     await sb_conn.logout()
     sysdata = await sb_conn.get_systemdata()
     await sb_conn.logout()
@@ -153,7 +165,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: SonnenbatterieCon
     else:
         await sb_coordinator.fetch_sonnenbatterie_on_startup()
     # whole cascade's inverter power on a cascade master, see populate_battery_info()
-    inverter_power = sb_coordinator.latestData['battery_info']['max_power']
+    # (which also falls back to the v2 "configurations" when v1 is unavailable).
+    # Only if no source has it at all, use a generous guess so the
+    # charge/discharge number entities still work.
+    inverter_power = sb_coordinator.latestData['battery_info']['max_power'] or 25000
     max_tou_power = sb_coordinator.latestData.get('commissioning_settings',{}).get('data', {}).get('attributes', {}).get('tou_max_power_limit', '22000')
     LOGGER.debug(f"inverter_power: {inverter_power}, tou_power: {max_tou_power}")
     config_entry.runtime_data = SonnenbatterieData(
@@ -301,11 +316,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: SonnenbatterieConfigEnt
     LOGGER.debug(f"Unloading config entry: {entry}")
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
-        # close the coordinator's HTTP session, otherwise every reload (e.g.
-        # a cascade slave's new IP address) leaks one
+        # closes both HTTP sessions of the coordinator, otherwise every reload
+        # (e.g. a cascade slave's new IP address) leaks them
         try:
-            await entry.runtime_data.coordinator.sbconn.logout()
-        except Exception:
-            LOGGER.debug("logout on unload failed", exc_info=True)
+            await entry.runtime_data.coordinator.aclose()
+        except Exception:  # noqa: BLE001 - best effort
+            LOGGER.debug("closing the coordinator on unload failed", exc_info=True)
     return unloaded
 

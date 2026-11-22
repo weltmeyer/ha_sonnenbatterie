@@ -78,6 +78,18 @@ BINARY_SENSORS: tuple[SonnenbatterieBinarySensorEntityDescription, ...] = (
         .get("Grid detached"),
         entity_registry_enabled_default=False,
     ),
+    ###
+    # setpoint priorities, from /api/v2/latestdata (ic_status.Setpoint Priority)
+    SonnenbatterieBinarySensorEntityDescription(
+        key="latestdata_full_charge_request",
+        icon="mdi:battery-alert",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda coordinator: coordinator.latestData.get("latestdata", {})
+        .get("ic_status", {})
+        .get("Setpoint Priority", {})
+        .get("Full Charge Request"),
+        entity_registry_enabled_default=False,
+    ),
 )
 
 
@@ -111,3 +123,23 @@ def _meter_error(coordinator: SonnenbatterieCoordinator, index: int) -> bool | N
     if error is None:
         return None
     return error != 0
+
+
+def io_pin_description(pin: str, usage: str) -> SonnenbatterieBinarySensorEntityDescription:
+    """Entity description for one digital I/O pin from /api/v2/io (e.g. "DO_2")."""
+
+    def _state(coordinator: SonnenbatterieCoordinator) -> bool | None:
+        pin_state = (coordinator.latestData.get("io") or {}).get(pin)
+        if not isinstance(pin_state, dict) or pin_state.get("status") is None:
+            return None
+        return bool(pin_state["status"])
+
+    return SonnenbatterieBinarySensorEntityDescription(
+        key=f"io_{pin.lower()}",
+        # no translation exists for these keys; the name comes from the battery
+        name=f"IO {pin} {usage}",
+        icon="mdi:electric-switch",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_state,
+        entity_registry_enabled_default=False,
+    )

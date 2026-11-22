@@ -82,6 +82,9 @@ async def test_reconfigure(hass, make_battery):
     entry = await setup_battery(hass, battery)
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": "reconfigure", "entry_id": entry.entry_id})
+    # this fork asks first whether to reconfigure the login or the API key
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"next_step_id": "reconfigure_login"})
     assert result["type"] is FlowResultType.FORM
     assert masked_fields(result["data_schema"]) == {"password", "auth_token"}
 
@@ -101,6 +104,9 @@ async def test_reconfigure_wrong_password(hass, make_battery):
     entry = await setup_battery(hass, battery)
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": "reconfigure", "entry_id": entry.entry_id})
+    # this fork asks first whether to reconfigure the login or the API key
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"next_step_id": "reconfigure_login"})
     result = await hass.config_entries.flow.async_configure(result["flow_id"], {
         "ip_address": battery.address, "username": "User", "password": "wrong",
         "auth_token": "", "scan_interval": 30, "sonnenbatterie_debug": False})
