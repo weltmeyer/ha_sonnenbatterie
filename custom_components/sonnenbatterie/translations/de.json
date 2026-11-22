@@ -109,13 +109,13 @@
                 "name": "Netzfrequenz"
             },
             "state_battery_inout": {
-                "name": "Akku Lade-/Entladestrom"
+                "name": "Akku Lade-/Entladeleistung"
             },
             "state_battery_in": {
-                "name": "Akku Ladestrom"
+                "name": "Akku Ladeleistung"
             },
             "state_battery_out": {
-                "name": "Akku Entladestrom"
+                "name": "Akku Entladeleistung"
             },
             "state_battery_percentage_real": {
                 "name": "Akku Ladestand (echt)"
