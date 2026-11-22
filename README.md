@@ -110,6 +110,17 @@ dashboard expects, so no Riemann sum (Integral) helpers are needed any more:
 | Battery: energy going in | Battery charge energy |
 | Battery: energy coming out | Battery discharge energy |
 
+The home consumption ("Home") isn't a sensor you select: the energy dashboard
+calculates it from the fields above (grid import − grid export + solar
+production + battery out − battery in). So it's only correct with all five
+fields set. If Home always equals the solar production, the grid and battery
+fields are empty or their sensors don't count. Devices with their own meters
+(a wallbox, a heat pump) go under "Individual devices", as part of the home
+consumption.
+
+- Statistics start when a sensor is added to the dashboard; earlier values
+  aren't filled in. To compare a day with the Sonnen app, compare a full day
+  after the last change.
 - The solar production comes from the production meter's own counter, so
   it's exact and keeps counting while Home Assistant isn't running. The
   consumption meter's counter (meter consumption … kwh_imported) is there
