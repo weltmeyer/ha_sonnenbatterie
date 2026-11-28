@@ -1,10 +1,14 @@
+<!-- ha-marketplace:exclude-start -->
 [![hacs_badge][hacsbadge]][hacs] [![hainstall][hainstallbadge]][hainstall]
+<!-- ha-marketplace:exclude-end -->
 # ha_sonnenbatterie
 Homeassistant integration to show many stats of Sonnenbatterie
 that should work with current versions of Sonnenbatterie.
 
+<!-- ha-marketplace:exclude-start -->
 [![Validate with hassfest](https://github.com/weltmeyer/ha_sonnenbatterie/actions/workflows/hassfest.yaml/badge.svg)](https://github.com/weltmeyer/ha_sonnenbatterie/actions/workflows/hassfest.yaml)
 [![Validate with HACS](https://github.com/weltmeyer/ha_sonnenbatterie/actions/workflows/validate.yaml/badge.svg)](https://github.com/weltmeyer/ha_sonnenbatterie/actions/workflows/validate.yaml)
+<!-- ha-marketplace:exclude-end -->
 
 ### Tested working with
 * eco 8.03 9010 ND
@@ -15,6 +19,7 @@ that should work with current versions of Sonnenbatterie.
 ### Won't work with older Batteries
 * ex. model 9.2 eco from 2014 not working
 
+<!-- ha-marketplace:exclude-start -->
 ## Installation
 
 Requires **Home Assistant 2025.5** or newer. On older versions HACS keeps the
@@ -69,10 +74,14 @@ repository in either of them:
 6. Restart Home Assistant
 7. Setup the sonnenbatterie custom integration as described below (see [Adding or enabling the integration](#adding-or-enabling-the-integration))
 
+<!-- ha-marketplace:exclude-end -->
+
 ## Adding or enabling the integration
 
+<!-- ha-marketplace:exclude-start -->
 > [!IMPORTANT]
 > The integration must be [installed](#installation) before you can start to add or enable it!
+<!-- ha-marketplace:exclude-end -->
 
 ### 1) My Home Assistant
 
@@ -483,6 +492,7 @@ Please put those logs along with the setting you want monitored into
 ## Screenshots :)
 ![image](https://user-images.githubusercontent.com/1668465/78452159-ed2d7d80-7689-11ea-9e30-3a66ecc2372a.png)
 
+<!-- ha-marketplace:exclude-start -->
 ## Development
 The tests run a real Home Assistant core against simulated batteries
 (`tests/fake_battery.py`), built from real sb_info reports with all serial
@@ -498,6 +508,8 @@ The dev container (`.devcontainer`, for VS Code and Zed) installs both.
 
 GitHub runs them on two Home Assistant versions: the one in `requirements.txt`
 and the minimum in `hacs.json` (`requirements_test_min.txt`, Python 3.13).
+
+<!-- ha-marketplace:exclude-end -->
 
 ---
 [hacs]: https://hacs.xyz
