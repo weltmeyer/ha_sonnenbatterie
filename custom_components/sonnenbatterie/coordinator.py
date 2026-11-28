@@ -20,6 +20,12 @@ from homeassistant.helpers import discovery_flow
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
+try:
+    # logged at info instead of error level (Home Assistant 2026.12+)
+    from homeassistant.helpers.update_coordinator import UpdateFailedUnreachable
+except ImportError:  # older Home Assistant
+    UpdateFailedUnreachable = UpdateFailed
+
 from sonnenbatterie import AsyncSonnenBatterie
 
 from .const import (
@@ -271,11 +277,19 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
         self._failures = 0
         self.update_interval = self._base_interval
 
+    @staticmethod
+    def _is_unreachable(e: Exception) -> bool:
+        """No answer at all: connection refused or reset, no route, timeout.
+        Not an HTTP error status, which is an answer."""
+        return isinstance(e, (aiohttp.ClientConnectionError, TimeoutError, OSError))
+
     def _handle_update_error(self, e: Exception):
         """Tolerate the battery's daily maintenance window: keep the last known
         values for up to MAINTENANCE_GRACE seconds, back off polling meanwhile,
         and raise UpdateFailed (entities unavailable, logged once by the
-        coordinator) for longer outages or if there's no data to fall back to."""
+        coordinator) for longer outages or if there's no data to fall back to.
+        If the battery can't be reached at all (switched off, network down),
+        UpdateFailedUnreachable: logged at info level, not as an error."""
         LOGGER.debug(traceback.format_exc())
         if self._is_auth_error(e):
             self._last_login = 0    # session token invalid -> fresh login next try
@@ -299,7 +313,8 @@ class SonnenbatterieCoordinator(DataUpdateCoordinator):
 
         elapsed = now - self._last_error
         if elapsed > self.MAINTENANCE_GRACE or not self._has_data():
-            raise UpdateFailed(
+            failed = UpdateFailedUnreachable if self._is_unreachable(e) else UpdateFailed
+            raise failed(
                 f"Unable to connect to Sonnenbatterie at {self._config_entry.data[CONF_IP_ADDRESS]} "
                 f"for {int(elapsed)} seconds: {reason}") from e
 
